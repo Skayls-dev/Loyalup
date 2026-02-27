@@ -1,0 +1,26 @@
+{
+  "name": "stfideligo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "autoprefixer": "^10.4.27",
+    "postcss": "^8.5.6",
+    "supabase": "^2.76.15",
+    "tailwindcss": "^4.2.1"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.97.0",
+    "html5-qrcode": "^2.3.8",
+    "qrcode.react": "^4.2.0",
+    "react-router-dom": "^7.13.1",
+    "zustand": "^5.0.11"
+  }
+}

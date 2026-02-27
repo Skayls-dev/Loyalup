@@ -1,0 +1,113 @@
+openapi: 3.1.0
+info:
+  title: LoyalUp Public API
+  version: 1.0.0
+  description: Public API for providers to manage clients, services, promotions, transactions, stats and sandbox checks.
+servers:
+  - url: https://YOUR_PROJECT.supabase.co/functions/v1
+security:
+  - ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+  schemas:
+    ApiSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+        meta:
+          type: object
+    ApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+paths:
+  /api-v1-clients:
+    get:
+      summary: List clients
+      responses:
+        '200':
+          description: Clients list
+    post:
+      summary: Credit or debit client points
+      responses:
+        '200':
+          description: Updated points
+  /api-v1-transactions:
+    get:
+      summary: List transactions
+      responses:
+        '200':
+          description: Transaction list
+    post:
+      summary: Create a POS transaction
+      responses:
+        '200':
+          description: Created transaction
+  /api-v1-services:
+    get:
+      summary: List provider services
+      responses:
+        '200':
+          description: Service list
+    post:
+      summary: Create service
+      responses:
+        '200':
+          description: Created service
+    put:
+      summary: Update service
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated service
+  /api-v1-promotions:
+    get:
+      summary: List promotions
+      responses:
+        '200':
+          description: Promotion list
+    post:
+      summary: Create promotion
+      responses:
+        '200':
+          description: Created promotion
+  /api-v1-stats:
+    get:
+      summary: Get provider stats
+      responses:
+        '200':
+          description: Stats summary
+  /api-v1-sandbox:
+    get:
+      summary: Sandbox endpoint
+      parameters:
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum: [status, echo]
+      responses:
+        '200':
+          description: Sandbox response

@@ -1,0 +1,44 @@
+openapi: 3.1.0
+info:
+  title: LoyalUp Public API
+  version: 1.0.0
+  description: Public API for providers to manage clients, services, promotions, transactions, stats and sandbox checks.
+servers:
+  - url: https://YOUR_PROJECT.supabase.co/functions/v1
+security:
+  - ApiKeyAuth: []
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+paths:
+  /api-v1-clients:
+    get:
+      summary: List clients
+    post:
+      summary: Credit or debit client points
+  /api-v1-transactions:
+    get:
+      summary: List transactions
+    post:
+      summary: Create a POS transaction
+  /api-v1-services:
+    get:
+      summary: List provider services
+    post:
+      summary: Create service
+    put:
+      summary: Update service
+  /api-v1-promotions:
+    get:
+      summary: List promotions
+    post:
+      summary: Create promotion
+  /api-v1-stats:
+    get:
+      summary: Get provider stats
+  /api-v1-sandbox:
+    get:
+      summary: Sandbox endpoint
