@@ -37,7 +37,7 @@ const tabs: Array<{ key: DashboardTab; label: string }> = [
 ]
 
 export function ProviderDashboard() {
-  const [searchParams, setSearchParams] = useSearchParams()
+  const [searchParams] = useSearchParams()
   const tabFromQuery = searchParams.get('tab') as DashboardTab | null
   const activeTab: DashboardTab = tabFromQuery && tabs.some((item) => item.key === tabFromQuery) ? tabFromQuery : 'qr'
 
@@ -93,29 +93,6 @@ export function ProviderDashboard() {
 
   return (
     <section className="w-full space-y-4">
-      <div className="overflow-x-auto rounded-2xl border border-zinc-700 bg-zinc-900/80 p-1.5 shadow-sm">
-        <div className="flex min-w-max gap-1.5">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => {
-                const next = new URLSearchParams(searchParams)
-                next.set('tab', tab.key)
-                setSearchParams(next, { replace: true })
-              }}
-              className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.02] ${
-                activeTab === tab.key
-                  ? 'tab-pop tab-glow bg-indigo-100 text-indigo-700 shadow-sm motion-safe:hover:shadow-lg'
-                  : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {dashboardContent}
     </section>
   )
