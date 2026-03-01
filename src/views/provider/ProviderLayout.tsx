@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
 import {
   subscribeToPendingTransactions,
+  type PendingTransactionPayload,
   unsubscribe,
 } from '../../modules/qr/services/qrService'
 import { supabase } from '../../shared/lib/supabaseClient'
@@ -25,6 +26,7 @@ export function ProviderLayout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
+  const [incomingValidation, setIncomingValidation] = useState<PendingTransactionPayload | null>(null)
 
   useEffect(() => {
     const loadProvider = async () => {
@@ -50,9 +52,9 @@ export function ProviderLayout() {
       return
     }
 
-    subscribeToPendingTransactions(fournisseurId, () => {
+    subscribeToPendingTransactions(fournisseurId, (payload) => {
       if (location.pathname !== '/provider/validate') {
-        navigate('/provider/validate')
+        setIncomingValidation(payload)
       }
     })
 
@@ -76,6 +78,15 @@ export function ProviderLayout() {
 
   const handleLogout = async () => {
     await logout()
+  }
+
+  const handleOpenValidations = () => {
+    setIncomingValidation(null)
+    navigate('/provider/validate')
+  }
+
+  const handleDismissValidationPopup = () => {
+    setIncomingValidation(null)
   }
 
   return (
@@ -144,6 +155,36 @@ export function ProviderLayout() {
       <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl items-center justify-center p-4 md:p-6">
         <Outlet />
       </main>
+
+      {incomingValidation ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-zinc-100 shadow-2xl">
+            <h3 className="text-base font-semibold">Nouveau scan détecté</h3>
+            <p className="mt-2 text-sm text-zinc-300">
+              Un client vient de scanner votre QR code. Voulez-vous ouvrir la page de validation maintenant ?
+            </p>
+            <p className="mt-2 text-xs text-zinc-500">
+              Heure du scan : {new Date(incomingValidation.created_at).toLocaleTimeString()}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleDismissValidationPopup}
+                className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:bg-zinc-700"
+              >
+                Plus tard
+              </button>
+              <button
+                type="button"
+                onClick={handleOpenValidations}
+                className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500"
+              >
+                Ouvrir Validations
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
