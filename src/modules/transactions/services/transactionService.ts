@@ -58,9 +58,13 @@ let clientPointsChannel: ReturnType<typeof supabase.channel> | null = null
 export async function creditPoints(params: CreditPointsParams): Promise<CreditPointsResponse> {
   try {
     requireOnlineForWrite()
+    const accessToken = await getAccessTokenOrThrow()
 
     const { data, error } = await supabase.functions.invoke<CreditPointsResponse>('credit-points', {
       method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
       body: {
         pending_transaction_id: params.pending_transaction_id,
         service_id: params.service_id ?? null,
@@ -69,7 +73,7 @@ export async function creditPoints(params: CreditPointsParams): Promise<CreditPo
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(await extractFunctionErrorMessage(error, 'Unable to credit points'))
     }
 
     if (!data?.success || typeof data.points_credited !== 'number' || typeof data.new_balance !== 'number') {
@@ -179,4 +183,65 @@ export function unsubscribeClientPoints(): void {
 
   supabase.removeChannel(clientPointsChannel)
   clientPointsChannel = null
+}
+
+async function getAccessTokenOrThrow(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const token = data.session?.access_token
+  if (!token) {
+    throw new Error('Session expirée, reconnectez-vous.')
+  }
+
+  return token
+}
+
+async function extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (!error || typeof error !== 'object') {
+    return fallback
+  }
+
+  const maybeContext = (error as { context?: unknown }).context
+
+  if (maybeContext && typeof maybeContext === 'object') {
+    const responseLike = maybeContext as {
+      clone?: () => unknown
+      json?: () => Promise<unknown>
+      text?: () => Promise<string>
+    }
+
+    const readable =
+      typeof responseLike.clone === 'function'
+        ? (responseLike.clone() as { json?: () => Promise<unknown>; text?: () => Promise<string> })
+        : responseLike
+
+    if (readable && typeof readable.json === 'function') {
+      try {
+        const payload = await readable.json()
+        if (payload && typeof payload === 'object' && 'error' in payload) {
+          const detail = (payload as { error?: unknown }).error
+          if (typeof detail === 'string' && detail.trim()) {
+            return detail.trim()
+          }
+        }
+      } catch {
+      }
+    }
+
+    if (readable && typeof readable.text === 'function') {
+      try {
+        const raw = await readable.text()
+        if (raw && raw.trim()) {
+          return raw.trim()
+        }
+      } catch {
+      }
+    }
+  }
+
+  const message = error instanceof Error ? error.message : fallback
+  return message || fallback
 }

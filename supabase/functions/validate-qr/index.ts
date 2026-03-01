@@ -101,35 +101,6 @@ Deno.serve(async (req) => {
       })
     }
 
-    const startOfDay = new Date(now)
-    startOfDay.setHours(0, 0, 0, 0)
-
-    const { data: todayPending, error: pendingCheckError } = await adminClient
-      .from('pending_transactions')
-      .select('id')
-      .eq('client_id', clientId)
-      .eq('fournisseur_id', qrToken.fournisseur_id)
-      .gte('created_at', startOfDay.toISOString())
-      .neq('status', 'cancelled')
-      .limit(1)
-
-    if (pendingCheckError) {
-      return new Response(JSON.stringify({ error: pendingCheckError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    if (todayPending && todayPending.length > 0) {
-      return new Response(
-        JSON.stringify({ error: 'Client already scanned this provider today' }),
-        {
-          status: 409,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        },
-      )
-    }
-
     const pendingExpiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString()
 
     const { data: transaction, error: createTransactionError } = await adminClient
