@@ -5,8 +5,9 @@ import {
   type PendingTransactionPayload,
   unsubscribe,
 } from '../../modules/qr/services/qrService'
-import { cancelTransaction, creditPoints } from '../../modules/transactions/services/transactionService'
+import { ValidationPanel } from '../../modules/transactions/components/ValidationPanel'
 import { supabase } from '../../shared/lib/supabaseClient'
+import type { Profile } from '../../shared/types'
 
 type PendingItem = PendingTransactionPayload & {
   clientName: string
@@ -18,16 +19,18 @@ export function ProviderValidate() {
   const { user } = useAuth()
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
   const [items, setItems] = useState<PendingItem[]>([])
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
 
   const loadPendingTransactions = async (providerId: string) => {
+    const nowIso = new Date().toISOString()
     const { data: pendingData, error: pendingError } = await supabase
       .from('pending_transactions')
       .select('id, qr_token_id, client_id, fournisseur_id, status, created_at, expires_at')
       .eq('fournisseur_id', providerId)
       .eq('status', 'pending')
+      .gt('expires_at', nowIso)
       .order('created_at', { ascending: false })
       .limit(25)
 
@@ -68,7 +71,7 @@ export function ProviderValidate() {
 
     const pointsMap = new Map<string, number>(pointsEntries)
 
-    setItems(
+    const nextItems =
       transactions.map((transaction) => {
         const profile = profileMap.get(transaction.client_id)
 
@@ -78,8 +81,16 @@ export function ProviderValidate() {
           clientEmail: profile?.email ?? '',
           clientPoints: pointsMap.get(transaction.client_id) ?? 0,
         }
-      }),
-    )
+      })
+
+    setItems(nextItems)
+    setSelectedTransactionId((current) => {
+      if (current && nextItems.some((item) => item.id === current)) {
+        return current
+      }
+
+      return nextItems[0]?.id ?? null
+    })
   }
 
   useEffect(() => {
@@ -148,6 +159,8 @@ export function ProviderValidate() {
         },
         ...prev.filter((item) => item.id !== payload.id),
       ])
+
+      setSelectedTransactionId((current) => current ?? payload.id)
     }
 
     subscribeToPendingTransactions(fournisseurId, handleIncoming)
@@ -156,26 +169,36 @@ export function ProviderValidate() {
     }
   }, [fournisseurId])
 
-  const handleAction = async (transactionId: string, action: 'validate' | 'cancel') => {
-    setActionLoadingId(transactionId)
-    setError(null)
+  const selectedItem = useMemo(
+    () => items.find((item) => item.id === selectedTransactionId) ?? items[0] ?? null,
+    [items, selectedTransactionId],
+  )
+
+  const selectedClientProfile = useMemo<Profile | null>(() => {
+    if (!selectedItem) {
+      return null
+    }
+
+    return {
+      id: selectedItem.client_id,
+      email: selectedItem.clientEmail || 'email non disponible',
+      role: 'client',
+      nom: selectedItem.clientName,
+      created_at: selectedItem.created_at,
+    }
+  }, [selectedItem])
+
+  const handleValidationPanelDismiss = async () => {
+    if (!fournisseurId) {
+      return
+    }
 
     try {
-      if (action === 'validate') {
-        await creditPoints({
-          pending_transaction_id: transactionId,
-          montant: 1,
-        })
-      } else {
-        await cancelTransaction(transactionId)
-      }
-
-      setItems((prev) => prev.filter((item) => item.id !== transactionId))
+      await loadPendingTransactions(fournisseurId)
+      setError(null)
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Action failed'
+      const message = caughtError instanceof Error ? caughtError.message : 'Unable to refresh pending transactions'
       setError(message)
-    } finally {
-      setActionLoadingId(null)
     }
   }
 
@@ -204,50 +227,33 @@ export function ProviderValidate() {
 
       {empty ? <p className="text-sm text-zinc-400">Aucune transaction en attente.</p> : null}
 
-      <div className="space-y-3">
-        {items.map((item) => {
-          const isBusy = actionLoadingId === item.id
-
-          return (
-            <article
+      {items.length > 1 ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {items.map((item) => (
+            <button
               key={item.id}
-              className="rounded-xl border border-zinc-800 bg-zinc-950/70 p-4"
+              type="button"
+              onClick={() => setSelectedTransactionId(item.id)}
+              className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                selectedItem?.id === item.id
+                  ? 'border-emerald-500 bg-emerald-500/15 text-emerald-200'
+                  : 'border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+              }`}
             >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm font-semibold text-zinc-100">{item.clientName}</p>
-                  <p className="text-xs text-zinc-400">{item.clientEmail || 'email non disponible'}</p>
-                  <p className="mt-2 text-xs text-zinc-400">Points actuels: {item.clientPoints}</p>
-                </div>
+              {item.clientName}
+            </button>
+          ))}
+        </div>
+      ) : null}
 
-                <div className="text-right text-xs text-zinc-500">
-                  <p>Créée: {new Date(item.created_at).toLocaleTimeString()}</p>
-                  <p>Expire: {new Date(item.expires_at).toLocaleTimeString()}</p>
-                </div>
-              </div>
-
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => handleAction(item.id, 'validate')}
-                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isBusy ? '...' : 'Valider'}
-                </button>
-                <button
-                  type="button"
-                  disabled={isBusy}
-                  onClick={() => handleAction(item.id, 'cancel')}
-                  className="rounded-lg bg-zinc-700 px-3 py-2 text-xs font-semibold text-zinc-100 transition hover:bg-zinc-600 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Annuler
-                </button>
-              </div>
-            </article>
-          )
-        })}
-      </div>
+      {selectedItem ? (
+        <ValidationPanel
+          pendingTransaction={selectedItem}
+          clientProfile={selectedClientProfile}
+          clientPoints={selectedItem.clientPoints}
+          onDismiss={handleValidationPanelDismiss}
+        />
+      ) : null}
     </section>
   )
 }
