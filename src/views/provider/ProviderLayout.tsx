@@ -1,5 +1,11 @@
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
+import {
+  subscribeToPendingTransactions,
+  unsubscribe,
+} from '../../modules/qr/services/qrService'
+import { supabase } from '../../shared/lib/supabaseClient'
 import { MainMenu } from '../../shared/components/MainMenu'
 
 const providerMenu = [
@@ -15,8 +21,45 @@ const providerMenu = [
 ]
 
 export function ProviderLayout() {
-  const { profile, logout, loading } = useAuth()
+  const { user, profile, logout, loading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
+  const [fournisseurId, setFournisseurId] = useState<string | null>(null)
+
+  useEffect(() => {
+    const loadProvider = async () => {
+      if (!user?.id) {
+        setFournisseurId(null)
+        return
+      }
+
+      const { data } = await supabase
+        .from('fournisseurs')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle()
+
+      setFournisseurId(data?.id ?? null)
+    }
+
+    loadProvider().catch(() => setFournisseurId(null))
+  }, [user?.id])
+
+  useEffect(() => {
+    if (!fournisseurId) {
+      return
+    }
+
+    subscribeToPendingTransactions(fournisseurId, () => {
+      if (location.pathname !== '/provider/validate') {
+        navigate('/provider/validate')
+      }
+    })
+
+    return () => {
+      unsubscribe()
+    }
+  }, [fournisseurId, location.pathname, navigate])
 
   const isMenuItemActive = (to: string) => {
     if (to === '/provider/validate') {
