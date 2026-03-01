@@ -27,6 +27,7 @@ export function ProviderLayout() {
   const navigate = useNavigate()
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
   const [incomingValidation, setIncomingValidation] = useState<PendingTransactionPayload | null>(null)
+  const [lastNotifiedPendingId, setLastNotifiedPendingId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadProvider = async () => {
@@ -52,16 +53,46 @@ export function ProviderLayout() {
       return
     }
 
-    subscribeToPendingTransactions(fournisseurId, (payload) => {
+    const handleIncomingPending = (payload: PendingTransactionPayload) => {
+      if (payload.id === lastNotifiedPendingId) {
+        return
+      }
+
       if (location.pathname !== '/provider/validate') {
         setIncomingValidation(payload)
       }
+
+      setLastNotifiedPendingId(payload.id)
+    }
+
+    subscribeToPendingTransactions(fournisseurId, (payload) => {
+      handleIncomingPending(payload)
     })
 
+    const pollIntervalId = window.setInterval(async () => {
+      const nowIso = new Date().toISOString()
+      const { data } = await supabase
+        .from('pending_transactions')
+        .select('id, qr_token_id, client_id, fournisseur_id, status, created_at, expires_at')
+        .eq('fournisseur_id', fournisseurId)
+        .eq('status', 'pending')
+        .gt('expires_at', nowIso)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (!data) {
+        return
+      }
+
+      handleIncomingPending(data as PendingTransactionPayload)
+    }, 3000)
+
     return () => {
+      window.clearInterval(pollIntervalId)
       unsubscribe()
     }
-  }, [fournisseurId, location.pathname, navigate])
+  }, [fournisseurId, location.pathname, navigate, lastNotifiedPendingId])
 
   const isMenuItemActive = (to: string) => {
     if (to === '/provider/validate') {
