@@ -8,6 +8,7 @@ const providerMenu = [
   { label: 'Réseau', to: '/provider/network' },
   { label: 'Clients', to: '/provider?tab=clients' },
   { label: 'Promotions', to: '/provider?tab=promotions' },
+  { label: 'Services', to: '/provider?tab=settings' },
   { label: 'White Label', to: '/provider?tab=white-label' },
   { label: 'Developer Portal', to: '/provider?tab=developers' },
   { label: 'Validations', to: '/provider/validate' },
