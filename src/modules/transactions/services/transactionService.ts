@@ -69,6 +69,7 @@ export async function creditPoints(params: CreditPointsParams): Promise<CreditPo
         pending_transaction_id: params.pending_transaction_id,
         service_id: params.service_id ?? null,
         montant: params.montant,
+        access_token: accessToken,
       },
     })
 

@@ -9,6 +9,7 @@ type CreditPointsRequest = {
   pending_transaction_id?: string
   service_id?: string | null
   montant?: number
+  access_token?: string
 }
 
 type ComputeNetworkBonusRow = {
@@ -81,16 +82,20 @@ Deno.serve(async (req) => {
       })
     }
 
+    const payload = (await req.json().catch(() => ({}))) as CreditPointsRequest
     const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
+    const jwtFromHeader = authHeader?.startsWith('Bearer ')
+      ? authHeader.replace('Bearer ', '').trim()
+      : ''
+    const jwtFromBody = typeof payload.access_token === 'string' ? payload.access_token.trim() : ''
+    const jwt = jwtFromHeader || jwtFromBody
+
+    if (!jwt) {
+      return new Response(JSON.stringify({ error: 'Missing auth token' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
-
-    const jwt = authHeader.replace('Bearer ', '').trim()
-    const payload = (await req.json().catch(() => ({}))) as CreditPointsRequest
 
     if (!payload.pending_transaction_id || typeof payload.montant !== 'number') {
       return new Response(JSON.stringify({ error: 'pending_transaction_id and montant are required' }), {
