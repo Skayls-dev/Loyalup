@@ -1,6 +1,37 @@
 # LoyalUp Deployment Runbook
 
+→ Project URL      : https://your-project-ref.supabase.co
+→ anon public key  : your-anon-public-key
+→ service_role key : set in Supabase secrets only (do not commit)
+
+-> VOTRE_PROJECT_REF: your-project-ref
+
+
+
 ## Step 15 — Supabase production setup
+
+Windows PowerShell (scripté):
+
+```powershell
+# Dry-run (par défaut)
+.\scripts\push-prod-migrations.ps1 -DbPassword "<DB_PASSWORD>"
+
+# Exécution réelle
+.\scripts\push-prod-migrations.ps1 -DbPassword "<DB_PASSWORD>" -Apply
+```
+
+Via npm (Windows):
+
+```powershell
+# Définir le mot de passe DB pour la session
+$env:SUPABASE_DB_PASSWORD="<DB_PASSWORD>"
+
+# Dry-run
+npm run db:push:prod:win:dry-run
+
+# Exécution réelle
+npm run db:push:prod:win:apply
+```
 
 ```bash
 # Link to production project
@@ -28,6 +59,37 @@ WHERE schemaname = 'public';
 ```
 
 All tables should return `rowsecurity = true`.
+
+### Troubleshooting — Edge Functions deploy
+
+If deployment fails with `Access token not provided` or HTTP `403`:
+
+```powershell
+npx supabase logout
+npx supabase login
+npx supabase projects list
+```
+
+Ensure the logged-in account can access project `yyftqivizzgvveeczbpv`.
+
+If deployment fails with `Relative import path "@supabase/supabase-js" not prefixed...`:
+
+- Replace imports in Edge Functions from:
+	- `import { createClient } from '@supabase/supabase-js'`
+- To:
+	- `import { createClient } from 'npm:@supabase/supabase-js@2'`
+
+Then redeploy all functions:
+
+```powershell
+npx supabase functions deploy --project-ref yyftqivizzgvveeczbpv --prune
+
+# Safer (no prune)
+npm run functions:deploy:prod:safe
+
+# Or via npm script
+npm run functions:deploy:prod
+```
 
 ## Step 16 — Vercel deployment
 

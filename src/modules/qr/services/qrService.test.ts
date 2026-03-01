@@ -20,19 +20,21 @@ describe('qrService', () => {
     expect(result.transaction_id).toBe('pending-transaction-1')
   })
 
-  it("validateToken: expired token → throws 'TOKEN_EXPIRED'", async () => {
+  it('validateToken: expired token → throws user-friendly French message', async () => {
     setFunctionError('validate-qr', 'TOKEN_EXPIRED')
-    await expect(validateToken('EXPIRED')).rejects.toThrow('TOKEN_EXPIRED')
+    await expect(validateToken('EXPIRED')).rejects.toThrow('QR expiré. Demandez un nouveau QR.')
   })
 
-  it("validateToken: already used → throws 'TOKEN_USED'", async () => {
+  it('validateToken: already used → throws user-friendly French message', async () => {
     setFunctionError('validate-qr', 'TOKEN_USED')
-    await expect(validateToken('USED')).rejects.toThrow('TOKEN_USED')
+    await expect(validateToken('USED')).rejects.toThrow('QR déjà utilisé. Demandez un nouveau QR.')
   })
 
-  it("validateToken: already scanned today → throws 'ALREADY_SCANNED'", async () => {
+  it('validateToken: already scanned today → throws user-friendly French message', async () => {
     setFunctionError('validate-qr', 'ALREADY_SCANNED')
-    await expect(validateToken('ALREADY_SCANNED')).rejects.toThrow('ALREADY_SCANNED')
+    await expect(validateToken('ALREADY_SCANNED')).rejects.toThrow(
+      'Vous avez déjà scanné ce commerce aujourd’hui.',
+    )
   })
 
   it('subscribeToTransactions: sets up Realtime correctly', () => {

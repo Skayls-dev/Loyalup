@@ -40,7 +40,7 @@ export async function generateToken(): Promise<GenerateTokenResponse> {
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(await extractFunctionErrorMessage(error, 'Unable to generate QR token'))
     }
 
     if (!data?.token || !data.expires_at) {
@@ -49,14 +49,8 @@ export async function generateToken(): Promise<GenerateTokenResponse> {
 
     return data
   } catch (error) {
-    const status = extractHttpStatus(error)
-    const message =
-      status !== null
-        ? `Unable to generate QR token (HTTP ${status})`
-        : error instanceof Error
-          ? error.message
-          : 'Unable to generate QR token'
-    throw new Error(message)
+    const message = await extractFunctionErrorMessage(error, 'Unable to generate QR token')
+    throw new Error(normalizeQrErrorMessage(message))
   }
 }
 
@@ -74,7 +68,7 @@ export async function validateToken(token: string): Promise<ValidateTokenRespons
     })
 
     if (error) {
-      throw new Error(error.message)
+      throw new Error(await extractFunctionErrorMessage(error, 'Unable to validate QR token'))
     }
 
     if (!data?.success || !data.fournisseur_id || !data.transaction_id) {
@@ -83,8 +77,8 @@ export async function validateToken(token: string): Promise<ValidateTokenRespons
 
     return data
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unable to validate QR token'
-    throw new Error(message)
+    const message = await extractFunctionErrorMessage(error, 'Unable to validate QR token')
+    throw new Error(normalizeQrErrorMessage(message))
   }
 }
 
@@ -161,4 +155,83 @@ function extractHttpStatus(error: unknown): number | null {
   const maybeContext = (error as { context?: { status?: unknown } }).context
   const status = maybeContext?.status
   return typeof status === 'number' ? status : null
+}
+
+async function extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (!error || typeof error !== 'object') {
+    return fallback
+  }
+
+  const maybeContext = (error as { context?: unknown }).context
+  const status = extractHttpStatus(error)
+
+  if (maybeContext && typeof maybeContext === 'object') {
+    const responseLike = maybeContext as {
+      clone?: () => unknown
+      json?: () => Promise<unknown>
+      text?: () => Promise<string>
+    }
+
+    const readable =
+      typeof responseLike.clone === 'function'
+        ? (responseLike.clone() as { json?: () => Promise<unknown>; text?: () => Promise<string> })
+        : responseLike
+
+    if (readable && typeof readable.json === 'function') {
+      try {
+        const payload = await readable.json()
+        if (payload && typeof payload === 'object' && 'error' in payload) {
+          const detail = (payload as { error?: unknown }).error
+          if (typeof detail === 'string' && detail.trim()) {
+            return detail.trim()
+          }
+        }
+      } catch {
+      }
+    }
+
+    if (readable && typeof readable.text === 'function') {
+      try {
+        const raw = await readable.text()
+        if (raw && raw.trim()) {
+          return raw.trim()
+        }
+      } catch {
+      }
+    }
+  }
+
+  const message = error instanceof Error ? error.message : fallback
+  if (status !== null && (!message || message === 'Edge Function returned a non-2xx status code')) {
+    return `${fallback} (HTTP ${status})`
+  }
+
+  return message || fallback
+}
+
+function normalizeQrErrorMessage(raw: string): string {
+  const message = raw.trim()
+
+  const mappings: Array<[RegExp, string]> = [
+    [/^TOKEN_EXPIRED$/i, 'QR expiré. Demandez un nouveau QR.'],
+    [/^TOKEN_USED$/i, 'QR déjà utilisé. Demandez un nouveau QR.'],
+    [/^ALREADY_SCANNED$/i, 'Vous avez déjà scanné ce commerce aujourd’hui.'],
+    [/^Token expired or already used$/i, 'QR expiré ou déjà utilisé. Demandez un nouveau QR.'],
+    [/^Client already scanned this provider today$/i, 'Vous avez déjà scanné ce commerce aujourd’hui.'],
+    [/^Token not found$/i, 'QR invalide ou introuvable.'],
+    [/^Missing token$/i, 'QR invalide.'],
+    [/^Unauthorized$/i, 'Session expirée, reconnectez-vous.'],
+    [/^Missing or invalid Authorization header$/i, 'Session invalide, reconnectez-vous.'],
+    [/^Unable to validate QR token \(HTTP 401\)$/i, 'Session expirée, reconnectez-vous.'],
+    [/^Unable to validate QR token \(HTTP 409\)$/i, 'QR expiré ou déjà utilisé. Demandez un nouveau QR.'],
+    [/^Unable to validate QR token \(HTTP 404\)$/i, 'QR invalide ou introuvable.'],
+  ]
+
+  for (const [pattern, friendly] of mappings) {
+    if (pattern.test(message)) {
+      return friendly
+    }
+  }
+
+  return message
 }
