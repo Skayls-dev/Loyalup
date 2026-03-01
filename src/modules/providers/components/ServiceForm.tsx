@@ -91,11 +91,31 @@ export function ServiceForm({ initialData, onSubmit, onCancel }: ServiceFormProp
         <h3 className="text-sm font-semibold text-zinc-100">{initialData ? 'Modifier service' : 'Ajouter un service'}</h3>
 
         <form className="mt-3 space-y-3" onSubmit={handleSubmit}>
-          <input ref={firstRef} value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Nom" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          <input value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="Emoji" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          <input type="number" step="0.01" value={prix} onChange={(e) => setPrix(e.target.value)} placeholder="Prix par défaut (optionnel)" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          <input type="number" value={pointsDefaut} onChange={(e) => setPointsDefaut(e.target.value)} placeholder="Points par défaut (optionnel)" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          <input type="number" value={pointsPerEuro} onChange={(e) => setPointsPerEuro(e.target.value)} placeholder="Points / €" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+          <div className="space-y-1">
+            <label htmlFor="service-nom" className="text-xs font-medium text-zinc-300">Nom du service</label>
+            <input id="service-nom" ref={firstRef} value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex: Soin Premium" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="service-emoji" className="text-xs font-medium text-zinc-300">Emoji</label>
+            <input id="service-emoji" value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="Ex: ✨" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="service-prix" className="text-xs font-medium text-zinc-300">Prix par défaut (€) <span className="text-zinc-500">(optionnel)</span></label>
+            <input id="service-prix" type="number" step="0.01" value={prix} onChange={(e) => setPrix(e.target.value)} placeholder="Ex: 29" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="service-points-defaut" className="text-xs font-medium text-zinc-300">Points fixes accordés <span className="text-zinc-500">(optionnel)</span></label>
+            <input id="service-points-defaut" type="number" value={pointsDefaut} onChange={(e) => setPointsDefaut(e.target.value)} placeholder="Ex: 55" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="service-points-per-euro" className="text-xs font-medium text-zinc-300">Points par euro (€)</label>
+            <input id="service-points-per-euro" type="number" value={pointsPerEuro} onChange={(e) => setPointsPerEuro(e.target.value)} placeholder="Ex: 8" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+            <p className="text-[11px] text-zinc-500">Utilisé quand "Points fixes accordés" est vide.</p>
+          </div>
 
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onCancel} className={secondaryButtonClass}>Annuler</button>
