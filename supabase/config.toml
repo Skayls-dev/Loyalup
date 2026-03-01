@@ -11,7 +11,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.credit-points]
-verify_jwt = true
+verify_jwt = false
 
 [functions.unlock-reward]
 verify_jwt = true
