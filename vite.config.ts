@@ -40,6 +40,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        clientsClaim: true,
+        skipWaiting: true,
+        cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
@@ -55,13 +58,13 @@ export default defineConfig({
             },
           },
           {
-            urlPattern: ({ request }) => ['script', 'style', 'font'].includes(request.destination),
+            urlPattern: ({ request }) => request.destination === 'font',
             handler: 'CacheFirst',
             options: {
-              cacheName: 'static-assets-cache',
+              cacheName: 'font-assets-cache',
               expiration: {
                 maxAgeSeconds: 30 * 24 * 60 * 60,
-                maxEntries: 200,
+                maxEntries: 100,
               },
             },
           },
