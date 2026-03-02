@@ -2,13 +2,16 @@ import { useEffect, useMemo, useState, type ChangeEventHandler } from 'react'
 import {
   bulkImportAdminUsers,
   bulkUpdateAdminUsers,
+  deleteScanAd,
   getAdminAuditLogs,
   getAdminApiUsage,
   getAdminOverview,
   getAdminWebhookFailures,
   impersonateAdminUser,
+  listScanAds,
   listAdminUsers,
   retryAdminWebhookDelivery,
+  upsertScanAd,
   toggleAdminUserBlock,
   updateAdminProviderTier,
   updateAdminUserRole,
@@ -16,10 +19,11 @@ import {
   type AdminOverview,
   type AdminUserRow,
   type ApiUsageRow,
+  type ScanAdRow,
   type WebhookFailureRow,
 } from '../services/adminConsoleService'
 
-export type AdminTab = 'overview' | 'users' | 'api' | 'webhooks' | 'audit'
+export type AdminTab = 'overview' | 'users' | 'api' | 'webhooks' | 'audit' | 'ads'
 
 const tabs: Array<{ key: AdminTab; label: string }> = [
   { key: 'overview', label: 'Overview' },
@@ -27,6 +31,7 @@ const tabs: Array<{ key: AdminTab; label: string }> = [
   { key: 'api', label: 'API Ops' },
   { key: 'webhooks', label: 'Webhooks' },
   { key: 'audit', label: 'Audit' },
+  { key: 'ads', label: 'Ads' },
 ]
 
 const secondaryButtonClass =
@@ -46,6 +51,14 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [apiUsage, setApiUsage] = useState<ApiUsageRow[]>([])
   const [webhookFailures, setWebhookFailures] = useState<WebhookFailureRow[]>([])
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogRow[]>([])
+  const [scanAds, setScanAds] = useState<ScanAdRow[]>([])
+  const [editingAdId, setEditingAdId] = useState<string | null>(null)
+  const [adTitle, setAdTitle] = useState('')
+  const [adBody, setAdBody] = useState('')
+  const [adCtaLabel, setAdCtaLabel] = useState('')
+  const [adCtaUrl, setAdCtaUrl] = useState('')
+  const [adDisplayOrder, setAdDisplayOrder] = useState(0)
+  const [adActive, setAdActive] = useState(true)
 
   const apiErrorRate = useMemo(() => {
     if (apiUsage.length === 0) {
@@ -61,12 +74,13 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
     setStatus('')
 
     try {
-      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs] = await Promise.all([
+      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs, nextScanAds] = await Promise.all([
         getAdminOverview(),
         listAdminUsers({ page: 1, limit: 50, search }),
         getAdminApiUsage(200),
         getAdminWebhookFailures(150),
         getAdminAuditLogs(150),
+        listScanAds(),
       ])
 
       setOverview(nextOverview)
@@ -75,6 +89,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setApiUsage(nextUsage)
       setWebhookFailures(nextFailures)
       setAuditLogs(nextAuditLogs)
+      setScanAds(nextScanAds)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Failed to load admin data')
     } finally {
@@ -178,6 +193,16 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setActiveTab(props.initialTab)
     }
   }, [activeTab, props.initialTab])
+
+  const resetAdForm = () => {
+    setEditingAdId(null)
+    setAdTitle('')
+    setAdBody('')
+    setAdCtaLabel('')
+    setAdCtaUrl('')
+    setAdDisplayOrder(0)
+    setAdActive(true)
+  }
 
   return (
     <div className="space-y-4 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-4 text-sm text-[#D4D4D8]">
@@ -506,6 +531,163 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
               </div>
               <p className="text-slate-200">admin: {log.admin_user_id} {log.target_user_id ? `• target: ${log.target_user_id}` : ''}</p>
               <p className="mt-1 line-clamp-2 text-slate-200">{JSON.stringify(log.metadata ?? {})}</p>
+            </article>
+          ))}
+        </div>
+      ) : null}
+
+      {activeTab === 'ads' ? (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3">
+            <p className="mb-2 text-xs text-slate-200">{editingAdId ? 'Modifier une pub' : 'Nouvelle pub écran scan'}</p>
+
+            <div className="grid gap-2 md:grid-cols-2">
+              <input
+                value={adTitle}
+                onChange={(event) => setAdTitle(event.target.value)}
+                placeholder="Titre"
+                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+              />
+              <input
+                value={adCtaLabel}
+                onChange={(event) => setAdCtaLabel(event.target.value)}
+                placeholder="CTA (optionnel)"
+                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+              />
+              <input
+                value={adBody}
+                onChange={(event) => setAdBody(event.target.value)}
+                placeholder="Message"
+                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8] md:col-span-2"
+              />
+              <input
+                value={adCtaUrl}
+                onChange={(event) => setAdCtaUrl(event.target.value)}
+                placeholder="URL CTA (https://...)"
+                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+              />
+              <input
+                type="number"
+                value={adDisplayOrder}
+                onChange={(event) => setAdDisplayOrder(Number(event.target.value))}
+                placeholder="Ordre"
+                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+              />
+            </div>
+
+            <label className="mt-2 flex items-center gap-2 text-xs text-slate-200">
+              <input
+                type="checkbox"
+                checked={adActive}
+                onChange={(event) => setAdActive(event.target.checked)}
+                className="h-4 w-4 rounded border-zinc-700 bg-zinc-950"
+              />
+              Active
+            </label>
+
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void upsertScanAd({
+                    id: editingAdId ?? undefined,
+                    title: adTitle,
+                    body: adBody,
+                    cta_label: adCtaLabel || null,
+                    cta_url: adCtaUrl || null,
+                    active: adActive,
+                    display_order: adDisplayOrder,
+                  })
+                    .then(() => {
+                      setStatus(editingAdId ? 'Pub mise à jour' : 'Pub créée')
+                      resetAdForm()
+                      return loadAll()
+                    })
+                    .catch((error) => setStatus(error instanceof Error ? error.message : 'Ad save failed'))
+                }}
+                className={secondaryButtonClass}
+              >
+                {editingAdId ? 'Mettre à jour' : 'Créer'}
+              </button>
+
+              {editingAdId ? (
+                <button type="button" onClick={resetAdForm} className={secondaryButtonClass}>
+                  Annuler
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          {scanAds.map((ad) => (
+            <article key={ad.id} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="font-semibold text-white">{ad.title}</p>
+                  <p className="text-slate-200">{ad.body}</p>
+                  <p className="mt-1 text-slate-300">ordre: {ad.display_order} • {ad.active ? 'active' : 'inactive'}</p>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingAdId(ad.id)
+                      setAdTitle(ad.title)
+                      setAdBody(ad.body)
+                      setAdCtaLabel(ad.cta_label ?? '')
+                      setAdCtaUrl(ad.cta_url ?? '')
+                      setAdDisplayOrder(ad.display_order)
+                      setAdActive(ad.active)
+                    }}
+                    className={secondaryButtonClass}
+                  >
+                    Edit
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void upsertScanAd({
+                        id: ad.id,
+                        title: ad.title,
+                        body: ad.body,
+                        cta_label: ad.cta_label,
+                        cta_url: ad.cta_url,
+                        active: !ad.active,
+                        display_order: ad.display_order,
+                        starts_at: ad.starts_at,
+                        ends_at: ad.ends_at,
+                      })
+                        .then(() => {
+                          setStatus(ad.active ? 'Pub désactivée' : 'Pub activée')
+                          return loadAll()
+                        })
+                        .catch((error) => setStatus(error instanceof Error ? error.message : 'Ad toggle failed'))
+                    }}
+                    className={secondaryButtonClass}
+                  >
+                    {ad.active ? 'Disable' : 'Enable'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void deleteScanAd(ad.id)
+                        .then(() => {
+                          setStatus('Pub supprimée')
+                          if (editingAdId === ad.id) {
+                            resetAdForm()
+                          }
+                          return loadAll()
+                        })
+                        .catch((error) => setStatus(error instanceof Error ? error.message : 'Ad delete failed'))
+                    }}
+                    className={secondaryButtonClass}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
             </article>
           ))}
         </div>

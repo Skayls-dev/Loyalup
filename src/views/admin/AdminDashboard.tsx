@@ -21,6 +21,7 @@ const adminMenu: Array<{ key: AdminTab; label: string }> = [
   { key: 'api', label: 'API Ops' },
   { key: 'webhooks', label: 'Webhooks' },
   { key: 'audit', label: 'Audit' },
+  { key: 'ads', label: 'Ads' },
 ]
 
 const segmentColors: Record<string, string> = {
@@ -41,7 +42,7 @@ const kpiAccentByLabel: Record<string, string> = {
 }
 
 function isAdminTab(value: string | null): value is AdminTab {
-  return value === 'overview' || value === 'users' || value === 'api' || value === 'webhooks' || value === 'audit'
+  return value === 'overview' || value === 'users' || value === 'api' || value === 'webhooks' || value === 'audit' || value === 'ads'
 }
 
 export function AdminDashboard() {

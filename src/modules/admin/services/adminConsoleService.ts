@@ -55,6 +55,20 @@ export type AdminAuditLogRow = {
   created_at: string
 }
 
+export type ScanAdRow = {
+  id: string
+  title: string
+  body: string
+  cta_label: string | null
+  cta_url: string | null
+  active: boolean
+  display_order: number
+  starts_at: string | null
+  ends_at: string | null
+  created_at: string
+  updated_at: string
+}
+
 export async function getAdminOverview() {
   const data = await invoke<{ overview: AdminOverview }>({ action: 'GET_OVERVIEW' })
   return data.overview
@@ -150,6 +164,34 @@ export async function retryAdminWebhookDelivery(deliveryId: string) {
 export async function getAdminAuditLogs(limit = 100) {
   const data = await invoke<{ logs: AdminAuditLogRow[] }>({ action: 'GET_AUDIT_LOGS', limit })
   return data.logs ?? []
+}
+
+export async function listScanAds() {
+  const data = await invoke<{ ads: ScanAdRow[] }>({ action: 'LIST_SCAN_ADS' })
+  return data.ads ?? []
+}
+
+export async function upsertScanAd(payload: {
+  id?: string
+  title: string
+  body: string
+  cta_label?: string | null
+  cta_url?: string | null
+  active: boolean
+  display_order: number
+  starts_at?: string | null
+  ends_at?: string | null
+}) {
+  const data = await invoke<{ ad: ScanAdRow | null }>({
+    action: 'UPSERT_SCAN_AD',
+    ...payload,
+  })
+
+  return data.ad
+}
+
+export async function deleteScanAd(id: string) {
+  return invoke({ action: 'DELETE_SCAN_AD', id })
 }
 
 async function invoke<TData = Record<string, unknown>>(body: Record<string, unknown>) {

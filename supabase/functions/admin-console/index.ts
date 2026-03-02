@@ -13,6 +13,9 @@ type AdminAction =
   | 'GET_WEBHOOK_FAILURES'
   | 'RETRY_WEBHOOK_DELIVERY'
   | 'GET_AUDIT_LOGS'
+  | 'LIST_SCAN_ADS'
+  | 'UPSERT_SCAN_AD'
+  | 'DELETE_SCAN_AD'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -649,6 +652,109 @@ Deno.serve(async (req) => {
     }
 
     return json({ success: true, logs: data ?? [] })
+  }
+
+  if (action === 'LIST_SCAN_ADS') {
+    const { data, error } = await admin
+      .from('scan_screen_ads')
+      .select('id, title, body, cta_label, cta_url, active, display_order, starts_at, ends_at, created_at, updated_at')
+      .order('display_order', { ascending: true })
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      return json({ error: error.message }, 500)
+    }
+
+    return json({ success: true, ads: data ?? [] })
+  }
+
+  if (action === 'UPSERT_SCAN_AD') {
+    const adId = body.id ? String(body.id) : null
+    const title = String(body.title ?? '').trim()
+    const adBody = String(body.body ?? '').trim()
+    const ctaLabel = body.cta_label ? String(body.cta_label).trim() : null
+    const ctaUrl = body.cta_url ? String(body.cta_url).trim() : null
+    const active = typeof body.active === 'boolean' ? body.active : true
+    const displayOrder = Number.isFinite(Number(body.display_order)) ? Number(body.display_order) : 0
+    const startsAt = body.starts_at ? String(body.starts_at) : null
+    const endsAt = body.ends_at ? String(body.ends_at) : null
+
+    if (!title || !adBody) {
+      return json({ error: 'title and body are required' }, 400)
+    }
+
+    if (ctaUrl && !/^https?:\/\//i.test(ctaUrl)) {
+      return json({ error: 'cta_url must start with http:// or https://' }, 400)
+    }
+
+    const payload = {
+      id: adId ?? undefined,
+      title,
+      body: adBody,
+      cta_label: ctaLabel,
+      cta_url: ctaUrl,
+      active,
+      display_order: displayOrder,
+      starts_at: startsAt,
+      ends_at: endsAt,
+    }
+
+    const { data, error } = await admin
+      .from('scan_screen_ads')
+      .upsert(payload)
+      .select('id, title, body, cta_label, cta_url, active, display_order, starts_at, ends_at, created_at, updated_at')
+      .limit(1)
+
+    if (error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'UPSERT_SCAN_AD',
+        success: false,
+        metadata: { ad_id: adId, error: error.message },
+      })
+      return json({ error: error.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'UPSERT_SCAN_AD',
+      targetUserId: undefined,
+      success: true,
+      metadata: { ad_id: adId },
+    })
+
+    return json({ success: true, ad: data?.[0] ?? null })
+  }
+
+  if (action === 'DELETE_SCAN_AD') {
+    const adId = String(body.id ?? '')
+    if (!adId) {
+      return json({ error: 'Missing id' }, 400)
+    }
+
+    const { error } = await admin
+      .from('scan_screen_ads')
+      .delete()
+      .eq('id', adId)
+
+    if (error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'DELETE_SCAN_AD',
+        success: false,
+        metadata: { ad_id: adId, error: error.message },
+      })
+      return json({ error: error.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'DELETE_SCAN_AD',
+      success: true,
+      metadata: { ad_id: adId },
+    })
+
+    return json({ success: true, id: adId })
   }
 
   return json({ error: 'Unsupported action' }, 400)

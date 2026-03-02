@@ -8,25 +8,13 @@ import { QRTimerRing } from './QRTimerRing'
 import { supabase } from '../../../shared/lib/supabaseClient'
 
 export function QRDisplay() {
-  const adSlots = useMemo(
+  const fallbackAdSlots = useMemo(
     () => [
       {
         id: 'ad-1',
         title: 'Boostez vos visites avec LoyalUp Premium',
         body: 'Activez des campagnes ciblées et augmentez la fréquence de retour client.',
         cta: 'Découvrir Premium',
-      },
-      {
-        id: 'ad-2',
-        title: 'Partenaire local: Maison du Café',
-        body: 'Offre du jour: 1 boisson offerte après 5 visites fidélisées.',
-        cta: 'Voir l’offre',
-      },
-      {
-        id: 'ad-3',
-        title: 'Réseau commerçant',
-        body: 'Rejoignez un réseau et activez les bonus multi-enseignes pour vos clients.',
-        cta: 'En savoir plus',
       },
     ],
     [],
@@ -40,8 +28,51 @@ export function QRDisplay() {
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
   const [providerName, setProviderName] = useState<string>('')
   const [networkBadges, setNetworkBadges] = useState<Array<{ id: string; emoji: string; name: string; multiplier: number }>>([])
+  const [adSlots, setAdSlots] = useState<Array<{ id: string; title: string; body: string; cta: string | null }>>(fallbackAdSlots)
   const [activeAdIndex, setActiveAdIndex] = useState(0)
   const { pendingTransaction, clientProfile, clientPoints, clearPending } = useQRRealtime(fournisseurId)
+
+  useEffect(() => {
+    const loadAds = async () => {
+      const now = Date.now()
+
+      const { data } = await supabase
+        .from('scan_screen_ads')
+        .select('id, title, body, cta_label, active, display_order, starts_at, ends_at, created_at')
+        .eq('active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false })
+
+      const mapped = (data ?? [])
+        .map((row) => {
+          const startsAtRaw = (row as { starts_at?: string | null }).starts_at
+          const endsAtRaw = (row as { ends_at?: string | null }).ends_at
+          const startsAt = startsAtRaw ? new Date(startsAtRaw).getTime() : null
+          const endsAt = endsAtRaw ? new Date(endsAtRaw).getTime() : null
+
+          if ((startsAt !== null && startsAt > now) || (endsAt !== null && endsAt < now)) {
+            return null
+          }
+
+          return {
+            id: String((row as { id: string }).id),
+            title: String((row as { title: string }).title ?? ''),
+            body: String((row as { body: string }).body ?? ''),
+            cta: (row as { cta_label?: string | null }).cta_label ?? null,
+          }
+        })
+        .filter((row): row is { id: string; title: string; body: string; cta: string | null } => Boolean(row))
+        .filter((row) => row.title && row.body)
+
+      setAdSlots(mapped.length > 0 ? mapped : fallbackAdSlots)
+      setActiveAdIndex(0)
+    }
+
+    loadAds().catch(() => {
+      setAdSlots(fallbackAdSlots)
+      setActiveAdIndex(0)
+    })
+  }, [fallbackAdSlots])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
@@ -222,12 +253,14 @@ export function QRDisplay() {
               <p className="text-xs uppercase tracking-wide text-zinc-500">Sponsor</p>
               <p className="mt-1 text-sm font-semibold text-zinc-100">{activeAd.title}</p>
               <p className="mt-1 text-xs text-zinc-400">{activeAd.body}</p>
-              <button
-                type="button"
-                className="mt-2 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-200"
-              >
-                {activeAd.cta}
-              </button>
+              {activeAd.cta ? (
+                <button
+                  type="button"
+                  className="mt-2 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-200"
+                >
+                  {activeAd.cta}
+                </button>
+              ) : null}
             </div>
           </div>
         </aside>
