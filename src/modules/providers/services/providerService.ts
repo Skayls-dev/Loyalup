@@ -83,6 +83,35 @@ export type CreateRewardRuleParams = {
 
 export type UpdateRewardRuleParams = Partial<Omit<CreateRewardRuleParams, 'fournisseur_id'>>
 
+function formatClientNameFromEmail(email: string): string {
+  const localPart = email.split('@')[0] ?? ''
+  const normalized = localPart.replace(/[._-]+/g, ' ').trim()
+  if (!normalized) {
+    return 'Client'
+  }
+
+  return normalized
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ')
+}
+
+function resolveClientDisplayName(name: string | null | undefined, email: string | null | undefined, clientId: string): string {
+  const trimmedName = (name ?? '').trim()
+  const isGenericName = trimmedName.length === 0 || /^client$/i.test(trimmedName)
+  if (!isGenericName) {
+    return trimmedName
+  }
+
+  const trimmedEmail = (email ?? '').trim()
+  if (trimmedEmail) {
+    return formatClientNameFromEmail(trimmedEmail)
+  }
+
+  return `Client ${clientId.slice(0, 6)}`
+}
+
 export async function getProviderStats(fournisseur_id: string): Promise<ProviderStats> {
   return withCachedRead(`provider:stats:${fournisseur_id}`, async () => {
     const { data, error } = await supabase.rpc('get_provider_stats', {
@@ -161,7 +190,7 @@ export async function getClientList(
         return {
           profile: {
             id: profile?.id ?? row.client_id,
-            nom: profile?.nom ?? 'Client',
+            nom: resolveClientDisplayName(profile?.nom as string | undefined, profile?.email as string | undefined, row.client_id),
             email: profile?.email ?? '',
           },
           solde: Number(row.solde ?? 0),
