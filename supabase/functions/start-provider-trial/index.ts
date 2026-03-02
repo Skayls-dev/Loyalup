@@ -24,6 +24,13 @@ Deno.serve(async (req) => {
     return json({ error: 'Method not allowed' }, 405)
   }
 
+  let body: Record<string, unknown> = {}
+  try {
+    body = (await req.json()) as Record<string, unknown>
+  } catch {
+    body = {}
+  }
+
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
@@ -33,11 +40,13 @@ Deno.serve(async (req) => {
   }
 
   const authHeader = req.headers.get('Authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
+  const tokenFromHeader = authHeader?.startsWith('Bearer ') ? authHeader.replace('Bearer ', '').trim() : ''
+  const tokenFromBody = typeof body.access_token === 'string' ? body.access_token.trim() : ''
+  const token = tokenFromHeader || tokenFromBody
+
+  if (!token) {
     return json({ error: 'Unauthorized' }, 401)
   }
-
-  const token = authHeader.replace('Bearer ', '').trim()
   const authClient = createClient(supabaseUrl, anonKey)
   const admin = createClient(supabaseUrl, serviceRoleKey)
 

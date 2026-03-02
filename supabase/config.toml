@@ -52,6 +52,9 @@ verify_jwt = false
 [functions.admin-console]
 verify_jwt = false
 
+[functions.start-provider-trial]
+verify_jwt = false
+
 [functions.api-v1-clients]
 verify_jwt = false
 
