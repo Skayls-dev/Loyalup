@@ -34,8 +34,10 @@ export function usePremium(): UsePremiumResult {
   })
 
   return useMemo(() => {
-    const tier = query.data?.tier ?? 'free'
+    const fetchedTier = query.data?.tier ?? 'free'
     const expiresAt = query.data?.tier_expires_at ? new Date(query.data.tier_expires_at) : null
+    const isExpired = expiresAt !== null && expiresAt.getTime() <= Date.now()
+    const tier: ProviderTier = isExpired ? 'free' : fetchedTier
     const daysUntilExpiry = expiresAt
       ? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
       : null
