@@ -1,6 +1,13 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
-import { validateToken } from '../services/qrService'
+import {
+  getPendingTransactionStatus,
+  subscribeToTransactionStatus,
+  unsubscribeTransactionStatus,
+  validateToken,
+} from '../services/qrService'
+
+type ScanTransactionStatus = 'idle' | 'pending' | 'validated' | 'cancelled'
 
 type UseQRScanResult = {
   startScan: () => Promise<void>
@@ -9,6 +16,7 @@ type UseQRScanResult = {
   success: boolean
   error: string | null
   transactionId: string | null
+  transactionStatus: ScanTransactionStatus
 }
 
 export function useQRScan(): UseQRScanResult {
@@ -19,6 +27,7 @@ export function useQRScan(): UseQRScanResult {
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [transactionId, setTransactionId] = useState<string | null>(null)
+  const [transactionStatus, setTransactionStatus] = useState<ScanTransactionStatus>('idle')
 
   const getQrBoxSize = () => {
     const viewportMin = Math.min(window.innerWidth, window.innerHeight)
@@ -75,6 +84,7 @@ export function useQRScan(): UseQRScanResult {
     setError(null)
     setSuccess(false)
     setTransactionId(null)
+    setTransactionStatus('idle')
 
     if (!scannerRef.current) {
       scannerRef.current = new Html5Qrcode('qr-reader')
@@ -95,6 +105,7 @@ export function useQRScan(): UseQRScanResult {
             const result = await validateToken(decodedText)
             setSuccess(result.success)
             setTransactionId(result.transaction_id)
+            setTransactionStatus(result.success ? 'pending' : 'idle')
           } catch (scanError) {
             const message = scanError instanceof Error ? scanError.message : 'Token validation failed'
             setError(message)
@@ -124,6 +135,52 @@ export function useQRScan(): UseQRScanResult {
     }
   }, [stopScan])
 
+  useEffect(() => {
+    if (!success || !transactionId) {
+      return
+    }
+
+    let cancelled = false
+    let pollingTimer: ReturnType<typeof setInterval> | null = null
+
+    const applyStatus = (status: ScanTransactionStatus) => {
+      if (cancelled || status === 'idle' || status === 'pending') {
+        return
+      }
+
+      setTransactionStatus(status)
+
+      if (pollingTimer) {
+        clearInterval(pollingTimer)
+        pollingTimer = null
+      }
+
+      unsubscribeTransactionStatus()
+    }
+
+    subscribeToTransactionStatus(transactionId, (payload) => {
+      applyStatus(payload.status)
+    })
+
+    pollingTimer = setInterval(() => {
+      getPendingTransactionStatus(transactionId)
+        .then((status) => {
+          if (status === 'validated' || status === 'cancelled') {
+            applyStatus(status)
+          }
+        })
+        .catch(() => null)
+    }, 3000)
+
+    return () => {
+      cancelled = true
+      if (pollingTimer) {
+        clearInterval(pollingTimer)
+      }
+      unsubscribeTransactionStatus()
+    }
+  }, [success, transactionId])
+
   return useMemo(
     () => ({
       startScan,
@@ -132,7 +189,8 @@ export function useQRScan(): UseQRScanResult {
       success,
       error,
       transactionId,
+      transactionStatus,
     }),
-    [startScan, stopScan, scanning, success, error, transactionId],
+    [startScan, stopScan, scanning, success, error, transactionId, transactionStatus],
   )
 }

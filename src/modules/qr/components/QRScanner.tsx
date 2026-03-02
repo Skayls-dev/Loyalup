@@ -5,7 +5,7 @@ import { useQRScan } from '../hooks/useQRScan'
 
 export function QRScanner() {
   const navigate = useNavigate()
-  const { startScan, stopScan, scanning, success, error, transactionId } = useQRScan()
+  const { startScan, stopScan, scanning, success, error, transactionId, transactionStatus } = useQRScan()
 
   useEffect(() => {
     startScan().catch(() => null)
@@ -14,6 +14,20 @@ export function QRScanner() {
       stopScan().catch(() => null)
     }
   }, [startScan, stopScan])
+
+  useEffect(() => {
+    if (transactionStatus !== 'validated') {
+      return
+    }
+
+    const timer = window.setTimeout(() => {
+      navigate('/client', { replace: true })
+    }, 1800)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [navigate, transactionStatus])
 
   const handleRetry = async () => {
     await stopScan()
@@ -44,12 +58,33 @@ export function QRScanner() {
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 z-20 border-t border-zinc-800 bg-zinc-900/90 p-4 text-zinc-100 backdrop-blur">
-        {success ? (
+        {success && transactionStatus === 'validated' ? (
+          <div className="flex items-start gap-3 rounded-xl border border-emerald-700 bg-emerald-950/60 p-3">
+            <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" />
+            <div>
+              <p className="font-medium text-emerald-300">Scan validé</p>
+              <p className="text-xs text-emerald-200/90">Points crédités sur votre compte.</p>
+              <p className="text-xs text-emerald-200/70">Retour au tableau de bord...</p>
+            </div>
+          </div>
+        ) : success && transactionStatus === 'cancelled' ? (
+          <div className="space-y-3 rounded-xl border border-red-800 bg-red-950/60 p-3">
+            <p className="text-sm text-red-300">Validation refusée par le commerçant.</p>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="inline-flex items-center gap-2 rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Scanner un autre QR
+            </button>
+          </div>
+        ) : success ? (
           <div className="flex items-start gap-3 rounded-xl border border-emerald-700 bg-emerald-950/60 p-3">
             <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-400" />
             <div>
               <p className="font-medium text-emerald-300">Transaction en attente</p>
-              <p className="text-xs text-emerald-200/90">Commerçant : confirmé</p>
+              <p className="text-xs text-emerald-200/90">En attente de validation commerçant...</p>
               <p className="text-xs text-emerald-200/70">ID: {transactionId}</p>
             </div>
           </div>

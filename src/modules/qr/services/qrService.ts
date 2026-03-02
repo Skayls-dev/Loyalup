@@ -24,8 +24,10 @@ export type PendingTransactionPayload = {
 }
 
 type PendingTransactionCallback = (payload: PendingTransactionPayload) => void
+type TransactionStatusCallback = (payload: PendingTransactionPayload) => void
 
 let pendingTransactionsChannel: ReturnType<typeof supabase.channel> | null = null
+let transactionStatusChannel: ReturnType<typeof supabase.channel> | null = null
 
 export async function generateToken(): Promise<GenerateTokenResponse> {
   try {
@@ -117,6 +119,59 @@ export function unsubscribe(): void {
 
   supabase.removeChannel(pendingTransactionsChannel)
   pendingTransactionsChannel = null
+}
+
+export function subscribeToTransactionStatus(
+  transactionId: string,
+  callback: TransactionStatusCallback,
+): void {
+  if (shouldSkipRealtimeSubscription(config.supabaseAnonKey)) {
+    return
+  }
+
+  unsubscribeTransactionStatus()
+
+  transactionStatusChannel = supabase
+    .channel(`pending-transaction-status-${transactionId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'pending_transactions',
+        filter: `id=eq.${transactionId}`,
+      },
+      (payload) => {
+        const updatedTransaction = payload.new as PendingTransactionPayload
+        callback(updatedTransaction)
+      },
+    )
+    .subscribe()
+}
+
+export function unsubscribeTransactionStatus(): void {
+  if (!transactionStatusChannel) {
+    return
+  }
+
+  supabase.removeChannel(transactionStatusChannel)
+  transactionStatusChannel = null
+}
+
+export async function getPendingTransactionStatus(
+  transactionId: string,
+): Promise<PendingTransactionPayload['status'] | null> {
+  const { data, error } = await supabase
+    .from('pending_transactions')
+    .select('status')
+    .eq('id', transactionId)
+    .maybeSingle<{ status: PendingTransactionPayload['status'] }>()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data?.status ?? null
 }
 
 function isPlaceholderAnonKey(anonKey: string): boolean {

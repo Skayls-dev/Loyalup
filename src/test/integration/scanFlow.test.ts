@@ -55,7 +55,7 @@ describe('integration: scan flow', () => {
   it('failure path: token validation fails', async () => {
     setFunctionError('validate-qr', 'TOKEN_EXPIRED')
 
-    await expect(validateToken('EXPIRED')).rejects.toThrow('TOKEN_EXPIRED')
+    await expect(validateToken('EXPIRED')).rejects.toThrow('QR expiré. Demandez un nouveau QR.')
   })
 
   it('failure path: credit points rejects unauthorized', async () => {
