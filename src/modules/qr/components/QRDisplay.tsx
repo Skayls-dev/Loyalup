@@ -28,7 +28,9 @@ export function QRDisplay() {
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
   const [providerName, setProviderName] = useState<string>('')
   const [networkBadges, setNetworkBadges] = useState<Array<{ id: string; emoji: string; name: string; multiplier: number }>>([])
-  const [adSlots, setAdSlots] = useState<Array<{ id: string; title: string; body: string; cta: string | null }>>(fallbackAdSlots)
+  const [adSlots, setAdSlots] = useState<Array<{ id: string; title: string; body: string; cta: string | null; ctaUrl: string | null }>>(
+    fallbackAdSlots.map((ad) => ({ ...ad, ctaUrl: null })),
+  )
   const [activeAdIndex, setActiveAdIndex] = useState(0)
   const { pendingTransaction, clientProfile, clientPoints, clearPending } = useQRRealtime(fournisseurId)
 
@@ -38,7 +40,7 @@ export function QRDisplay() {
 
       const { data } = await supabase
         .from('scan_screen_ads')
-        .select('id, title, body, cta_label, active, display_order, starts_at, ends_at, created_at')
+        .select('id, title, body, cta_label, cta_url, active, display_order, starts_at, ends_at, created_at')
         .eq('active', true)
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
@@ -59,17 +61,18 @@ export function QRDisplay() {
             title: String((row as { title: string }).title ?? ''),
             body: String((row as { body: string }).body ?? ''),
             cta: (row as { cta_label?: string | null }).cta_label ?? null,
+            ctaUrl: (row as { cta_url?: string | null }).cta_url ?? null,
           }
         })
-        .filter((row): row is { id: string; title: string; body: string; cta: string | null } => Boolean(row))
+        .filter((row): row is { id: string; title: string; body: string; cta: string | null; ctaUrl: string | null } => Boolean(row))
         .filter((row) => row.title && row.body)
 
-      setAdSlots(mapped.length > 0 ? mapped : fallbackAdSlots)
+      setAdSlots(mapped.length > 0 ? mapped : fallbackAdSlots.map((ad) => ({ ...ad, ctaUrl: null })))
       setActiveAdIndex(0)
     }
 
     loadAds().catch(() => {
-      setAdSlots(fallbackAdSlots)
+      setAdSlots(fallbackAdSlots.map((ad) => ({ ...ad, ctaUrl: null })))
       setActiveAdIndex(0)
     })
   }, [fallbackAdSlots])
@@ -166,58 +169,96 @@ export function QRDisplay() {
       <div className="grid gap-4 lg:grid-cols-[1fr_280px]">
         <div className="relative min-h-[calc(100vh-8rem)]">
           {!pendingTransaction ? (
-            <div className="flex min-h-[calc(100vh-8rem)] flex-col items-center justify-center gap-8 rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
-              <div className="text-center">
-                <p className="text-sm uppercase tracking-wide text-zinc-400">Fournisseur</p>
-                <h1 className="mt-1 text-2xl font-semibold text-zinc-100">
-                  {providerName || profile?.nom || 'LoyalUp'}
-                </h1>
-              </div>
-
-              <div className="rounded-2xl bg-white p-6 shadow-lg shadow-black/40">
-                {token ? (
-                  <QRCodeSVG value={token} size={240} includeMargin />
-                ) : (
-                  <div className="h-[240px] w-[240px]" />
-                )}
-              </div>
-
-              <div className="flex flex-col items-center gap-3">
-                <QRTimerRing secondsLeft={secondsLeft} total={180} />
-                <p className="text-sm text-zinc-400">
-                  Expire à {expiresAt ? new Date(expiresAt).toLocaleTimeString() : '--:--:--'}
-                </p>
-              </div>
-
-              {networkBadges.length > 0 ? (
-                <div className="space-y-2 text-center">
-                  <p className="text-xs text-zinc-400">
-                    Membre de {networkBadges.length} réseaux · +
-                    {Math.round(
-                      networkBadges.reduce((sum, network) => sum + (network.multiplier - 1), 0) * 100,
-                    )}
-                    % points actifs
-                  </p>
-                  <div className="flex flex-wrap items-center justify-center gap-2">
-                    {networkBadges.map((network) => (
-                      <span
-                        key={network.id}
-                        title={network.name}
-                        className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200"
-                      >
-                        {network.emoji}
-                      </span>
-                    ))}
+            <div className="min-h-[calc(100vh-8rem)] rounded-3xl border border-zinc-800 bg-zinc-900 p-6">
+              <div className="grid h-full gap-6 lg:grid-cols-[1fr_0.9fr]">
+                <div className="flex flex-col items-center justify-center gap-8 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-4">
+                  <div className="text-center">
+                    <p className="text-sm uppercase tracking-wide text-zinc-400">Fournisseur</p>
+                    <h1 className="mt-1 text-2xl font-semibold text-zinc-100">
+                      {providerName || profile?.nom || 'LoyalUp'}
+                    </h1>
                   </div>
-                </div>
-              ) : null}
 
-              <p className="animate-pulse text-sm text-zinc-500">{statusText}</p>
-              {warning ? (
-                <p className="rounded-lg border border-amber-800 bg-amber-950/50 px-3 py-2 text-xs text-amber-300">
-                  {warning}
-                </p>
-              ) : null}
+                  <div className="rounded-2xl bg-white p-6 shadow-lg shadow-black/40">
+                    {token ? (
+                      <QRCodeSVG value={token} size={240} includeMargin />
+                    ) : (
+                      <div className="h-[240px] w-[240px]" />
+                    )}
+                  </div>
+
+                  <div className="flex flex-col items-center gap-3">
+                    <QRTimerRing secondsLeft={secondsLeft} total={180} />
+                    <p className="text-sm text-zinc-400">
+                      Expire à {expiresAt ? new Date(expiresAt).toLocaleTimeString() : '--:--:--'}
+                    </p>
+                  </div>
+
+                  {networkBadges.length > 0 ? (
+                    <div className="space-y-2 text-center">
+                      <p className="text-xs text-zinc-400">
+                        Membre de {networkBadges.length} réseaux · +
+                        {Math.round(
+                          networkBadges.reduce((sum, network) => sum + (network.multiplier - 1), 0) * 100,
+                        )}
+                        % points actifs
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        {networkBadges.map((network) => (
+                          <span
+                            key={network.id}
+                            title={network.name}
+                            className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-1 text-xs text-zinc-200"
+                          >
+                            {network.emoji}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  <p className="animate-pulse text-sm text-zinc-500">{statusText}</p>
+                  {warning ? (
+                    <p className="rounded-lg border border-amber-800 bg-amber-950/50 px-3 py-2 text-xs text-amber-300">
+                      {warning}
+                    </p>
+                  ) : null}
+                </div>
+
+                <article className="flex min-h-[20rem] flex-col justify-between rounded-2xl border border-zinc-700 bg-zinc-950 p-6 lg:min-h-full">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-zinc-500">Publicité</p>
+                    <h2 className="mt-2 text-3xl font-semibold leading-tight text-zinc-100">{activeAd.title}</h2>
+                    <p className="mt-4 text-base leading-relaxed text-zinc-300">{activeAd.body}</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {activeAd.cta ? (
+                      activeAd.ctaUrl ? (
+                        <a
+                          href={activeAd.ctaUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900"
+                        >
+                          {activeAd.cta}
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          className="inline-flex rounded-lg bg-zinc-100 px-4 py-2 text-sm font-semibold text-zinc-900"
+                        >
+                          {activeAd.cta}
+                        </button>
+                      )
+                    ) : null}
+
+                    <p className="text-xs text-zinc-500">
+                      Annonce {activeAdIndex + 1}/{adSlots.length}
+                    </p>
+                  </div>
+                </article>
+              </div>
             </div>
           ) : (
             <div className="animate-[fadeIn_220ms_ease-out]">
@@ -247,20 +288,6 @@ export function QRDisplay() {
             <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
               <p className="text-xs text-zinc-400">Points client courant</p>
               <p className="mt-1 text-lg font-bold text-amber-400">{clientPoints} pts</p>
-            </div>
-
-            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
-              <p className="text-xs uppercase tracking-wide text-zinc-500">Sponsor</p>
-              <p className="mt-1 text-sm font-semibold text-zinc-100">{activeAd.title}</p>
-              <p className="mt-1 text-xs text-zinc-400">{activeAd.body}</p>
-              {activeAd.cta ? (
-                <button
-                  type="button"
-                  className="mt-2 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-200"
-                >
-                  {activeAd.cta}
-                </button>
-              ) : null}
             </div>
           </div>
         </aside>
