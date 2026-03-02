@@ -8,6 +8,30 @@ import { QRTimerRing } from './QRTimerRing'
 import { supabase } from '../../../shared/lib/supabaseClient'
 
 export function QRDisplay() {
+  const adSlots = useMemo(
+    () => [
+      {
+        id: 'ad-1',
+        title: 'Boostez vos visites avec LoyalUp Premium',
+        body: 'Activez des campagnes ciblées et augmentez la fréquence de retour client.',
+        cta: 'Découvrir Premium',
+      },
+      {
+        id: 'ad-2',
+        title: 'Partenaire local: Maison du Café',
+        body: 'Offre du jour: 1 boisson offerte après 5 visites fidélisées.',
+        cta: 'Voir l’offre',
+      },
+      {
+        id: 'ad-3',
+        title: 'Réseau commerçant',
+        body: 'Rejoignez un réseau et activez les bonus multi-enseignes pour vos clients.',
+        cta: 'En savoir plus',
+      },
+    ],
+    [],
+  )
+
   const { user, profile } = useAuth()
   const isProviderSessionReady = Boolean(user?.id && profile?.role === 'fournisseur')
   const { token, expiresAt, secondsLeft, isLoading, warning, regenerateNow } = useQRGenerate({
@@ -16,7 +40,18 @@ export function QRDisplay() {
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
   const [providerName, setProviderName] = useState<string>('')
   const [networkBadges, setNetworkBadges] = useState<Array<{ id: string; emoji: string; name: string; multiplier: number }>>([])
+  const [activeAdIndex, setActiveAdIndex] = useState(0)
   const { pendingTransaction, clientProfile, clientPoints, clearPending } = useQRRealtime(fournisseurId)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setActiveAdIndex((prev) => (prev + 1) % adSlots.length)
+    }, 20000)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [adSlots.length])
 
   useEffect(() => {
     const loadProvider = async () => {
@@ -92,6 +127,8 @@ export function QRDisplay() {
     clearPending()
     await regenerateNow().catch(() => null)
   }
+
+  const activeAd = adSlots[activeAdIndex]
 
   return (
     <section className="w-full max-w-6xl">
@@ -179,6 +216,18 @@ export function QRDisplay() {
             <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
               <p className="text-xs text-zinc-400">Points client courant</p>
               <p className="mt-1 text-lg font-bold text-amber-400">{clientPoints} pts</p>
+            </div>
+
+            <div className="rounded-xl border border-zinc-800 bg-zinc-950 p-3">
+              <p className="text-xs uppercase tracking-wide text-zinc-500">Sponsor</p>
+              <p className="mt-1 text-sm font-semibold text-zinc-100">{activeAd.title}</p>
+              <p className="mt-1 text-xs text-zinc-400">{activeAd.body}</p>
+              <button
+                type="button"
+                className="mt-2 rounded-md border border-zinc-700 bg-zinc-900 px-2.5 py-1 text-xs font-medium text-zinc-200"
+              >
+                {activeAd.cta}
+              </button>
             </div>
           </div>
         </aside>
