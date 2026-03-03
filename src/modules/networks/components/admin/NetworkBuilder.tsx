@@ -58,6 +58,20 @@ type NetworkBuilderProps = {
 const STORAGE_KEY = 'network_builder_draft_v1'
 const locales: Array<'fr' | 'en' | 'ar' | 'es' | 'nl'> = ['fr', 'en', 'ar', 'es', 'nl']
 
+const primaryButtonClass =
+  'h-9 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe] disabled:opacity-60'
+
+const secondaryButtonClass =
+  'h-9 rounded border border-[#0078D4] bg-white px-3 text-xs font-semibold text-[#0078D4] transition hover:bg-[#f3f2f1] disabled:opacity-60'
+
+const neutralButtonClass =
+  'h-9 rounded border border-[#d2d0ce] bg-white px-3 text-xs font-semibold text-[#323130] transition hover:bg-[#f3f2f1] disabled:opacity-60'
+
+const inputClass =
+  'w-full rounded border border-[#d2d0ce] bg-white px-3 py-2 text-sm text-[#323130] outline-none focus:border-[#0078D4]'
+
+const panelClass = 'rounded-md border border-[#edebe9] bg-white p-4 shadow-sm'
+
 const categoryOptions = [
   'cultural',
   'environmental',
@@ -263,9 +277,9 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
   }
 
   return (
-    <section className="space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900/90 p-4 text-zinc-100">
+    <section className="space-y-4 rounded-md border border-[#edebe9] bg-white p-5 text-[#323130] shadow-sm">
       <header className="space-y-2">
-        <h2 className="text-xl font-semibold">Créateur de réseau</h2>
+        <h2 className="text-2xl font-semibold">Créateur de réseau</h2>
         <div className="grid grid-cols-4 gap-2 md:grid-cols-8">
           {Array.from({ length: 8 }).map((_, idx) => {
             const item = idx + 1
@@ -274,8 +288,8 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                 key={item}
                 type="button"
                 onClick={() => setStep(item as BuilderStep)}
-                className={`rounded-lg px-2 py-1 text-xs font-semibold ${
-                  step === item ? 'bg-indigo-100 text-indigo-700' : 'bg-zinc-800 text-zinc-300'
+                className={`rounded border px-2 py-1.5 text-xs font-semibold ${
+                  step === item ? 'border-[#0078D4] bg-[#0078D4] text-white' : 'border-[#d2d0ce] bg-white text-[#323130] hover:bg-[#f3f2f1]'
                 }`}
               >
                 {item}
@@ -287,21 +301,23 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
 
       {step === 1 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 1 — Identité</h3>
+          <h3 className="text-base font-semibold">Étape 1 — Identité</h3>
           <div className="flex gap-2">
             {locales.map((code) => (
               <button
                 key={code}
                 type="button"
                 onClick={() => setLocale(code)}
-                className={`rounded px-2 py-1 text-xs ${locale === code ? 'bg-indigo-100 text-indigo-700' : 'bg-zinc-800 text-zinc-300'}`}
+                className={`rounded border px-2 py-1 text-xs ${
+                  locale === code ? 'border-[#0078D4] bg-[#0078D4] text-white' : 'border-[#d2d0ce] bg-white text-[#323130] hover:bg-[#f3f2f1]'
+                }`}
               >
                 {code.toUpperCase()}
               </button>
             ))}
           </div>
 
-          <label className="block text-xs text-zinc-400">Nom ({locale})</label>
+          <label className="block text-xs text-[#605E5C]">Nom ({locale})</label>
           <input
             value={draft.name[locale] ?? ''}
             onChange={(event) =>
@@ -310,10 +326,10 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                 name: { ...draft.name, [locale]: event.target.value },
               })
             }
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className={inputClass}
           />
 
-          <label className="block text-xs text-zinc-400">Tagline ({locale})</label>
+          <label className="block text-xs text-[#605E5C]">Tagline ({locale})</label>
           <input
             value={draft.tagline[locale] ?? ''}
             onChange={(event) =>
@@ -322,10 +338,10 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                 tagline: { ...draft.tagline, [locale]: event.target.value },
               })
             }
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className={inputClass}
           />
 
-          <label className="block text-xs text-zinc-400">Description ({locale})</label>
+          <label className="block text-xs text-[#605E5C]">Description ({locale})</label>
           <textarea
             value={draft.description[locale] ?? ''}
             onChange={(event) =>
@@ -335,30 +351,30 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               })
             }
             rows={4}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className={inputClass}
           />
 
           <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs text-zinc-400">Slug</label>
+              <label className="mb-1 block text-xs text-[#605E5C]">Slug</label>
               <div className="flex gap-2">
                 <input
                   value={draft.slug}
                   onChange={(event) => setAndPersistDraft({ ...draft, slug: event.target.value.toLowerCase() })}
-                  className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+                  className={inputClass}
                 />
-                <button type="button" onClick={handleAutoSlug} className="rounded-lg bg-zinc-800 px-3 text-xs">
+                <button type="button" onClick={handleAutoSlug} className={secondaryButtonClass}>
                     Générer
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs text-zinc-400">Category</label>
+              <label className="mb-1 block text-xs text-[#605E5C]">Category</label>
               <select
                 value={draft.category}
                 onChange={(event) => setAndPersistDraft({ ...draft, category: event.target.value })}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+                className={inputClass}
               >
                 {categoryOptions.map((category) => (
                   <option key={category} value={category}>
@@ -370,7 +386,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
           </div>
 
           <div>
-            <label className="mb-1 block text-xs text-zinc-400">Tags</label>
+            <label className="mb-1 block text-xs text-[#605E5C]">Tags</label>
             <div className="flex gap-2">
               <input
                 value={tagInput}
@@ -381,15 +397,15 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                     addTag()
                   }
                 }}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+                className={inputClass}
               />
-              <button type="button" onClick={addTag} className="rounded-lg bg-zinc-800 px-3 text-xs">
+              <button type="button" onClick={addTag} className={secondaryButtonClass}>
                 Ajouter
               </button>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               {draft.tags.map((tag) => (
-                <span key={tag} className="rounded-full bg-zinc-800 px-2 py-1 text-xs text-zinc-200">
+                <span key={tag} className="rounded-full border border-[#d2d0ce] bg-[#faf9f8] px-2 py-1 text-xs text-[#323130]">
                   {tag}
                 </span>
               ))}
@@ -400,38 +416,38 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
 
       {step === 2 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 2 — Identité visuelle</h3>
+          <h3 className="text-base font-semibold">Étape 2 — Identité visuelle</h3>
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs text-zinc-400">Emoji</label>
+              <label className="mb-1 block text-xs text-[#605E5C]">Emoji</label>
               <input
                 value={draft.emoji}
                 onChange={(event) => setAndPersistDraft({ ...draft, emoji: event.target.value })}
-                className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-zinc-400">Primary color</label>
+              <label className="mb-1 block text-xs text-[#605E5C]">Primary color</label>
               <input
                 type="color"
                 value={draft.primary_color}
                 onChange={(event) => setAndPersistDraft({ ...draft, primary_color: event.target.value })}
-                className="h-10 w-full rounded-lg border border-zinc-700 bg-zinc-950"
+                className="h-10 w-full rounded border border-[#d2d0ce] bg-white"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs text-zinc-400">Secondary color</label>
+              <label className="mb-1 block text-xs text-[#605E5C]">Secondary color</label>
               <input
                 type="color"
                 value={draft.secondary_color || '#1f2937'}
                 onChange={(event) => setAndPersistDraft({ ...draft, secondary_color: event.target.value })}
-                className="h-10 w-full rounded-lg border border-zinc-700 bg-zinc-950"
+                className="h-10 w-full rounded border border-[#d2d0ce] bg-white"
               />
             </div>
           </div>
 
-          <div className="rounded-xl border border-zinc-700 p-4">
-            <p className="text-xs text-zinc-500">Aperçu en direct</p>
+          <div className={panelClass}>
+            <p className="text-xs text-[#605E5C]">Aperçu en direct</p>
             <div
               className="mt-2 rounded-xl p-4"
               style={{
@@ -449,14 +465,14 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
 
       {step === 3 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 3 — Règles d’adhésion</h3>
+          <h3 className="text-base font-semibold">Étape 3 — Règles d’adhésion</h3>
           <div className="grid gap-3 md:grid-cols-2">
             <select
               value={draft.membership_type}
               onChange={(event) =>
                 setAndPersistDraft({ ...draft, membership_type: event.target.value as BuilderDraft['membership_type'] })
               }
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             >
               <option value="open">Ouvert</option>
               <option value="validated">Validé</option>
@@ -470,7 +486,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               onChange={(event) =>
                 setAndPersistDraft({ ...draft, max_members: event.target.value ? Number(event.target.value) : null })
               }
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             />
 
             <select
@@ -484,7 +500,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                   },
                 })
               }
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             >
               <option value="free">gratuit</option>
               <option value="starter">starter</option>
@@ -505,7 +521,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                   },
                 })
               }
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             />
           </div>
         </div>
@@ -513,8 +529,8 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
 
       {step === 4 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 4 — Économie des points</h3>
-          <label className="block text-xs text-zinc-400">Multiplicateur : {draft.points_multiplier.toFixed(2)}x</label>
+          <h3 className="text-base font-semibold">Étape 4 — Économie des points</h3>
+          <label className="block text-xs text-[#605E5C]">Multiplicateur : {draft.points_multiplier.toFixed(2)}x</label>
           <input
             type="range"
             min={1}
@@ -525,7 +541,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
             className="w-full"
           />
 
-          <div className="rounded-lg border border-zinc-700 bg-zinc-950 p-3 text-sm">
+          <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-3 text-sm">
             100 pts → {Math.floor(100 * draft.points_multiplier)} pts
           </div>
 
@@ -535,12 +551,12 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               onChange={(event) =>
                 setAndPersistDraft({ ...draft, multiplier_mode: event.target.value as BuilderDraft['multiplier_mode'] })
               }
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             >
               <option value="additive">Additif</option>
               <option value="compound">Composé</option>
             </select>
-            <label className="inline-flex items-center gap-2 text-sm text-zinc-200">
+            <label className="inline-flex items-center gap-2 text-sm text-[#323130]">
               <input
                 type="checkbox"
                 checked={draft.coalition_enabled}
@@ -555,7 +571,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               max={1}
               value={draft.transfer_rate}
               onChange={(event) => setAndPersistDraft({ ...draft, transfer_rate: Number(event.target.value) })}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             />
             <input
               type="number"
@@ -564,7 +580,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               max={1}
               value={draft.platform_fee_pct}
               onChange={(event) => setAndPersistDraft({ ...draft, platform_fee_pct: Number(event.target.value) })}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             />
           </div>
 
@@ -573,7 +589,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
             min={0}
             value={draft.welcome_bonus_points}
             onChange={(event) => setAndPersistDraft({ ...draft, welcome_bonus_points: Number(event.target.value || '0') })}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className={inputClass}
               placeholder="Points de bonus de bienvenue"
           />
         </div>
@@ -581,13 +597,13 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
 
       {step === 5 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 5 — Accès client</h3>
+          <h3 className="text-base font-semibold">Étape 5 — Accès client</h3>
           <select
             value={draft.client_access}
             onChange={(event) =>
               setAndPersistDraft({ ...draft, client_access: event.target.value as BuilderDraft['client_access'] })
             }
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className={inputClass}
           >
             <option value="open">Ouvert</option>
             <option value="invite">Code d’invitation</option>
@@ -599,7 +615,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
             <input
               value={draft.client_invite_code}
               onChange={(event) => setAndPersistDraft({ ...draft, client_invite_code: event.target.value })}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
               placeholder="Code d’invitation client"
             />
           ) : null}
@@ -611,7 +627,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               max={10}
               value={draft.min_level_required}
               onChange={(event) => setAndPersistDraft({ ...draft, min_level_required: Number(event.target.value || '1') })}
-              className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             />
           ) : null}
 
@@ -622,14 +638,14 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
             onChange={(event) =>
               setAndPersistDraft({ ...draft, max_clients: event.target.value ? Number(event.target.value) : null })
             }
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
       ) : null}
 
       {step === 6 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 6 — Visibilité</h3>
+          <h3 className="text-base font-semibold">Étape 6 — Visibilité</h3>
           {[
             ['Public', 'is_public'],
             ['Mis en avant', 'is_featured'],
@@ -637,7 +653,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
             ['Afficher le classement', 'show_leaderboard'],
             ['Afficher le nombre de membres', 'show_member_count'],
           ].map(([label, key]) => (
-            <label key={key} className="flex items-center gap-2 text-sm text-zinc-200">
+            <label key={key} className="flex items-center gap-2 text-sm text-[#323130]">
               <input
                 type="checkbox"
                 checked={Boolean(draft[key as keyof BuilderDraft])}
@@ -653,15 +669,15 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
             type="datetime-local"
             value={draft.launched_at ?? ''}
             onChange={(event) => setAndPersistDraft({ ...draft, launched_at: event.target.value || null })}
-            className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
       ) : null}
 
       {step === 7 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 7 — Sponsoring</h3>
-          <label className="inline-flex items-center gap-2 text-sm text-zinc-200">
+          <h3 className="text-base font-semibold">Étape 7 — Sponsoring</h3>
+          <label className="inline-flex items-center gap-2 text-sm text-[#323130]">
             <input
               type="checkbox"
               checked={draft.is_sponsored}
@@ -674,13 +690,13 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
             <input
               value={draft.sponsor_name}
               onChange={(event) => setAndPersistDraft({ ...draft, sponsor_name: event.target.value })}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
               placeholder="Nom du sponsor"
             />
             <input
               value={draft.sponsor_url}
               onChange={(event) => setAndPersistDraft({ ...draft, sponsor_url: event.target.value })}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
               placeholder="URL du sponsor"
             />
             <select
@@ -688,7 +704,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               onChange={(event) =>
                 setAndPersistDraft({ ...draft, contract_type: event.target.value as BuilderDraft['contract_type'] })
               }
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
             >
               <option value="monthly">mensuel</option>
               <option value="annual">annuel</option>
@@ -700,7 +716,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               min={0}
               value={draft.contract_amount}
               onChange={(event) => setAndPersistDraft({ ...draft, contract_amount: Number(event.target.value || '0') })}
-              className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm"
+              className={inputClass}
               placeholder="Montant du contrat"
             />
           </div>
@@ -709,22 +725,22 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
 
       {step === 8 ? (
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-zinc-300">Étape 8 — Revue et publication</h3>
-          <div className="rounded-xl border border-zinc-700 bg-zinc-950 p-4 text-sm">
-            <p className="text-zinc-200">{draft.emoji} {draft.name.fr || 'Sans nom'}</p>
-            <p className="text-zinc-400">Slug: {draft.slug || '-'}</p>
-            <p className="text-zinc-400">Catégorie : {draft.category}</p>
-            <p className="text-zinc-400">Multiplicateur : {draft.points_multiplier.toFixed(2)}x</p>
-            <p className="text-zinc-400">Adhésion : {draft.membership_type}</p>
-            <p className="text-zinc-400">Accès client : {draft.client_access}</p>
+          <h3 className="text-base font-semibold">Étape 8 — Revue et publication</h3>
+          <div className="rounded-md border border-[#edebe9] bg-[#faf9f8] p-4 text-sm">
+            <p className="text-[#323130]">{draft.emoji} {draft.name.fr || 'Sans nom'}</p>
+            <p className="text-[#605E5C]">Slug: {draft.slug || '-'}</p>
+            <p className="text-[#605E5C]">Catégorie : {draft.category}</p>
+            <p className="text-[#605E5C]">Multiplicateur : {draft.points_multiplier.toFixed(2)}x</p>
+            <p className="text-[#605E5C]">Adhésion : {draft.membership_type}</p>
+            <p className="text-[#605E5C]">Accès client : {draft.client_access}</p>
           </div>
         </div>
       ) : null}
 
-      {error ? <p className="rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p> : null}
+      {error ? <p className="rounded border border-[#d13438] bg-[#fdf3f4] px-3 py-2 text-sm text-[#a4262c]">{error}</p> : null}
 
       <footer className="flex flex-wrap items-center justify-between gap-2">
-        <button type="button" onClick={prevStep} disabled={step === 1} className="rounded-lg bg-zinc-800 px-3 py-2 text-xs">
+        <button type="button" onClick={prevStep} disabled={step === 1} className={neutralButtonClass}>
           Précédent
         </button>
 
@@ -734,7 +750,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
               type="button"
               onClick={nextStep}
               disabled={!canMoveNext}
-              className="rounded-lg bg-indigo-100 px-3 py-2 text-xs font-semibold text-indigo-700 disabled:opacity-60"
+              className={primaryButtonClass}
             >
               Suivant
             </button>
@@ -746,7 +762,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                   void handleSave(false)
                 }}
                 disabled={saving}
-                className="rounded-lg bg-zinc-800 px-3 py-2 text-xs"
+                className={secondaryButtonClass}
               >
                 Sauvegarder brouillon
               </button>
@@ -756,7 +772,7 @@ export function NetworkBuilder({ mode = 'create', initialNetwork = null, onSaved
                   void handleSave(true)
                 }}
                 disabled={saving}
-                className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-zinc-950"
+                className={primaryButtonClass}
               >
                 Publier
               </button>

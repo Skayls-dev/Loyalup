@@ -15,6 +15,23 @@ import type { Network } from '../../types/networkTypes'
 import { NetworkBuilder } from './NetworkBuilder'
 import { AnnouncementManager } from './AnnouncementManager'
 
+const primaryButtonClass =
+  'h-8 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe] disabled:opacity-60'
+
+const secondaryButtonClass =
+  'h-8 rounded border border-[#0078D4] bg-white px-3 text-xs font-semibold text-[#0078D4] transition hover:bg-[#f3f2f1] disabled:opacity-60'
+
+const dangerButtonClass =
+  'h-8 rounded border border-[#d13438] bg-white px-3 text-xs font-semibold text-[#d13438] transition hover:bg-[#fdf3f4] disabled:opacity-60'
+
+const warningButtonClass =
+  'h-8 rounded border border-[#986f0b] bg-white px-3 text-xs font-semibold text-[#986f0b] transition hover:bg-[#fffbf0] disabled:opacity-60'
+
+const inputClass =
+  'h-8 rounded border border-[#d2d0ce] bg-white px-2 text-xs text-[#323130] outline-none focus:border-[#0078D4]'
+
+const sectionCardClass = 'rounded-md border border-[#edebe9] bg-white p-4 shadow-sm'
+
 export function NetworkAdminDashboard() {
   const [selectedNetworkId, setSelectedNetworkId] = useState<string | null>(null)
   const [showBuilder, setShowBuilder] = useState(false)
@@ -113,21 +130,21 @@ export function NetworkAdminDashboard() {
   const activeRequests = requests.filter((request) => request.status === 'pending')
 
   return (
-    <section className="space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900/85 p-4 text-zinc-100 shadow-sm">
+    <section className="space-y-4 text-[#323130]">
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Réseaux</h1>
+        <h1 className="text-2xl font-semibold">Réseaux</h1>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
             onClick={() => setShowAnnouncements((value) => !value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs"
+            className={secondaryButtonClass}
           >
             Annonces {unreadCount > 0 ? `(${unreadCount})` : ''}
           </button>
           <button
             type="button"
             onClick={() => setShowBuilder((value) => !value)}
-            className="rounded-lg bg-indigo-100 px-3 py-1.5 text-xs font-semibold text-indigo-700"
+            className={primaryButtonClass}
           >
             Créer un réseau
           </button>
@@ -153,12 +170,12 @@ export function NetworkAdminDashboard() {
         <KpiCard label="Adhésions commerçants" value={String(totalMemberships)} />
       </section>
 
-      <section className="rounded-xl border border-zinc-700 bg-zinc-900/70 p-3">
+      <section className={sectionCardClass}>
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <select
             value={filterCategory}
             onChange={(event) => setFilterCategory(event.target.value)}
-            className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs"
+            className={inputClass}
           >
             <option value="all">Toutes catégories</option>
             {Array.from(new Set(rows.map((network) => network.category))).map((category) => (
@@ -171,7 +188,7 @@ export function NetworkAdminDashboard() {
           <select
             value={filterStatus}
             onChange={(event) => setFilterStatus(event.target.value as typeof filterStatus)}
-            className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs"
+            className={inputClass}
           >
             <option value="all">Tous statuts</option>
             <option value="active">Actif</option>
@@ -182,7 +199,7 @@ export function NetworkAdminDashboard() {
           <select
             value={sortBy}
             onChange={(event) => setSortBy(event.target.value as typeof sortBy)}
-            className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs"
+            className={inputClass}
           >
             <option value="clients">Tri : clients</option>
             <option value="members">Tri : membres</option>
@@ -192,12 +209,12 @@ export function NetworkAdminDashboard() {
         </div>
 
         {networksLoading ? (
-          <div className="h-24 animate-pulse rounded-lg bg-zinc-800/70" />
+          <div className="h-24 animate-pulse rounded-md border border-[#edebe9] bg-[#faf9f8]" />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs">
               <thead>
-                <tr className="text-left text-zinc-400">
+                <tr className="border-y border-[#edebe9] bg-[#faf9f8] text-left text-[#605E5C]">
                   <th className="px-2 py-2">Réseau</th>
                   <th className="px-2 py-2">Catégorie</th>
                   <th className="px-2 py-2">Membres</th>
@@ -209,26 +226,26 @@ export function NetworkAdminDashboard() {
               </thead>
               <tbody>
                 {rows.map((network) => (
-                  <tr key={network.id} className="border-t border-zinc-800">
+                  <tr key={network.id} className="border-t border-[#edebe9] text-[#323130] hover:bg-[#f3f2f1]">
                     <td className="px-2 py-2">
                       <button
                         type="button"
                         onClick={() => setSelectedNetworkId(network.id)}
-                        className="text-left text-zinc-100 hover:text-indigo-300"
+                        className="text-left font-medium text-[#323130] hover:text-[#0078D4]"
                       >
                         {network.emoji} {network.name.fr ?? network.name.en ?? network.slug}
                       </button>
                     </td>
-                    <td className="px-2 py-2 text-zinc-300">{network.category}</td>
-                    <td className="px-2 py-2 text-zinc-300">{network.member_count}</td>
-                    <td className="px-2 py-2 text-zinc-300">{network.client_count}</td>
-                    <td className="px-2 py-2 text-zinc-300">{network.points_multiplier.toFixed(2)}x</td>
+                    <td className="px-2 py-2 text-[#605E5C]">{network.category}</td>
+                    <td className="px-2 py-2 text-[#605E5C]">{network.member_count}</td>
+                    <td className="px-2 py-2 text-[#605E5C]">{network.client_count}</td>
+                    <td className="px-2 py-2 text-[#605E5C]">{network.points_multiplier.toFixed(2)}x</td>
                     <td className="px-2 py-2">
                       <StatusBadge isActive={network.is_active} isDraft={network.is_draft} />
                     </td>
                     <td className="px-2 py-2">
                       <div className="flex flex-wrap gap-1">
-                        <button type="button" onClick={() => setSelectedNetworkId(network.id)} className="rounded bg-zinc-800 px-2 py-1">
+                        <button type="button" onClick={() => setSelectedNetworkId(network.id)} className={secondaryButtonClass}>
                           Statistiques
                         </button>
                         <button
@@ -236,7 +253,7 @@ export function NetworkAdminDashboard() {
                           onClick={() => {
                             void handleDeleteNetwork(network.id)
                           }}
-                          className="rounded bg-red-900/50 px-2 py-1 text-red-200"
+                          className={dangerButtonClass}
                         >
                           Suspendre
                         </button>
@@ -246,15 +263,15 @@ export function NetworkAdminDashboard() {
                 ))}
               </tbody>
             </table>
-            {rows.length === 0 ? <p className="px-2 py-4 text-xs text-zinc-400">Aucun réseau pour ces filtres.</p> : null}
+            {rows.length === 0 ? <p className="px-2 py-4 text-xs text-[#605E5C]">Aucun réseau pour ces filtres.</p> : null}
           </div>
         )}
       </section>
 
-      <section className="rounded-xl border border-zinc-700 bg-zinc-900/70 p-3">
-        <h2 className="mb-2 text-sm font-semibold">Validations en attente</h2>
+      <section className={sectionCardClass}>
+        <h2 className="mb-2 text-[17px] font-semibold">Validations en attente</h2>
         {activeRequests.length === 0 ? (
-          <p className="text-xs text-zinc-400">Aucune demande en attente.</p>
+          <p className="text-xs text-[#605E5C]">Aucune demande en attente.</p>
         ) : (
           <div className="space-y-2">
             <div className="flex gap-2">
@@ -263,7 +280,7 @@ export function NetworkAdminDashboard() {
                 onClick={() => {
                   void Promise.all(activeRequests.map((request) => validateMembership(request.id))).then(refreshRequests)
                 }}
-                className="rounded bg-emerald-500 px-2 py-1 text-xs font-semibold text-zinc-950"
+                className={primaryButtonClass}
               >
                 Tout approuver
               </button>
@@ -274,17 +291,17 @@ export function NetworkAdminDashboard() {
                     activeRequests.map((request) => rejectMembership(request.id, requestsReason[request.id] ?? undefined)),
                   ).then(refreshRequests)
                 }}
-                className="rounded bg-red-900/50 px-2 py-1 text-xs text-red-200"
+                className={dangerButtonClass}
               >
                 Tout rejeter
               </button>
             </div>
             {activeRequests.map((request) => (
-              <div key={request.id} className="rounded-lg border border-zinc-800 p-2 text-xs">
-                <p className="font-semibold text-zinc-100">
+              <div key={request.id} className="rounded-md border border-[#edebe9] bg-[#faf9f8] p-2 text-xs">
+                <p className="font-semibold text-[#323130]">
                   {request.fournisseurs?.nom_commerce ?? 'Commerce'} → {request.networks?.name?.fr ?? request.networks?.slug ?? 'Réseau'}
                 </p>
-                <p className="text-zinc-400">{request.request_message || 'Aucun message'}</p>
+                <p className="text-[#605E5C]">{request.request_message || 'Aucun message'}</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   <input
                     value={requestsReason[request.id] ?? ''}
@@ -295,14 +312,14 @@ export function NetworkAdminDashboard() {
                       }))
                     }
                     placeholder="Motif"
-                    className="rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-xs"
+                    className={inputClass}
                   />
                   <button
                     type="button"
                     onClick={() => {
                       void validateMembership(request.id).then(refreshRequests)
                     }}
-                    className="rounded bg-emerald-500 px-2 py-1 text-xs font-semibold text-zinc-950"
+                    className={primaryButtonClass}
                   >
                     Valider
                   </button>
@@ -311,7 +328,7 @@ export function NetworkAdminDashboard() {
                     onClick={() => {
                       void rejectMembership(request.id, requestsReason[request.id]).then(refreshRequests)
                     }}
-                    className="rounded bg-red-900/50 px-2 py-1 text-xs text-red-200"
+                    className={dangerButtonClass}
                   >
                     Rejeter
                   </button>
@@ -320,7 +337,7 @@ export function NetworkAdminDashboard() {
                     onClick={() => {
                       void suspendMembership(request.id, requestsReason[request.id]).then(refreshRequests)
                     }}
-                    className="rounded bg-amber-900/50 px-2 py-1 text-xs text-amber-200"
+                    className={warningButtonClass}
                   >
                     Suspendre
                   </button>
@@ -332,19 +349,19 @@ export function NetworkAdminDashboard() {
       </section>
 
       {selectedNetwork ? (
-        <section className="rounded-xl border border-zinc-700 bg-zinc-900/70 p-3">
-          <h2 className="mb-3 text-sm font-semibold">Statistiques du réseau — {selectedNetwork.name.fr ?? selectedNetwork.slug}</h2>
+        <section className={sectionCardClass}>
+          <h2 className="mb-3 text-[17px] font-semibold">Statistiques du réseau — {selectedNetwork.name.fr ?? selectedNetwork.slug}</h2>
           {stats.loading ? (
-            <div className="h-24 animate-pulse rounded-lg bg-zinc-800/70" />
+            <div className="h-24 animate-pulse rounded-md border border-[#edebe9] bg-[#faf9f8]" />
           ) : stats.stats ? (
             <div className="grid gap-3 lg:grid-cols-2">
-              <div className="space-y-2 text-xs text-zinc-300">
+              <div className="space-y-2 text-xs text-[#605E5C]">
                 <p>Commerces membres : {stats.stats.member_count}</p>
                 <p>Clients inscrits : {stats.stats.client_count}</p>
                 <p>Bonus distribués : {stats.stats.total_bonus_points_distributed}</p>
                 <p>Bonus moyen / transaction : {stats.stats.avg_bonus_per_transaction.toFixed(2)}</p>
               </div>
-              <div className="h-56 rounded-lg border border-zinc-800 bg-zinc-950 p-2">
+              <div className="h-56 rounded-md border border-[#edebe9] bg-[#faf9f8] p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={stats.timeline?.clients?.map((item) => ({
@@ -353,34 +370,34 @@ export function NetworkAdminDashboard() {
                       members: stats.timeline?.members?.find((member) => member.date === item.date)?.count ?? 0,
                     })) ?? []}
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#3f3f46" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e1dfdd" />
                     <XAxis dataKey="date" hide />
                     <YAxis hide />
                     <Tooltip />
-                    <Bar dataKey="clients" fill="#4f46e5" radius={4} />
-                    <Bar dataKey="members" fill="#14b8a6" radius={4} />
+                    <Bar dataKey="clients" fill="#0078D4" radius={4} />
+                    <Bar dataKey="members" fill="#2b88d8" radius={4} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
           ) : (
-            <p className="text-xs text-zinc-400">Aucune statistique disponible.</p>
+            <p className="text-xs text-[#605E5C]">Aucune statistique disponible.</p>
           )}
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-zinc-700 bg-zinc-900/70 p-3">
-        <h2 className="mb-3 text-sm font-semibold">Gestion des sponsorings</h2>
+      <section className={sectionCardClass}>
+        <h2 className="mb-3 text-[17px] font-semibold">Gestion des sponsorings</h2>
         <div className="grid gap-2 text-xs">
           {sponsorshipRows.map((network) => (
-            <div key={network.id} className="flex items-center justify-between rounded border border-zinc-800 px-2 py-1">
-              <span className="text-zinc-200">{network.emoji} {network.name.fr ?? network.slug}</span>
-              <span className="text-zinc-400">
+            <div key={network.id} className="flex items-center justify-between rounded-md border border-[#edebe9] bg-[#faf9f8] px-2 py-2 hover:bg-[#f3f2f1]">
+              <span className="text-[#323130]">{network.emoji} {network.name.fr ?? network.slug}</span>
+              <span className="text-[#605E5C]">
                 {network.is_featured ? 'Mis en avant' : 'Standard'} · {network.client_count} clients
               </span>
             </div>
           ))}
-          {sponsorshipRows.length === 0 ? <p className="text-zinc-400">Aucun sponsoring actif.</p> : null}
+          {sponsorshipRows.length === 0 ? <p className="text-[#605E5C]">Aucun sponsoring actif.</p> : null}
         </div>
       </section>
     </section>
@@ -389,21 +406,21 @@ export function NetworkAdminDashboard() {
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
-      <p className="text-xs text-zinc-400">{label}</p>
-      <p className="mt-1 text-lg font-semibold text-zinc-100">{value}</p>
+    <div className="rounded-md border border-[#edebe9] bg-white p-4 shadow-sm">
+      <p className="text-xs text-[#605E5C]">{label}</p>
+      <p className="mt-1 text-xl font-semibold text-[#323130]">{value}</p>
     </div>
   )
 }
 
 function StatusBadge({ isActive, isDraft }: { isActive: boolean; isDraft: boolean }) {
   if (isDraft) {
-    return <span className="rounded bg-zinc-800 px-2 py-1 text-[10px] text-zinc-300">Brouillon</span>
+    return <span className="rounded border border-[#d2d0ce] bg-[#faf9f8] px-2 py-1 text-[10px] text-[#605E5C]">Brouillon</span>
   }
 
   if (!isActive) {
-    return <span className="rounded bg-red-900/50 px-2 py-1 text-[10px] text-red-200">Suspendu</span>
+    return <span className="rounded border border-[#d13438] bg-[#fdf3f4] px-2 py-1 text-[10px] text-[#d13438]">Suspendu</span>
   }
 
-  return <span className="rounded bg-emerald-900/50 px-2 py-1 text-[10px] text-emerald-200">Actif</span>
+  return <span className="rounded border border-[#0078D4] bg-[#eff6fc] px-2 py-1 text-[10px] text-[#0078D4]">Actif</span>
 }

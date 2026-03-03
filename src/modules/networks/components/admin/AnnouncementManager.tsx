@@ -8,6 +8,18 @@ type AnnouncementManagerProps = {
   onChanged?: () => void
 }
 
+const primaryButtonClass =
+  'h-8 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe] disabled:opacity-60'
+
+const secondaryButtonClass =
+  'h-8 rounded border border-[#0078D4] bg-white px-3 text-xs font-semibold text-[#0078D4] transition hover:bg-[#f3f2f1] disabled:opacity-60'
+
+const dangerButtonClass =
+  'h-8 rounded border border-[#d13438] bg-white px-3 text-xs font-semibold text-[#d13438] transition hover:bg-[#fdf3f4]'
+
+const inputClass =
+  'rounded border border-[#d2d0ce] bg-white px-2 py-2 text-xs text-[#323130] outline-none focus:border-[#0078D4]'
+
 export function AnnouncementManager({ announcements, onChanged }: AnnouncementManagerProps) {
   const { all } = useNetworks()
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -104,10 +116,10 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
   }
 
   return (
-    <section className="space-y-3 rounded-xl border border-zinc-700 bg-zinc-900/70 p-3">
+    <section className="space-y-3 rounded-md border border-[#edebe9] bg-white p-4 shadow-sm">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">Gestion des annonces</h2>
-        <button type="button" onClick={resetForm} className="rounded bg-zinc-800 px-2 py-1 text-xs">
+        <h2 className="text-[17px] font-semibold text-[#323130]">Gestion des annonces</h2>
+        <button type="button" onClick={resetForm} className={secondaryButtonClass}>
           Nouvelle annonce
         </button>
       </div>
@@ -116,7 +128,7 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
         <select
           value={form.network_id}
           onChange={(event) => setForm({ ...form, network_id: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
         >
           <option value="">Sélectionner un réseau</option>
           {all.map((network) => (
@@ -129,34 +141,34 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
         <input
           value={form.emoji}
           onChange={(event) => setForm({ ...form, emoji: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
           placeholder="Emoji"
         />
 
         <input
           value={form.title_fr}
           onChange={(event) => setForm({ ...form, title_fr: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
           placeholder="Titre FR"
         />
         <input
           value={form.title_en}
           onChange={(event) => setForm({ ...form, title_en: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
           placeholder="Titre EN"
         />
 
         <textarea
           value={form.content_fr}
           onChange={(event) => setForm({ ...form, content_fr: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
           rows={3}
           placeholder="Contenu FR"
         />
         <textarea
           value={form.content_en}
           onChange={(event) => setForm({ ...form, content_en: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
           rows={3}
           placeholder="Contenu EN"
         />
@@ -164,13 +176,13 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
         <input
           value={form.cta_label_fr}
           onChange={(event) => setForm({ ...form, cta_label_fr: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
           placeholder="Libellé CTA"
         />
         <input
           value={form.cta_url}
           onChange={(event) => setForm({ ...form, cta_url: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
           placeholder="URL CTA"
         />
 
@@ -178,10 +190,10 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
           type="datetime-local"
           value={form.expires_at}
           onChange={(event) => setForm({ ...form, expires_at: event.target.value })}
-          className="rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs"
+          className={inputClass}
         />
 
-        <label className="inline-flex items-center gap-2 rounded-lg border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-200">
+        <label className="inline-flex items-center gap-2 rounded border border-[#d2d0ce] bg-white px-2 py-2 text-xs text-[#323130]">
           <input
             type="checkbox"
             checked={form.is_pinned}
@@ -191,7 +203,7 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
         </label>
       </div>
 
-      {error ? <p className="text-xs text-red-300">{error}</p> : null}
+      {error ? <p className="text-xs text-[#a4262c]">{error}</p> : null}
 
       <button
         type="button"
@@ -199,16 +211,16 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
           void handleSubmit()
         }}
         disabled={saving}
-        className="rounded bg-indigo-100 px-3 py-1.5 text-xs font-semibold text-indigo-700"
+        className={primaryButtonClass}
       >
         {editingId ? 'Mettre à jour' : 'Créer annonce'}
       </button>
 
       <div className="space-y-2">
         {sorted.map((item) => (
-          <div key={item.id} className="rounded-lg border border-zinc-800 p-2 text-xs">
+          <div key={item.id} className="rounded-md border border-[#edebe9] bg-[#faf9f8] p-3 text-xs">
             <div className="flex items-center justify-between gap-2">
-              <p className="font-semibold text-zinc-100">
+              <p className="font-semibold text-[#323130]">
                 {item.emoji || '📢'} {item.title.fr ?? item.title.en ?? 'Annonce'}
               </p>
               <div className="flex gap-1">
@@ -229,7 +241,7 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
                       expires_at: item.expires_at ? item.expires_at.slice(0, 16) : '',
                     })
                   }}
-                  className="rounded bg-zinc-800 px-2 py-1"
+                  className={secondaryButtonClass}
                 >
                   Modifier
                 </button>
@@ -238,14 +250,14 @@ export function AnnouncementManager({ announcements, onChanged }: AnnouncementMa
                   onClick={() => {
                     void deleteAnnouncement(item.id).then(() => onChanged?.())
                   }}
-                  className="rounded bg-red-900/50 px-2 py-1 text-red-200"
+                  className={dangerButtonClass}
                 >
                   Supprimer
                 </button>
               </div>
             </div>
-            <p className="text-zinc-400">{item.content.fr ?? item.content.en ?? '-'}</p>
-            <p className="mt-1 text-[10px] text-zinc-500">
+            <p className="text-[#605E5C]">{item.content.fr ?? item.content.en ?? '-'}</p>
+            <p className="mt-1 text-[10px] text-[#605E5C]">
               {new Date(item.published_at).toLocaleString('fr-FR')}
               {item.expires_at ? ` · expire ${new Date(item.expires_at).toLocaleString('fr-FR')}` : ''}
             </p>
