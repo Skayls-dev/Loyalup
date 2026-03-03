@@ -25,20 +25,20 @@ const adminMenu: Array<{ key: AdminTab; label: string }> = [
 ]
 
 const segmentColors: Record<string, string> = {
-  champion: '#50B0FF',
+  champion: '#0078D4',
   loyal: '#0078D4',
-  at_risk: '#005A9E',
-  new: '#2899F5',
-  lost: '#6B9AC4',
+  at_risk: '#106EBE',
+  new: '#2B88D8',
+  lost: '#71AFE5',
 }
 
 const kpiAccentByLabel: Record<string, string> = {
-  Providers: '#6366F1',
-  Clients: '#06B6D4',
-  Transactions: '#F59E0B',
-  'DAU/MAU': '#10B981',
-  'Active networks': '#8B5CF6',
-  'Network revenue': '#F43F5E',
+  Providers: '#0078D4',
+  Clients: '#2B88D8',
+  Transactions: '#106EBE',
+  'DAU/MAU': '#005A9E',
+  'Active networks': '#0078D4',
+  'Network revenue': '#2B88D8',
 }
 
 function isAdminTab(value: string | null): value is AdminTab {
@@ -152,10 +152,10 @@ export function AdminDashboard() {
   const showOverview = activeAdminTab === 'overview'
 
   return (
-    <section className="space-y-8 bg-[#061224] p-6 text-[#F5FAFF]">
-      <h1 className="text-xl font-semibold text-white">Super Admin Dashboard</h1>
+    <section className="space-y-6 text-[#323130]">
+      <h1 className="text-2xl font-semibold text-[#323130]">Super Admin Dashboard</h1>
 
-      <nav className="flex flex-wrap gap-1 rounded-xl border border-[rgba(80,176,255,0.25)] bg-[#071B33] p-1">
+      <nav className="flex flex-wrap gap-1 rounded-md border border-[#edebe9] bg-white p-1 shadow-sm">
         {adminMenu.map((item) => (
           <button
             key={item.key}
@@ -165,10 +165,10 @@ export function AdminDashboard() {
               next.set('tab', item.key)
               setSearchParams(next, { replace: true })
             }}
-            className={`rounded-lg px-3 py-1.5 text-xs transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 ${
+            className={`rounded-md px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0078D4]/40 ${
               activeAdminTab === item.key
-                ? 'bg-[#0D3A66] font-semibold text-white'
-                : 'text-[#8FBCE6] hover:text-white'
+                ? 'bg-[#0078D4] font-semibold text-white'
+                : 'text-[#323130] hover:bg-[#f3f2f1]'
             }`}
           >
             {item.label}
@@ -179,7 +179,7 @@ export function AdminDashboard() {
       <div key={activeAdminTab} className="fade-switch">
         {showOverview ? (
           <>
-          {loading ? <div className="h-24 animate-pulse rounded-lg bg-white/10" /> : null}
+          {loading ? <div className="h-24 animate-pulse rounded-md border border-[#edebe9] bg-white" /> : null}
 
           <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
             <StatCard label="Providers" value={String(platformStats?.totalProviders ?? 0)} accentColor={kpiAccentByLabel.Providers} />
@@ -200,14 +200,14 @@ export function AdminDashboard() {
           </div>
 
           <div className="grid gap-6 md:grid-cols-3">
-            <StatCard label="Providers via discovery" value={String(networkKpis.providersViaDiscovery)} accentColor="#8B5CF6" />
-            <StatCard label="Clients via enrollment" value={String(networkKpis.clientsViaEnrollment)} accentColor="#06B6D4" />
-            <StatCard label="Cross-network transfer volume" value={`${networkKpis.transferVolume.toLocaleString()} pts`} accentColor="#F59E0B" />
+            <StatCard label="Providers via discovery" value={String(networkKpis.providersViaDiscovery)} accentColor="#0078D4" />
+            <StatCard label="Clients via enrollment" value={String(networkKpis.clientsViaEnrollment)} accentColor="#2B88D8" />
+            <StatCard label="Cross-network transfer volume" value={`${networkKpis.transferVolume.toLocaleString()} pts`} accentColor="#106EBE" />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-2xl border border-[rgba(80,176,255,0.25)] bg-[#0A223D] p-4">
-              <h3 className="mb-3 text-sm font-semibold text-[#A1A1AA]">Segments distribution</h3>
+            <div className="rounded-md border border-[#edebe9] bg-white p-5 shadow-sm">
+              <h3 className="mb-3 text-[17px] font-semibold text-[#323130]">Segments distribution</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -221,10 +221,10 @@ export function AdminDashboard() {
                     </Pie>
                     <Tooltip
                       contentStyle={{
-                        background: '#0A223D',
-                        border: '1px solid rgba(80,176,255,0.3)',
-                        borderRadius: 10,
-                        color: '#F5FAFF',
+                        background: '#ffffff',
+                        border: '1px solid #edebe9',
+                        borderRadius: 6,
+                        color: '#323130',
                       }}
                     />
                   </PieChart>
@@ -232,7 +232,7 @@ export function AdminDashboard() {
               </div>
               <div className="mt-3 space-y-1">
                 {segmentDistribution.map((segment) => (
-                  <div key={segment.segment_type} className="flex items-center justify-between text-sm text-[#D7ECFF]">
+                  <div key={segment.segment_type} className="flex items-center justify-between text-sm text-[#323130]">
                     <div className="flex items-center gap-2">
                       <span
                         className="h-2.5 w-2.5 rounded-full"
@@ -246,8 +246,8 @@ export function AdminDashboard() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[rgba(80,176,255,0.25)] bg-[#0A223D] p-4">
-              <h3 className="mb-3 text-sm font-semibold text-[#A1A1AA]">Transactions timeline</h3>
+            <div className="rounded-md border border-[#edebe9] bg-white p-5 shadow-sm">
+              <h3 className="mb-3 text-[17px] font-semibold text-[#323130]">Transactions timeline</h3>
               <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={timelineData}>
@@ -261,20 +261,20 @@ export function AdminDashboard() {
                       dataKey="date"
                       tickLine={false}
                       axisLine={false}
-                      tick={{ fill: '#8FBCE6', fontSize: 11 }}
+                      tick={{ fill: '#605E5C', fontSize: 11 }}
                     />
                     <Tooltip
                       contentStyle={{
-                        background: '#0A223D',
-                        border: '1px solid rgba(80,176,255,0.3)',
-                        borderRadius: 10,
-                        color: '#F5FAFF',
+                        background: '#ffffff',
+                        border: '1px solid #edebe9',
+                        borderRadius: 6,
+                        color: '#323130',
                       }}
                     />
                     <Area
                       type="monotone"
                       dataKey="value"
-                      stroke="#2899F5"
+                      stroke="#0078D4"
                       strokeWidth={2}
                       fill="url(#txGradient)"
                     />
@@ -284,8 +284,8 @@ export function AdminDashboard() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-[rgba(80,176,255,0.25)] bg-[#0A223D] p-4 text-sm text-[#D7ECFF]">
-            <h3 className="mb-2 text-sm font-semibold text-[#A1A1AA]">Data asset</h3>
+          <div className="rounded-md border border-[#edebe9] bg-white p-5 text-sm text-[#323130] shadow-sm">
+            <h3 className="mb-2 text-[17px] font-semibold text-[#323130]">Data asset</h3>
             <p>Analytics consent: {dataAssetValue?.analytics ?? 0}</p>
             <p>Marketing consent: {dataAssetValue?.marketing ?? 0}</p>
             <p>Third-party consent: {dataAssetValue?.third_party ?? 0}</p>
@@ -293,38 +293,38 @@ export function AdminDashboard() {
             <p>Estimated value: {(dataAssetValue?.estimatedValue ?? 0).toFixed(2)} €</p>
           </div>
 
-          <div className="rounded-2xl border border-[rgba(80,176,255,0.25)] bg-[#0A223D] p-4 text-sm text-[#D7ECFF]">
+          <div className="rounded-md border border-[#edebe9] bg-white p-5 text-sm text-[#323130] shadow-sm">
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-sm font-semibold text-[#A1A1AA]">Jobs Monitor</h3>
+              <h3 className="text-[17px] font-semibold text-[#323130]">Jobs Monitor</h3>
               <button
                 type="button"
                 onClick={() => {
                   runJobsNow().catch(() => undefined)
                 }}
                 disabled={runningJobs}
-                className="rounded-xl border border-[rgba(80,176,255,0.35)] bg-[#0D3A66] px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-[#106EBE] disabled:opacity-70"
+                className="h-9 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe] disabled:opacity-70"
               >
                 {runningJobs ? 'Running...' : 'Run jobs now'}
               </button>
             </div>
 
-            {lastRunSummary ? <p className="mb-2 text-xs text-[#7CC6FF]">{lastRunSummary}</p> : null}
-            {runJobsError ? <p className="mb-2 text-xs text-red-400">{runJobsError}</p> : null}
+            {lastRunSummary ? <p className="mb-2 text-xs text-[#0078D4]">{lastRunSummary}</p> : null}
+            {runJobsError ? <p className="mb-2 text-xs text-[#a4262c]">{runJobsError}</p> : null}
 
             {jobsLog.length === 0 ? (
-              <p className="text-[#D7ECFF]">Aucun run de job pour le moment.</p>
+              <p className="text-[#323130]">Aucun run de job pour le moment.</p>
             ) : (
               <div className="space-y-2">
                 {jobsLog.slice(0, 12).map((job) => (
-                  <div key={job.id} className="rounded-xl border border-[rgba(80,176,255,0.25)] bg-[#0A223D] px-3 py-2">
+                  <div key={job.id} className="rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2">
                     <div>
-                      <p className="font-medium text-white">{job.job_name}</p>
-                      <p className="text-xs text-[#8FBCE6]">{new Date(job.created_at).toLocaleString('fr-FR')}</p>
+                      <p className="font-medium text-[#323130]">{job.job_name}</p>
+                      <p className="text-xs text-[#605E5C]">{new Date(job.created_at).toLocaleString('fr-FR')}</p>
                     </div>
 
                     <div className="text-right text-xs">
-                      <p className={job.status === 'success' ? 'text-[#7CC6FF]' : 'text-red-400'}>{job.status}</p>
-                      <p className="text-[#D7ECFF]">{job.records_processed ?? 0} records · {job.duration_ms ?? 0} ms</p>
+                      <p className={job.status === 'success' ? 'text-[#0078D4]' : 'text-[#a4262c]'}>{job.status}</p>
+                      <p className="text-[#605E5C]">{job.records_processed ?? 0} records · {job.duration_ms ?? 0} ms</p>
                     </div>
                   </div>
                 ))}
@@ -343,11 +343,11 @@ export function AdminDashboard() {
 function StatCard({ label, value, accentColor }: { label: string; value: string; accentColor: string }) {
   return (
     <div
-      className="rounded-2xl border border-[rgba(80,176,255,0.25)] bg-[#0A223D] p-4 transition duration-200 hover:-translate-y-0.5 hover:border-[rgba(80,176,255,0.45)] hover:shadow-[0_12px_28px_rgba(0,120,212,0.22)]"
+      className="rounded-md border border-[#edebe9] bg-white p-5 shadow-sm"
       style={{ borderTop: `3px solid ${accentColor}` }}
     >
-      <p className="text-xs font-medium text-[#71717A]">{label}</p>
-      <p className="mt-1 text-[28px] font-bold text-[#FAFAFA]">{value}</p>
+      <p className="text-sm font-medium text-[#605E5C]">{label}</p>
+      <p className="mt-1 text-[28px] font-bold text-[#323130]">{value}</p>
     </div>
   )
 }

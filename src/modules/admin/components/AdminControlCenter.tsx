@@ -34,8 +34,19 @@ const tabs: Array<{ key: AdminTab; label: string }> = [
   { key: 'ads', label: 'Ads' },
 ]
 
+const primaryButtonClass =
+  'h-8 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe] disabled:opacity-60'
+
 const secondaryButtonClass =
-  'rounded-xl border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#3F3F46]'
+  'h-8 rounded border border-[#0078D4] bg-white px-3 text-xs font-semibold text-[#0078D4] transition hover:bg-[#f3f2f1] disabled:opacity-60'
+
+const inputClass =
+  'h-8 rounded border border-[#d2d0ce] bg-white px-2 text-xs text-[#323130] placeholder:text-[#8a8886]'
+
+const panelClass = 'rounded-md border border-[#edebe9] bg-white p-4 shadow-sm'
+
+const rowClass =
+  'rounded-md border border-[#edebe9] bg-white p-3 text-xs text-[#323130] transition hover:bg-[#f3f2f1]'
 
 export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [activeTab, setActiveTab] = useState<AdminTab>(props.initialTab ?? 'overview')
@@ -205,15 +216,15 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   }
 
   return (
-    <div className="space-y-4 rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-4 text-sm text-[#D4D4D8]">
+    <div className="space-y-4 rounded-md border border-[#edebe9] bg-white p-5 text-sm text-[#323130] shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="text-sm font-semibold text-[#A1A1AA]">Admin Control Center</h3>
+        <h3 className="text-[17px] font-semibold text-[#323130]">Admin Control Center</h3>
         <div className="flex items-center gap-2">
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search users"
-            className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+            className={inputClass}
           />
           <button
             type="button"
@@ -234,10 +245,10 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`rounded-md px-3 py-1 text-xs font-semibold transition ${
+              className={`rounded-md border px-3 py-1.5 text-xs font-semibold transition ${
                 activeTab === tab.key
-                  ? 'bg-[#106EBE]/35 text-[#D7ECFF] shadow-sm'
-                  : 'border border-slate-500/25 text-slate-200 hover:border-[#50B0FF]/50 hover:bg-[#106EBE]/15 hover:text-[#D7ECFF]'
+                  ? 'border-[#0078D4] bg-[#0078D4] text-white'
+                  : 'border-[#d2d0ce] bg-white text-[#323130] hover:bg-[#f3f2f1]'
               }`}
             >
               {tab.label}
@@ -246,10 +257,10 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
         </div>
       ) : null}
 
-      {loading ? <div className="h-16 animate-pulse rounded-md bg-white/5" /> : null}
+      {loading ? <div className="h-16 animate-pulse rounded-md border border-[#edebe9] bg-[#faf9f8]" /> : null}
 
       {activeTab === 'overview' ? (
-        <div className="grid gap-6 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-4">
           <Card label="Total users" value={String(overview?.total_users ?? 0)} />
           <Card label="Admins" value={String(overview?.admins ?? 0)} />
           <Card label="API errors" value={String(overview?.api_errors ?? 0)} />
@@ -282,13 +293,13 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
             </label>
           </div>
 
-          <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-2">
-            <p className="text-xs text-slate-200">Selected: {selectedCount}</p>
+          <div className={`${panelClass} space-y-2`}>
+            <p className="text-xs text-[#605E5C]">Selected: {selectedCount}</p>
 
             <select
               value={bulkRole}
               onChange={(event) => setBulkRole(event.target.value as 'client' | 'fournisseur' | 'admin')}
-              className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+              className={inputClass}
             >
               <option value="client">client</option>
               <option value="fournisseur">fournisseur</option>
@@ -345,8 +356,13 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
           </div>
 
           <div className="space-y-2">
+            <div className="grid grid-cols-[2fr_3fr_2fr] gap-2 rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#605E5C]">
+              <span>Identity</span>
+              <span>Email</span>
+              <span>Actions</span>
+            </div>
             {filteredUsers.map((user) => (
-              <article key={user.id} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3">
+              <article key={user.id} className={rowClass}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-start gap-2">
                     <input
@@ -357,13 +373,13 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                           event.target.checked ? Array.from(new Set([...prev, user.id])) : prev.filter((id) => id !== user.id),
                         )
                       }}
-                      className="mt-1 h-4 w-4 rounded border-zinc-700 bg-zinc-950"
+                      className="mt-1 h-4 w-4 rounded border-[#c8c6c4]"
                     />
 
                     <div>
-                    <p className="font-medium text-white">{user.nom || user.email}</p>
-                    <p className="text-xs text-slate-200">{user.email}</p>
-                    {user.provider_tier ? <p className="text-xs text-slate-200">tier: {user.provider_tier}</p> : null}
+                    <p className="font-medium text-[#323130]">{user.nom || user.email}</p>
+                    <p className="text-xs text-[#605E5C]">{user.email}</p>
+                    {user.provider_tier ? <p className="text-xs text-[#605E5C]">tier: {user.provider_tier}</p> : null}
                     </div>
                   </div>
 
@@ -379,7 +395,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                           })
                           .catch((error) => setStatus(error instanceof Error ? error.message : 'Role update failed'))
                       }}
-                      className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+                      className={inputClass}
                     >
                       <option value="client">client</option>
                       <option value="fournisseur">fournisseur</option>
@@ -398,7 +414,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                             })
                             .catch((error) => setStatus(error instanceof Error ? error.message : 'Tier update failed'))
                         }}
-                        className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+                        className={inputClass}
                       >
                         <option value="free">free</option>
                         <option value="starter">starter</option>
@@ -451,7 +467,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       {activeTab === 'api' ? (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-200">Error rate: {apiErrorRate.toFixed(1)}%</p>
+            <p className="text-xs text-[#605E5C]">Error rate: {apiErrorRate.toFixed(1)}%</p>
             <button
               type="button"
               onClick={() => exportCsv(apiUsage as unknown as Record<string, unknown>[], 'admin-api-usage.csv')}
@@ -461,13 +477,19 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
             </button>
           </div>
 
+          <div className="grid grid-cols-[2fr_1fr_3fr] gap-2 rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#605E5C]">
+            <span>Endpoint</span>
+            <span>Status</span>
+            <span>Metadata</span>
+          </div>
+
           {apiUsage.slice(0, 50).map((row) => (
-            <article key={row.id} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3 text-xs">
+            <article key={row.id} className={rowClass}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-white">{row.method} {row.endpoint}</p>
-                <p className={(row.status_code ?? 200) >= 400 ? 'text-red-400' : 'text-[#7CC6FF]'}>{row.status_code ?? '-'}</p>
+                <p className="text-[#323130]">{row.method} {row.endpoint}</p>
+                <p className={(row.status_code ?? 200) >= 400 ? 'text-[#a4262c]' : 'text-[#0078D4]'}>{row.status_code ?? '-'}</p>
               </div>
-              <p className="text-slate-200">{new Date(row.created_at).toLocaleString('fr-FR')} • {row.response_time_ms ?? 0} ms • {row.ip_address ?? '-'}</p>
+              <p className="text-[#605E5C]">{new Date(row.created_at).toLocaleString('fr-FR')} • {row.response_time_ms ?? 0} ms • {row.ip_address ?? '-'}</p>
             </article>
           ))}
         </div>
@@ -485,10 +507,16 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
             </button>
           </div>
 
+          <div className="grid grid-cols-[2fr_1fr_2fr] gap-2 rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#605E5C]">
+            <span>Event</span>
+            <span>Action</span>
+            <span>Delivery</span>
+          </div>
+
           {webhookFailures.slice(0, 50).map((row) => (
-            <article key={row.id} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3 text-xs">
+            <article key={row.id} className={rowClass}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-white">{row.event_type}</p>
+                <p className="text-[#323130]">{row.event_type}</p>
                 <button
                   type="button"
                   onClick={() => {
@@ -504,8 +532,8 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                   Retry
                 </button>
               </div>
-              <p className="text-slate-200">status: {row.response_status ?? '-'} • attempts: {row.attempt_number} • {new Date(row.delivered_at).toLocaleString('fr-FR')}</p>
-              <p className="mt-1 line-clamp-2 text-slate-200">{row.response_body ?? ''}</p>
+              <p className="text-[#605E5C]">status: {row.response_status ?? '-'} • attempts: {row.attempt_number} • {new Date(row.delivered_at).toLocaleString('fr-FR')}</p>
+              <p className="mt-1 line-clamp-2 text-[#605E5C]">{row.response_body ?? ''}</p>
             </article>
           ))}
         </div>
@@ -523,14 +551,20 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
             </button>
           </div>
 
+          <div className="grid grid-cols-[2fr_1fr_2fr] gap-2 rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#605E5C]">
+            <span>Action</span>
+            <span>Date</span>
+            <span>Context</span>
+          </div>
+
           {auditLogs.slice(0, 80).map((log) => (
-            <article key={log.id} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3 text-xs">
+            <article key={log.id} className={rowClass}>
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className={log.success ? 'text-[#7CC6FF]' : 'text-red-400'}>{log.action}</p>
-                <p className="text-slate-200">{new Date(log.created_at).toLocaleString('fr-FR')}</p>
+                <p className={log.success ? 'text-[#0078D4]' : 'text-[#a4262c]'}>{log.action}</p>
+                <p className="text-[#605E5C]">{new Date(log.created_at).toLocaleString('fr-FR')}</p>
               </div>
-              <p className="text-slate-200">admin: {log.admin_user_id} {log.target_user_id ? `• target: ${log.target_user_id}` : ''}</p>
-              <p className="mt-1 line-clamp-2 text-slate-200">{JSON.stringify(log.metadata ?? {})}</p>
+              <p className="text-[#605E5C]">admin: {log.admin_user_id} {log.target_user_id ? `• target: ${log.target_user_id}` : ''}</p>
+              <p className="mt-1 line-clamp-2 text-[#605E5C]">{JSON.stringify(log.metadata ?? {})}</p>
             </article>
           ))}
         </div>
@@ -538,49 +572,49 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
 
       {activeTab === 'ads' ? (
         <div className="space-y-3">
-          <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3">
-            <p className="mb-2 text-xs text-slate-200">{editingAdId ? 'Modifier une pub' : 'Nouvelle pub écran scan'}</p>
+          <div className={panelClass}>
+            <p className="mb-2 text-xs text-[#605E5C]">{editingAdId ? 'Modifier une pub' : 'Nouvelle pub écran scan'}</p>
 
             <div className="grid gap-2 md:grid-cols-2">
               <input
                 value={adTitle}
                 onChange={(event) => setAdTitle(event.target.value)}
                 placeholder="Titre"
-                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+                className={inputClass}
               />
               <input
                 value={adCtaLabel}
                 onChange={(event) => setAdCtaLabel(event.target.value)}
                 placeholder="CTA (optionnel)"
-                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+                className={inputClass}
               />
               <input
                 value={adBody}
                 onChange={(event) => setAdBody(event.target.value)}
                 placeholder="Message"
-                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8] md:col-span-2"
+                className={`${inputClass} md:col-span-2`}
               />
               <input
                 value={adCtaUrl}
                 onChange={(event) => setAdCtaUrl(event.target.value)}
                 placeholder="URL CTA (https://...)"
-                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+                className={inputClass}
               />
               <input
                 type="number"
                 value={adDisplayOrder}
                 onChange={(event) => setAdDisplayOrder(Number(event.target.value))}
                 placeholder="Ordre"
-                className="rounded-md border border-[rgba(255,255,255,0.1)] bg-[#27272A] px-2 py-1 text-xs text-[#D4D4D8]"
+                className={inputClass}
               />
             </div>
 
-            <label className="mt-2 flex items-center gap-2 text-xs text-slate-200">
+            <label className="mt-2 flex items-center gap-2 text-xs text-[#605E5C]">
               <input
                 type="checkbox"
                 checked={adActive}
                 onChange={(event) => setAdActive(event.target.checked)}
-                className="h-4 w-4 rounded border-zinc-700 bg-zinc-950"
+                className="h-4 w-4 rounded border-[#c8c6c4]"
               />
               Active
             </label>
@@ -605,7 +639,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     })
                     .catch((error) => setStatus(error instanceof Error ? error.message : 'Ad save failed'))
                 }}
-                className={secondaryButtonClass}
+                className={primaryButtonClass}
               >
                 {editingAdId ? 'Mettre à jour' : 'Créer'}
               </button>
@@ -619,12 +653,12 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
           </div>
 
           {scanAds.map((ad) => (
-            <article key={ad.id} className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-3 text-xs">
+            <article key={ad.id} className={rowClass}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="font-semibold text-white">{ad.title}</p>
-                  <p className="text-slate-200">{ad.body}</p>
-                  <p className="mt-1 text-slate-300">ordre: {ad.display_order} • {ad.active ? 'active' : 'inactive'}</p>
+                  <p className="font-semibold text-[#323130]">{ad.title}</p>
+                  <p className="text-[#605E5C]">{ad.body}</p>
+                  <p className="mt-1 text-[#605E5C]">ordre: {ad.display_order} • {ad.active ? 'active' : 'inactive'}</p>
                 </div>
 
                 <div className="flex gap-2">
@@ -693,16 +727,16 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
         </div>
       ) : null}
 
-      {status ? <p className="text-xs text-slate-200">{status}</p> : null}
+      {status ? <p className="text-xs text-[#605E5C]">{status}</p> : null}
     </div>
   )
 }
 
 function Card(props: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[#18181B] p-4 transition duration-200 hover:-translate-y-0.5 hover:border-[rgba(80,176,255,0.35)] hover:shadow-[0_10px_24px_rgba(0,120,212,0.2)]">
-      <p className="text-xs font-medium text-[#71717A]">{props.label}</p>
-      <p className="mt-1 text-[28px] font-bold text-[#FAFAFA]">{props.value}</p>
+    <div className="rounded-md border border-[#edebe9] bg-white p-5 shadow-sm">
+      <p className="text-sm font-medium text-[#605E5C]">{props.label}</p>
+      <p className="mt-1 text-[28px] font-bold text-[#323130]">{props.value}</p>
     </div>
   )
 }
