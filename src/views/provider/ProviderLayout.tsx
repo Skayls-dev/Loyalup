@@ -105,7 +105,7 @@ export function ProviderLayout() {
 
     const pollIntervalId = window.setInterval(async () => {
       const nowIso = new Date().toISOString()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('pending_transactions')
         .select('id, qr_token_id, client_id, fournisseur_id, status, created_at, expires_at')
         .eq('fournisseur_id', fournisseurId)
@@ -114,6 +114,10 @@ export function ProviderLayout() {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle()
+
+      if (error) {
+        return
+      }
 
       if (!data) {
         return

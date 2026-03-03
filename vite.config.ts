@@ -46,18 +46,6 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.origin.includes('supabase.co') || url.pathname.includes('/functions/v1/'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-api-cache',
-              networkTimeoutSeconds: 10,
-              expiration: {
-                maxAgeSeconds: 5 * 60,
-                maxEntries: 100,
-              },
-            },
-          },
-          {
             urlPattern: ({ request }) => request.destination === 'font',
             handler: 'CacheFirst',
             options: {
