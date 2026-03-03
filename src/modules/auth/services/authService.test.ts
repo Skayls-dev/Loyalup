@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { AuthError } from '@supabase/supabase-js'
-import { getCurrentUser, signIn, signOut, signUp } from './authService'
+import { completeSocialProfile, getCurrentUser, signIn, signInWithOAuth, signOut, signUp } from './authService'
 import { createMockProfile } from '../../../test/factories'
 import { setAuthError, setAuthSession, setAuthUser, setTableData } from '../../../test/mocks/supabase'
 
@@ -36,6 +36,30 @@ describe('authService', () => {
     setAuthError('User already registered')
 
     await expect(signUp('existing@loyalup.app', 'secret', 'client')).rejects.toThrow('User already registered')
+  })
+
+  it('signInWithOAuth: success → resolves without throwing', async () => {
+    await expect(signInWithOAuth('google')).resolves.toBeUndefined()
+  })
+
+  it('signInWithOAuth: provider failure → throws error', async () => {
+    setAuthError('OAuth provider unavailable')
+
+    await expect(signInWithOAuth('apple')).rejects.toThrow('OAuth provider unavailable')
+  })
+
+  it('completeSocialProfile: success → sets profile role and name', async () => {
+    const result = await completeSocialProfile('client', 'Nadia')
+
+    expect(result.user).not.toBeNull()
+    expect(result.role).toBe('client')
+    expect(result.user?.user_metadata?.nom).toBe('Nadia')
+  })
+
+  it('completeSocialProfile: missing name → throws validation error', async () => {
+    await expect(completeSocialProfile('client', '   ')).rejects.toThrow(
+      'Le nom est requis pour finaliser le compte.',
+    )
   })
 
   it('signIn: resolves admin role from profile when metadata role is missing', async () => {

@@ -2,10 +2,14 @@ import type { Session, User } from '@supabase/supabase-js'
 import { create } from 'zustand'
 import type { ConsentRecord, Profile } from '../../../shared/types'
 import {
+  completeSocialProfile as completeSocialProfileService,
   getCurrentUser,
   signIn as signInService,
+  signInWithOAuth as signInWithOAuthService,
   signOut as signOutService,
+  type SocialRole,
   signUp as signUpService,
+  type SocialProvider,
   type UserRole,
 } from '../services/authService'
 
@@ -28,6 +32,8 @@ type AuthState = {
   initialize: () => Promise<void>
   hydrateCurrentUser: () => Promise<AuthPayload>
   signIn: (email: string, password: string) => Promise<AuthPayload>
+  signInWithOAuth: (provider: SocialProvider) => Promise<void>
+  completeSocialProfile: (role: SocialRole, nom: string) => Promise<AuthPayload>
   signUp: (email: string, password: string, role: UserRole) => Promise<AuthPayload>
   signOut: () => Promise<void>
   clearError: () => void
@@ -126,6 +132,41 @@ export const useAuthStore = create<AuthState>((set) => ({
       })
 
       return { user, role, session }
+    } catch (error) {
+      set({ loading: false, error: getErrorMessage(error) })
+      throw error
+    }
+  },
+
+  signInWithOAuth: async (provider) => {
+    set({ loading: true, error: null })
+
+    try {
+      await signInWithOAuthService(provider)
+      set({ loading: false })
+    } catch (error) {
+      set({ loading: false, error: getErrorMessage(error) })
+      throw error
+    }
+  },
+
+  completeSocialProfile: async (role, nom) => {
+    set({ loading: true, error: null })
+
+    try {
+      const { user, role: resolvedRole, session } = await completeSocialProfileService(role, nom)
+
+      set({
+        user,
+        profile: buildProfile(user, resolvedRole),
+        role: resolvedRole,
+        session,
+        userConsents: [],
+        isAuthenticated: Boolean(session ?? user),
+        loading: false,
+      })
+
+      return { user, role: resolvedRole, session }
     } catch (error) {
       set({ loading: false, error: getErrorMessage(error) })
       throw error

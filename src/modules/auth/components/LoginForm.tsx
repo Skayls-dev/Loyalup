@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
+import type { SocialProvider } from '../services/authService'
 
 type LoginRole = 'client' | 'fournisseur' | 'admin'
 
@@ -10,7 +11,7 @@ type LoginFormProps = {
 }
 
 export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'Connexion' }: LoginFormProps) {
-  const { login, logout, loading, error } = useAuth()
+  const { login, loginWithOAuth, logout, loading, error } = useAuth()
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,6 +20,17 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
   const showRoleSelector = allowedRoles.length > 1
 
   const resolvedError = useMemo(() => localError ?? error, [localError, error])
+  const showSocialLogin = !allowedRoles.includes('admin')
+
+  const handleOAuthLogin = async (provider: SocialProvider) => {
+    setLocalError(null)
+
+    try {
+      await loginWithOAuth(provider)
+    } catch {
+      return
+    }
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -76,6 +88,31 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
       ) : null}
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        {showSocialLogin ? (
+          <div className="space-y-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleOAuthLogin('google')}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Continuer avec Google
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleOAuthLogin('apple')}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              Continuer avec Apple
+            </button>
+            <div className="relative py-1 text-center text-xs text-zinc-500">
+              <span className="relative z-10 bg-zinc-900 px-2">ou avec email</span>
+              <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-zinc-700" />
+            </div>
+          </div>
+        ) : null}
+
         <div>
           <label htmlFor="email" className="mb-1 block text-sm text-zinc-300">
             Email

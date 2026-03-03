@@ -6,7 +6,10 @@ export function useAuth() {
   const role = useAuthStore((state) => state.role)
   const loading = useAuthStore((state) => state.loading)
   const error = useAuthStore((state) => state.error)
+  const hydrateCurrentUser = useAuthStore((state) => state.hydrateCurrentUser)
   const login = useAuthStore((state) => state.signIn)
+  const loginWithOAuth = useAuthStore((state) => state.signInWithOAuth)
+  const completeSocialProfile = useAuthStore((state) => state.completeSocialProfile)
   const logout = useAuthStore((state) => state.signOut)
 
   const isClient = role === 'client'
@@ -18,7 +21,10 @@ export function useAuth() {
     role,
     loading,
     error,
+    hydrateCurrentUser,
     login,
+    loginWithOAuth,
+    completeSocialProfile,
     logout,
     isClient,
     isProvider,

@@ -2,6 +2,8 @@ import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../../../shared/lib/supabaseClient'
 
 export type UserRole = 'client' | 'fournisseur' | 'admin'
+export type SocialProvider = 'google' | 'apple'
+export type SocialRole = Exclude<UserRole, 'admin'>
 
 const ALLOWED_ROLES: UserRole[] = ['client', 'fournisseur']
 
@@ -177,4 +179,68 @@ function isInvalidOrExpiredSessionError(error: unknown): boolean {
     message.includes('refresh token not found') ||
     message.includes('session not found')
   )
+}
+
+export async function signInWithOAuth(provider: SocialProvider): Promise<void> {
+  const origin = window.location.origin
+  const redirectTo = `${origin}/auth/callback`
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: {
+      redirectTo,
+    },
+  })
+
+  if (error) {
+    throw error
+  }
+}
+
+export async function completeSocialProfile(role: SocialRole, nom: string): Promise<AuthPayload> {
+  if (!ALLOWED_ROLES.includes(role)) {
+    throw new Error("Invalid role. Expected 'client' or 'fournisseur'.")
+  }
+
+  const normalizedName = nom.trim()
+  if (!normalizedName) {
+    throw new Error('Le nom est requis pour finaliser le compte.')
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) {
+    throw userError
+  }
+
+  if (!user?.id) {
+    throw new Error('Session invalide. Veuillez vous reconnecter.')
+  }
+
+  const { error: profileError } = await supabase.from('profiles').upsert({
+    id: user.id,
+    email: user.email ?? '',
+    role,
+    nom: normalizedName,
+  })
+
+  if (profileError) {
+    throw profileError
+  }
+
+  const { error: updateUserError } = await supabase.auth.updateUser({
+    data: {
+      role,
+      nom: normalizedName,
+    },
+  })
+
+  if (updateUserError) {
+    throw updateUserError
+  }
+
+  return getCurrentUser()
 }

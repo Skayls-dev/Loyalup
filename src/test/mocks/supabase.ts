@@ -116,6 +116,36 @@ class QueryBuilder {
     return this
   })
 
+  upsert = vi.fn((payload: unknown) => {
+    const current = state.tableData[this.table] ?? []
+    const row = (Array.isArray(payload) ? payload[0] : payload) as Record<string, unknown>
+    if (!row || typeof row !== 'object') {
+      return resolved(null, null)
+    }
+
+    const index = current.findIndex((item) => {
+      if (!item || typeof item !== 'object') {
+        return false
+      }
+
+      return (item as Record<string, unknown>).id === row.id
+    })
+
+    if (index >= 0) {
+      const updated = [
+        ...current.slice(0, index),
+        { ...(current[index] as Record<string, unknown>), ...row },
+        ...current.slice(index + 1),
+      ]
+      state.tableData[this.table] = updated
+    } else {
+      state.tableData[this.table] = [...current, row]
+    }
+
+    const error = state.tableErrors[this.table] ?? null
+    return resolved(null, error)
+  })
+
   update = vi.fn((payload: unknown) => {
     const current = state.tableData[this.table] ?? []
     if (current.length > 0 && typeof current[0] === 'object' && current[0] !== null) {
@@ -206,6 +236,47 @@ export const mockSupabase = {
         },
         error: null,
       }
+    }),
+
+    signInWithOAuth: vi.fn(async () => {
+      if (state.authError) {
+        return { data: { provider: null, url: null }, error: state.authError }
+      }
+
+      return { data: { provider: 'google', url: 'https://oauth.local' }, error: null }
+    }),
+
+    updateUser: vi.fn(async (payload: { data?: Record<string, unknown> }) => {
+      if (state.authError) {
+        return { data: { user: null }, error: state.authError }
+      }
+
+      if (!state.authUser) {
+        return { data: { user: null }, error: null }
+      }
+
+      state.authUser = {
+        ...state.authUser,
+        user_metadata: {
+          ...(state.authUser.user_metadata ?? {}),
+          ...(payload.data ?? {}),
+        },
+      }
+
+      if (state.authSession?.user) {
+        state.authSession = {
+          ...state.authSession,
+          user: {
+            ...state.authSession.user,
+            user_metadata: {
+              ...(state.authSession.user.user_metadata ?? {}),
+              ...(payload.data ?? {}),
+            },
+          },
+        }
+      }
+
+      return { data: { user: state.authUser }, error: null }
     }),
 
     signOut: vi.fn(async () => {

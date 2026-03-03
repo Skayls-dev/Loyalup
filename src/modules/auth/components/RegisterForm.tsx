@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { signUp, type UserRole } from '../services/authService'
+import { signInWithOAuth, signUp, type UserRole } from '../services/authService'
 
 type RegisterFormProps = {
   role: UserRole
@@ -14,6 +14,21 @@ export function RegisterForm({ role }: RegisterFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const allowSocialSignup = role === 'client'
+
+  const handleOAuthSignup = async (provider: 'google' | 'apple') => {
+    setError(null)
+    setSuccessMessage(null)
+    setLoading(true)
+
+    try {
+      await signInWithOAuth(provider)
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : 'Connexion sociale impossible.'
+      setError(message)
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -50,6 +65,31 @@ export function RegisterForm({ role }: RegisterFormProps) {
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
+        {allowSocialSignup ? (
+          <div className="space-y-2">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleOAuthSignup('google')}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              S'inscrire avec Google
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => handleOAuthSignup('apple')}
+              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              S'inscrire avec Apple
+            </button>
+            <div className="relative py-1 text-center text-xs text-zinc-500">
+              <span className="relative z-10 bg-zinc-900 px-2">ou avec email</span>
+              <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-zinc-700" />
+            </div>
+          </div>
+        ) : null}
+
         <div>
           <label htmlFor="nom" className="mb-1 block text-sm text-zinc-300">
             Nom
