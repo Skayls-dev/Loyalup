@@ -4,6 +4,23 @@ Ce document unique décrit :
 - les endpoints API publics LoyalUp (provider-facing),
 - l’architecture cible quand un client achète via une application tierce puis est crédité sur LoyalUp.
 
+## Sommaire
+
+- [1) Base URL](#1-base-url)
+- [2) Authentification](#2-authentification)
+- [3) Format de réponse standard](#3-format-de-réponse-standard)
+- [4) Endpoints](#4-endpoints)
+  - [4.1 Clients](#41-clients)
+  - [4.2 Transactions](#42-transactions)
+  - [4.3 Services](#43-services)
+  - [4.4 Promotions](#44-promotions)
+  - [4.5 Stats](#45-stats)
+  - [4.6 Sandbox](#46-sandbox)
+- [5) Erreurs fréquentes](#5-erreurs-fréquentes)
+- [6) Swagger / OpenAPI](#6-swagger--openapi)
+- [7) Exemple cURL](#7-exemple-curl)
+- [8) Architecture — achat via app tierce puis crédit LoyalUp](#8-architecture--achat-via-app-tierce-puis-crédit-loyalup)
+
 ## 1) Base URL
 
 - Production (projet actuel) : `https://yyftqivizzgvveeczbpv.supabase.co/functions/v1`
