@@ -6,6 +6,7 @@ import type { NetworkWithEligibility } from '../../types/networkTypes'
 import { NetworkActivityFeed } from './NetworkActivityFeed'
 import { NetworkCard } from './NetworkCard'
 import { NetworkDetailView } from './NetworkDetailView'
+import { EmptyState, PrimaryButton, SecondaryButton, Skeleton } from '../../../../shared/components/client-ui'
 
 export function NetworkDiscovery() {
   const { all, enrolled, eligible, loading, enroll, unenroll, refresh, error } = useNetworks()
@@ -40,7 +41,7 @@ export function NetworkDiscovery() {
   const featured = filtered.filter((network) => network.is_featured)
 
   return (
-    <section className="space-y-4 rounded-2xl border border-zinc-700 bg-zinc-900/85 p-4 text-zinc-100 shadow-sm">
+    <section className="space-y-4 rounded-2xl border border-white/70 bg-white/85 p-4 text-slate-900 shadow-sm shadow-slate-900/5 backdrop-blur">
       <header className="flex items-center justify-between gap-2">
         <h2 className="text-xl font-semibold">Réseaux</h2>
         <span className="rounded-full bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700">
@@ -51,9 +52,10 @@ export function NetworkDiscovery() {
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Mes réseaux</h3>
         {enrolled.length === 0 ? (
-          <div className="rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-xs text-zinc-400">
-            Vous n’êtes inscrit à aucun réseau. Rejoignez votre premier réseau pour débloquer les bonus.
-          </div>
+          <EmptyState
+            title="Aucun réseau rejoint"
+            description="Rejoignez votre premier réseau pour débloquer les bonus multi-commerces."
+          />
         ) : (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {enrolled.map((item) => (
@@ -61,18 +63,18 @@ export function NetworkDiscovery() {
                 key={item.network.id}
                 type="button"
                 onClick={() => setSelected({ ...item.network, is_member: true })}
-                className="min-w-[220px] rounded-xl border border-zinc-700 bg-zinc-900/70 p-3 text-left"
+                className="min-w-[220px] rounded-xl border border-slate-200 bg-white/90 p-3 text-left shadow-sm"
               >
-                <p className="text-sm font-semibold text-zinc-100">{item.network.emoji} {item.network.name.fr ?? item.network.slug}</p>
-                <p className="text-xs text-zinc-400">Mes points réseau: {item.total_network_points}</p>
-                <p className="text-xs text-zinc-500">+{Math.round((item.network.points_multiplier - 1) * 100)}% bonus</p>
+                <p className="text-sm font-semibold text-slate-900">{item.network.emoji} {item.network.name.fr ?? item.network.slug}</p>
+                <p className="text-xs text-slate-600">Mes points réseau: {item.total_network_points}</p>
+                <p className="text-xs text-slate-500">+{Math.round((item.network.points_multiplier - 1) * 100)}% bonus</p>
               </button>
             ))}
           </div>
         )}
       </section>
 
-      {error ? <p className="text-xs text-red-300">{error.message}</p> : null}
+      {error ? <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error.message}</p> : null}
 
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Réseaux mis en avant</h3>
@@ -82,17 +84,17 @@ export function NetworkDiscovery() {
               key={network.id}
               type="button"
               onClick={() => setSelected(network)}
-              className="rounded-xl border border-zinc-700 p-4 text-left"
+              className="rounded-xl border border-white/70 p-4 text-left shadow-sm shadow-slate-900/5"
               style={{
                 background: `linear-gradient(135deg, ${network.primary_color}33, ${network.secondary_color || network.primary_color}33)`,
               }}
             >
-              <p className="text-lg font-semibold text-zinc-100">{network.emoji} {network.name.fr ?? network.slug}</p>
-              <p className="text-xs text-zinc-300">{network.tagline?.fr ?? network.tagline?.en ?? 'Réseau sponsorisé'}</p>
+              <p className="text-lg font-semibold text-slate-900">{network.emoji} {network.name.fr ?? network.slug}</p>
+              <p className="text-xs text-slate-700">{network.tagline?.fr ?? network.tagline?.en ?? 'Réseau sponsorisé'}</p>
               <span className="mt-2 inline-flex rounded bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700">Rejoindre</span>
             </button>
           ))}
-          {featured.length === 0 ? <p className="text-xs text-zinc-400">Aucun réseau mis en avant.</p> : null}
+          {featured.length === 0 ? <p className="text-xs text-slate-500">Aucun réseau mis en avant.</p> : null}
         </div>
       </section>
 
@@ -114,7 +116,7 @@ export function NetworkDiscovery() {
               key={value}
               type="button"
               onClick={() => setCategory(value)}
-              className={`rounded-full px-2.5 py-1 text-xs ${category === value ? 'bg-indigo-100 text-indigo-700' : 'bg-zinc-800 text-zinc-300'}`}
+              className={`rounded-full px-2.5 py-1 text-xs ${category === value ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-600'}`}
             >
               {label}
             </button>
@@ -125,11 +127,11 @@ export function NetworkDiscovery() {
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           placeholder="Rechercher un réseau"
-          className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-xs"
+          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
         />
 
         {loading ? (
-          <div className="h-20 animate-pulse rounded-lg bg-zinc-800/70" />
+          <Skeleton className="h-20" />
         ) : (
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
             {filtered.map((network) => (
@@ -140,27 +142,27 @@ export function NetworkDiscovery() {
                   clientEligible={eligibleIds.has(network.id)}
                   onOpen={setSelected}
                 />
-                <p className="text-[11px] text-zinc-500">{Math.max(1, Math.round(network.member_count * 0.35))} commerces près de vous</p>
+                <p className="text-[11px] text-slate-500">{Math.max(1, Math.round(network.member_count * 0.35))} commerces près de vous</p>
                 {!enrolledIds.has(network.id) && eligibleIds.has(network.id) ? (
-                  <button
+                  <PrimaryButton
                     type="button"
                     onClick={() => {
                       void enroll({ networkId: network.id })
                     }}
-                    className="w-full rounded-lg bg-indigo-100 px-2 py-1 text-xs font-semibold text-indigo-700"
+                    className="h-9 w-full"
                   >
                     Rejoindre
-                  </button>
+                  </PrimaryButton>
                 ) : enrolledIds.has(network.id) ? (
-                  <button
+                  <SecondaryButton
                     type="button"
                     onClick={() => {
                       void unenroll(network.id)
                     }}
-                    className="w-full rounded-lg bg-red-900/50 px-2 py-1 text-xs text-red-200"
+                    className="h-9 w-full border-rose-200 text-rose-700 hover:bg-rose-50"
                   >
                     Quitter
-                  </button>
+                  </SecondaryButton>
                 ) : null}
               </div>
             ))}

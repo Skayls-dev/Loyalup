@@ -7,9 +7,9 @@ type PointsBalanceProps = {
 }
 
 const glowClasses: Record<NonNullable<PointsBalanceProps['color']>, string> = {
-  emerald: 'shadow-[0_0_22px_-10px_rgba(16,185,129,0.8)]',
-  blue: 'shadow-[0_0_22px_-10px_rgba(59,130,246,0.8)]',
-  amber: 'shadow-[0_0_22px_-10px_rgba(245,158,11,0.8)]',
+  emerald: 'border-emerald-200 bg-emerald-50/70',
+  blue: 'border-indigo-200 bg-indigo-50/70',
+  amber: 'border-amber-200 bg-amber-50/70',
 }
 
 export function PointsBalance({ points, previousPoints, color = 'emerald' }: PointsBalanceProps) {
@@ -52,13 +52,13 @@ export function PointsBalance({ points, previousPoints, color = 'emerald' }: Poi
   }, [points, previousPoints])
 
   return (
-    <div className={`rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 ${glowClasses[color]}`}>
-      <p className="text-xs uppercase tracking-wide text-zinc-400">Solde</p>
+    <div className={`rounded-xl border px-4 py-3 ${glowClasses[color]}`}>
+      <p className="text-xs uppercase tracking-wide text-slate-500">Solde</p>
       <div className="flex items-end gap-3">
-        <p className="text-4xl font-black leading-none text-zinc-100">{displayPoints}</p>
-        <span className="pb-1 text-sm text-zinc-400">pts</span>
+        <p className="text-4xl font-black leading-none text-slate-900">{displayPoints}</p>
+        <span className="pb-1 text-sm text-slate-500">pts</span>
       </div>
-      {delta > 0 ? <p className="mt-1 text-xs font-semibold text-emerald-400">+{delta} pts</p> : null}
+      {delta > 0 ? <p className="mt-1 text-xs font-semibold text-emerald-600">+{delta} pts</p> : null}
     </div>
   )
 }

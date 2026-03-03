@@ -7,6 +7,7 @@ import { usePromotions } from '../../modules/promotions/hooks/usePromotions'
 import { NetworkDiscovery } from '../../modules/networks/components/client'
 import { useNetworks } from '../../modules/networks/hooks/useNetworks'
 import { useNetworkAnnouncements } from '../../modules/networks/hooks/useNetworkAnnouncements'
+import { EmptyState, PageHeader, SectionCard } from '../../shared/components/client-ui'
 
 type HomeTab = 'cards' | 'promotions' | 'history' | 'rewards' | 'networks'
 
@@ -26,14 +27,16 @@ export function ClientHome() {
 
   return (
     <section className="space-y-4">
-      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-zinc-700 bg-zinc-900/80 p-1.5 shadow-sm">
+      <PageHeader title="Mes cartes" subtitle="Suivi de vos programmes, promos et récompenses" />
+
+      <div className="grid grid-cols-5 gap-1 rounded-2xl border border-slate-200/60 bg-white/80 p-1.5 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
         <button
           type="button"
           onClick={() => handleTabChange('cards')}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.02] ${
+          className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
             activeTab === 'cards'
-              ? 'tab-pop tab-glow bg-indigo-100 text-indigo-700 shadow-sm motion-safe:hover:shadow-lg'
-              : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+              ? 'bg-indigo-600 text-white'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           Mes cartes
@@ -41,10 +44,10 @@ export function ClientHome() {
         <button
           type="button"
           onClick={() => handleTabChange('promotions')}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.02] ${
+          className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
             activeTab === 'promotions'
-              ? 'tab-pop tab-glow bg-indigo-100 text-indigo-700 shadow-sm motion-safe:hover:shadow-lg'
-              : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+              ? 'bg-indigo-600 text-white'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <span className="inline-flex items-center gap-1">
@@ -57,10 +60,10 @@ export function ClientHome() {
         <button
           type="button"
           onClick={() => handleTabChange('history')}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.02] ${
+          className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
             activeTab === 'history'
-              ? 'tab-pop tab-glow bg-indigo-100 text-indigo-700 shadow-sm motion-safe:hover:shadow-lg'
-              : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+              ? 'bg-indigo-600 text-white'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           Historique
@@ -68,10 +71,10 @@ export function ClientHome() {
         <button
           type="button"
           onClick={() => handleTabChange('rewards')}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.02] ${
+          className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
             activeTab === 'rewards'
-              ? 'tab-pop tab-glow bg-indigo-100 text-indigo-700 shadow-sm motion-safe:hover:shadow-lg'
-              : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+              ? 'bg-indigo-600 text-white'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           Récompenses
@@ -79,10 +82,10 @@ export function ClientHome() {
         <button
           type="button"
           onClick={() => handleTabChange('networks')}
-          className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-300 motion-safe:hover:-translate-y-1 motion-safe:hover:scale-[1.02] ${
+          className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
             activeTab === 'networks'
-              ? 'tab-pop tab-glow bg-indigo-100 text-indigo-700 shadow-sm motion-safe:hover:shadow-lg'
-              : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+              ? 'bg-indigo-600 text-white'
+              : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
           }`}
         >
           <span className="inline-flex items-center gap-1">
@@ -103,11 +106,14 @@ export function ClientHome() {
       {activeTab === 'networks' ? (
         <div className="space-y-3">
           {enrolled.length === 0 ? (
-            <div className="rounded-xl border border-zinc-700 bg-zinc-900/70 p-3 text-sm text-zinc-300">
-              Rejoignez votre premier réseau pour débloquer les bonus multi-commerces et les annonces thématiques.
-            </div>
+            <EmptyState
+              title="Aucun réseau rejoint"
+              description="Rejoignez votre premier réseau pour débloquer les bonus multi-commerces et les annonces thématiques."
+            />
           ) : null}
-          <NetworkDiscovery />
+          <SectionCard>
+            <NetworkDiscovery />
+          </SectionCard>
         </div>
       ) : null}
     </section>

@@ -41,8 +41,8 @@ export function LeaderboardView({
             onClick={() => setSelectedType(t)}
             className={`px-4 py-2 rounded-full whitespace-nowrap font-semibold transition-all flex-shrink-0 ${
               selectedType === t
-                ? 'bg-gradient-to-r from-blue-500 to-purple-500 text-white'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
             {typeEmojis[t]} {typeLabels[t].split(' ').pop()}
@@ -50,25 +50,21 @@ export function LeaderboardView({
         ))}
       </div>
 
-      {loading && <div className="text-center py-8">Chargement du classement...</div>}
+      {loading && <div className="rounded-2xl border border-white/70 bg-white/85 py-8 text-center text-slate-600">Chargement du classement...</div>}
 
-      {error && (
-        <div className="text-center py-8 text-red-600">
-          Erreur lors du chargement du classement
-        </div>
-      )}
+      {error && <div className="rounded-2xl border border-rose-200 bg-rose-50 py-8 text-center text-rose-700">Erreur lors du chargement du classement</div>}
 
       {!loading && !error && (
         <>
           {/* My rank */}
           {myRank && myScore !== null && (
-            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 p-4 rounded-lg border-2 border-amber-300">
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
               <div className="text-center">
-                <div className="text-3xl font-bold text-amber-600">
+                <div className="text-3xl font-bold text-amber-700">
                   #{myRank}
                 </div>
-                <div className="text-4xl font-bold text-amber-600">{myScore}</div>
-                <p className="text-sm text-amber-700 font-semibold mt-1">
+                <div className="text-4xl font-bold text-amber-700">{myScore}</div>
+                <p className="mt-1 text-sm font-semibold text-amber-700">
                   Votre position
                 </p>
               </div>
@@ -78,7 +74,7 @@ export function LeaderboardView({
           {/* Leaderboard */}
           <div className="space-y-2">
             {entries.length === 0 ? (
-              <div className="text-center py-8 text-gray-600">
+              <div className="rounded-2xl border border-white/70 bg-white/85 py-8 text-center text-slate-600">
                 Aucune donnée disponible pour le moment
               </div>
             ) : (
@@ -87,10 +83,10 @@ export function LeaderboardView({
                   key={idx}
                   className={`p-4 rounded-lg border-2 flex items-center justify-between transition-all ${
                     entry.is_current_user
-                      ? 'bg-blue-50 border-blue-300'
+                      ? 'bg-indigo-50 border-indigo-200'
                       : idx < 3
-                        ? 'bg-gradient-to-r from-gray-50 to-gray-100 border-gray-300'
-                        : 'bg-white border-gray-200'
+                        ? 'bg-slate-50 border-slate-200'
+                        : 'bg-white border-slate-200'
                   }`}
                 >
                   <div className="flex items-center gap-4 flex-1">
@@ -98,10 +94,10 @@ export function LeaderboardView({
                       {idx < 3 ? medalEmojis[idx] : `#${entry.rank}`}
                     </div>
                     <div className="flex-1">
-                      <p className="font-bold text-gray-800">
+                      <p className="font-bold text-slate-900">
                         {entry.client_name}
                         {entry.is_current_user && (
-                          <span className="ml-2 text-xs bg-blue-500 text-white px-2 py-1 rounded">
+                          <span className="ml-2 rounded bg-indigo-100 px-2 py-1 text-xs text-indigo-700">
                             Vous
                           </span>
                         )}
@@ -109,7 +105,7 @@ export function LeaderboardView({
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-gray-800">
+                    <p className="text-2xl font-bold text-slate-900">
                       {entry.score.toLocaleString()}
                     </p>
                   </div>

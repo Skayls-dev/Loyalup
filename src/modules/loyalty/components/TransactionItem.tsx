@@ -27,17 +27,17 @@ function TransactionItemComponent({ transaction }: TransactionItemProps) {
   const isDebit = transaction.points_credited < 0
 
   return (
-    <div className="flex items-center justify-between gap-3 border-b border-zinc-800 py-3 last:border-b-0">
+    <div className="flex items-center justify-between gap-3 border-b border-slate-100 py-3 last:border-b-0">
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-zinc-100">
+        <p className="truncate text-sm font-semibold text-slate-900">
           <span className="mr-2">{transaction.service_emoji}</span>
           {transaction.service_nom}
         </p>
-        <p className="text-xs text-zinc-400">{formatDateLabel(transaction.created_at)}</p>
-        <p className="text-xs text-zinc-500">{transaction.montant.toFixed(2)} €</p>
+        <p className="text-xs text-slate-500">{formatDateLabel(transaction.created_at)}</p>
+        <p className="text-xs text-slate-500">{transaction.montant.toFixed(2)} €</p>
       </div>
 
-      <div className={`text-sm font-semibold ${isDebit ? 'text-red-400' : 'text-emerald-400'}`}>
+      <div className={`text-sm font-semibold ${isDebit ? 'text-rose-600' : 'text-emerald-600'}`}>
         {isDebit ? '' : '+'}
         {transaction.points_credited} pts
       </div>

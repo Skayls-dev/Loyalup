@@ -4,6 +4,7 @@ import { useMySegment } from '../../modules/analytics/hooks/useMySegment'
 import { ConsentSettings } from '../../shared/components/ConsentSettings'
 import { DataExportButton } from '../../shared/components/DataExportButton'
 import { DeleteAccountModal } from '../../shared/components/DeleteAccountModal'
+import { DangerButton, PageHeader, SectionCard, Skeleton } from '../../shared/components/client-ui'
 
 function formatRoleLabel(role: string | null) {
   if (role === 'fournisseur') {
@@ -43,62 +44,61 @@ export function ClientProfile() {
   const displayEmail = profile?.email?.trim() || user?.email || '—'
 
   return (
-    <section className="min-h-[50vh] rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-zinc-100">
-      <h1 className="text-2xl font-semibold">Profil</h1>
+    <section className="min-h-[50vh] space-y-4">
+      <PageHeader title="Profil" subtitle="Informations personnelles et préférences de confidentialité" />
 
       {loading ? (
-        <div className="mt-4 h-20 animate-pulse rounded-lg bg-zinc-800/70" />
+        <Skeleton className="h-20" />
       ) : (
         <div className="mt-5 space-y-4">
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Nom</p>
-            <p className="mt-1 text-base font-medium text-zinc-100">{displayName}</p>
-          </div>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Email</p>
-            <p className="mt-1 text-base text-zinc-100">{displayEmail}</p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Rôle</p>
-              <p className="mt-1 text-base text-zinc-100">{formatRoleLabel(role)}</p>
+          <SectionCard>
+            <h2 className="mb-3 text-[17px] font-semibold text-slate-900">Identité</h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Nom</p>
+                <p className="mt-1 text-base font-medium text-slate-900">{displayName}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Email</p>
+                <p className="mt-1 text-base text-slate-900">{displayEmail}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Rôle</p>
+                <p className="mt-1 text-base text-slate-900">{formatRoleLabel(role)}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Compte créé le</p>
+                <p className="mt-1 text-base text-slate-900">{joinedAt}</p>
+              </div>
             </div>
-
-            <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-              <p className="text-xs uppercase tracking-wide text-zinc-400">Compte créé le</p>
-              <p className="mt-1 text-base text-zinc-100">{joinedAt}</p>
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-xs uppercase tracking-wide text-slate-500">ID utilisateur</p>
+              <p className="mt-1 break-all text-sm text-slate-700">{user?.id || '—'}</p>
             </div>
-          </div>
+          </SectionCard>
 
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-400">ID utilisateur</p>
-            <p className="mt-1 break-all text-sm text-zinc-300">{user?.id || '—'}</p>
-          </div>
-
-          <div className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-4">
-            <p className="text-xs uppercase tracking-wide text-zinc-400">Segment client</p>
-            <p className="mt-1 text-base text-zinc-100">
+          <SectionCard>
+            <p className="text-xs uppercase tracking-wide text-slate-500">Segment client</p>
+            <p className="mt-1 text-base text-slate-900">
               {segmentLoading ? 'Chargement...' : segment ? segment.replace('_', ' ') : 'Non classé'}
             </p>
-            <p className="mt-1 text-xs text-zinc-400">Score: {score ?? '—'}</p>
-          </div>
+            <p className="mt-1 text-xs text-slate-500">Score: {score ?? '—'}</p>
+          </SectionCard>
 
           <ConsentSettings locale="fr" />
           <DataExportButton />
 
-          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 text-zinc-100">
-            <p className="text-sm font-semibold">Suppression du compte</p>
-            <p className="mt-1 text-xs text-zinc-400">Conforme RGPD · Art. 17</p>
-            <button
+          <SectionCard>
+            <p className="text-sm font-semibold text-slate-900">Suppression du compte</p>
+            <p className="mt-1 text-xs text-slate-500">Conforme RGPD · Art. 17</p>
+            <DangerButton
               type="button"
               onClick={() => setDeleteOpen(true)}
-              className="mt-3 rounded-lg border border-red-900 bg-red-950/40 px-3 py-2 text-sm font-semibold text-red-300 transition hover:bg-red-950/60"
+              className="mt-3"
             >
               Demander la suppression
-            </button>
-          </div>
+            </DangerButton>
+          </SectionCard>
 
           <DeleteAccountModal open={deleteOpen} onClose={() => setDeleteOpen(false)} />
         </div>

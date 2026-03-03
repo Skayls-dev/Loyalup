@@ -37,7 +37,7 @@ export function BadgeCard({
     >
       {/* Locked overlay */}
       {locked && !earned && (
-        <div className="absolute inset-0 bg-black/40 rounded-lg flex items-center justify-center">
+        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-slate-100/80">
           <span className="text-2xl">🔒</span>
         </div>
       )}
@@ -53,7 +53,7 @@ export function BadgeCard({
       )}
 
       {/* Badge name (small, on hover or below) */}
-      <div className="absolute -bottom-8 left-0 right-0 text-center text-xs font-bold text-gray-700 truncate px-1 pointer-events-none">
+      <div className="pointer-events-none absolute -bottom-8 left-0 right-0 truncate px-1 text-center text-xs font-bold text-slate-600">
         {badge.name[language] ?? badge.code}
       </div>
     </div>

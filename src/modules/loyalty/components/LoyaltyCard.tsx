@@ -93,15 +93,15 @@ function LoyaltyCardComponent({ card, index }: LoyaltyCardProps) {
     <button
       type="button"
       onClick={() => navigate(`/client/history?provider=${card.fournisseur.id}`)}
-      className="w-full rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-left transition hover:border-zinc-700"
+      className="w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 text-left shadow-sm shadow-slate-900/5 backdrop-blur-xl transition hover:bg-slate-50"
       style={{ animationDelay: `${index * 70}ms` }}
     >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <p className="text-sm font-semibold text-zinc-100">🏪 {card.fournisseur.nom_commerce}</p>
-          <p className="text-xs text-zinc-500">Programme fidélité</p>
+          <p className="text-sm font-semibold text-slate-900">🏪 {card.fournisseur.nom_commerce}</p>
+          <p className="text-xs text-slate-500">Programme fidélité</p>
         </div>
-        <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-300">
+        <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-1 text-xs text-slate-600">
           {card.total_visites} visites
         </span>
       </div>
@@ -112,7 +112,7 @@ function LoyaltyCardComponent({ card, index }: LoyaltyCardProps) {
             <span
               key={badge.id}
               title={`Bonus +${badge.bonusPct}% grâce au réseau ${badge.name}`}
-              className="rounded-full border border-zinc-700 bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-200"
+              className="rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-[10px] text-indigo-700"
             >
               {badge.emoji}
             </span>
@@ -130,7 +130,7 @@ function LoyaltyCardComponent({ card, index }: LoyaltyCardProps) {
         />
       </div>
 
-      <p className="mt-2 text-xs text-zinc-400">
+      <p className="mt-2 text-xs text-slate-500">
         {card.nextReward
           ? `${pointsNeeded} pts avant ${card.nextReward.nom}`
           : 'Récompense disponible maintenant'}

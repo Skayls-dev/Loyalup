@@ -58,27 +58,27 @@ export function BonusBreakdown({ open, base_points, total_points, network_bonuse
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-3 z-50 mx-auto w-[min(96%,420px)] animate-[slideInUp_250ms_ease-out] rounded-2xl border border-zinc-700 bg-zinc-900/95 p-4 text-zinc-100 shadow-2xl backdrop-blur">
-      <p className="text-sm font-semibold text-emerald-300">✅ +{animatedTotal} points gagnés</p>
+    <div className="fixed inset-x-0 bottom-3 z-50 mx-auto w-[min(96%,420px)] animate-[slideInUp_250ms_ease-out] rounded-2xl border border-white/70 bg-white/95 p-4 text-slate-900 shadow-2xl backdrop-blur">
+      <p className="text-sm font-semibold text-emerald-600">✅ +{animatedTotal} points gagnés</p>
 
       <div className="mt-3 space-y-1 text-sm">
         <Row label="Base" value={`${animatedBase} pts`} />
         {network_bonuses.map((bonus) => (
           <Row key={`${bonus.network_name}-${bonus.emoji}`} label={`${bonus.emoji} ${bonus.network_name} bonus`} value={`+${bonus.bonus} pts`} />
         ))}
-        <div className="my-1 h-px w-full bg-zinc-700" />
+        <div className="my-1 h-px w-full bg-slate-200" />
         <Row label="Total" value={`${animatedTotal} pts ✦`} strong />
       </div>
 
       <button
         type="button"
         onClick={onClose}
-        className="mt-3 w-full rounded-lg bg-zinc-800 px-3 py-2 text-xs text-zinc-200"
+        className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700"
       >
         Voir mes réseaux
       </button>
 
-      {totalBonus <= 0 ? null : <p className="mt-2 text-center text-[11px] text-zinc-500">Bonus réseau total: +{totalBonus} pts</p>}
+      {totalBonus <= 0 ? null : <p className="mt-2 text-center text-[11px] text-slate-500">Bonus réseau total: +{totalBonus} pts</p>}
     </div>
   )
 }
@@ -86,8 +86,8 @@ export function BonusBreakdown({ open, base_points, total_points, network_bonuse
 function Row({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
   return (
     <div className="flex items-center justify-between text-xs">
-      <span className={strong ? 'font-semibold text-zinc-100' : 'text-zinc-300'}>{label}</span>
-      <span className={strong ? 'font-semibold text-amber-300' : 'text-zinc-200'}>{value}</span>
+      <span className={strong ? 'font-semibold text-slate-900' : 'text-slate-600'}>{label}</span>
+      <span className={strong ? 'font-semibold text-amber-700' : 'text-slate-700'}>{value}</span>
     </div>
   )
 }

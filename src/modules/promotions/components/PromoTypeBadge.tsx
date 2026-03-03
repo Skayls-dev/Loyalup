@@ -7,19 +7,19 @@ type PromoTypeBadgeProps = {
 const badgeMap: Record<PromotionType, { label: string; className: string }> = {
   double_points: {
     label: '✦ Double points',
-    className: 'border-amber-700 bg-amber-950/60 text-amber-300',
+    className: 'border-amber-200 bg-amber-50 text-amber-700',
   },
   discount: {
     label: '% Réduction',
-    className: 'border-orange-700 bg-orange-950/60 text-orange-300',
+    className: 'border-orange-200 bg-orange-50 text-orange-700',
   },
   free_item: {
     label: '🎁 Article offert',
-    className: 'border-teal-700 bg-teal-950/60 text-teal-300',
+    className: 'border-teal-200 bg-teal-50 text-teal-700',
   },
   custom: {
     label: '⭐ Offre spéciale',
-    className: 'border-purple-700 bg-purple-950/60 text-purple-300',
+    className: 'border-purple-200 bg-purple-50 text-purple-700',
   },
 }
 

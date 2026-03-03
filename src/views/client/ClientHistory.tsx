@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { TransactionHistory } from '../../modules/loyalty/components/TransactionHistory'
+import { PageHeader } from '../../shared/components/client-ui'
 
 export function ClientHistory() {
   const [searchParams] = useSearchParams()
@@ -8,12 +9,10 @@ export function ClientHistory() {
 
   return (
     <section className="space-y-4">
-      <header>
-        <h1 className="text-lg font-semibold text-zinc-100">Historique</h1>
-        <p className="text-xs text-zinc-500">
-          {fournisseurId ? 'Transactions pour ce commerce' : 'Toutes vos transactions'}
-        </p>
-      </header>
+      <PageHeader
+        title="Historique"
+        subtitle={fournisseurId ? 'Transactions pour ce commerce' : 'Toutes vos transactions'}
+      />
       <TransactionHistory fournisseur_id={fournisseurId} />
     </section>
   )

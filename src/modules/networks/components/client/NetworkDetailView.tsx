@@ -3,6 +3,7 @@ import { enrollInNetwork, unenrollFromNetwork } from '../../services/networkServ
 import type { NetworkAnnouncement, NetworkMember, NetworkWithEligibility } from '../../types/networkTypes'
 import { NetworkLeaderboard } from './NetworkLeaderboard'
 import { NetworkMembersMap } from './NetworkMembersMap'
+import { PrimaryButton, SecondaryButton } from '../../../../shared/components/client-ui'
 
 type NetworkDetailViewProps = {
   network: NetworkWithEligibility
@@ -65,15 +66,15 @@ export function NetworkDetailView({ network, members, announcements, onClose, on
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-zinc-950/95 p-4 text-zinc-100">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/20 p-4 text-slate-900 backdrop-blur-sm">
       <section className="mx-auto w-full max-w-5xl space-y-4">
         <header
-          className="relative overflow-hidden rounded-2xl border border-zinc-700 p-5"
+          className="relative overflow-hidden rounded-2xl border border-white/70 p-5 shadow-sm shadow-slate-900/10"
           style={{
             background: `linear-gradient(130deg, ${network.primary_color}, ${network.secondary_color || network.primary_color})`,
           }}
         >
-          <button type="button" onClick={onClose} className="absolute right-3 top-3 rounded bg-black/30 px-2 py-1 text-xs">
+          <button type="button" onClick={onClose} className="absolute right-3 top-3 rounded bg-white/70 px-2 py-1 text-xs text-slate-700">
             Fermer
           </button>
 
@@ -86,31 +87,31 @@ export function NetworkDetailView({ network, members, announcements, onClose, on
           </p>
 
           <div className="mt-3 flex gap-2">
-            <button
+            <SecondaryButton
               type="button"
               onClick={() => setShowEnrollSheet(true)}
               disabled={loadingAction}
-              className="rounded-lg bg-zinc-950 px-3 py-1.5 text-xs font-semibold text-zinc-100"
+              className="h-9 border-white/80 bg-white/85 text-slate-800 hover:bg-white"
             >
               {network.is_member ? 'Gérer adhésion' : 'Rejoindre'}
-            </button>
+            </SecondaryButton>
           </div>
         </header>
 
-        <nav className="grid gap-1 rounded-xl border border-zinc-700 bg-zinc-900/70 p-1" style={{ gridTemplateColumns: `repeat(${availableTabs.length}, minmax(0, 1fr))` }}>
+        <nav className="grid gap-1 rounded-xl border border-white/70 bg-white/85 p-1 shadow-sm shadow-slate-900/5" style={{ gridTemplateColumns: `repeat(${availableTabs.length}, minmax(0, 1fr))` }}>
           {availableTabs.map((tabItem) => (
             <TabButton key={tabItem.value} tab={tab} value={tabItem.value} label={tabItem.label} onClick={setTab} />
           ))}
         </nav>
 
         {tab === 'about' ? (
-          <section className="space-y-2 rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 text-sm">
+          <section className="space-y-2 rounded-xl border border-white/70 bg-white/85 p-4 text-sm shadow-sm shadow-slate-900/5">
             <p>{network.description?.fr ?? network.description?.en ?? 'Description non disponible.'}</p>
-            <p className="text-zinc-300">
+            <p className="text-slate-600">
               Bonus réseau: chaque transaction chez un membre applique un multiplicateur {network.points_multiplier.toFixed(2)}x.
             </p>
             {network.coalition_enabled ? (
-              <p className="text-zinc-300">
+              <p className="text-slate-600">
                 Coalition active : transferts inter-commerçants activés (taux {network.transfer_rate.toFixed(2)}).
               </p>
             ) : null}
@@ -118,15 +119,15 @@ export function NetworkDetailView({ network, members, announcements, onClose, on
         ) : null}
 
         {tab === 'members' ? (
-          <section className="space-y-2 rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 text-sm">
+          <section className="space-y-2 rounded-xl border border-white/70 bg-white/85 p-4 text-sm shadow-sm shadow-slate-900/5">
             {network.show_member_map !== false ? <NetworkMembersMap members={members} /> : null}
             {members.length === 0 ? (
-              <p className="text-zinc-400">Aucun commerce membre pour le moment.</p>
+              <p className="text-slate-500">Aucun commerce membre pour le moment.</p>
             ) : (
               members.map((member) => (
-                <div key={member.fournisseur_id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-2">
+                <div key={member.fournisseur_id} className="rounded-lg border border-slate-200 bg-white p-2">
                   <p className="font-semibold">{member.provider_name}</p>
-                  <p className="text-xs text-zinc-400">{member.category ?? 'Commerce'} · {member.city ?? 'Ville inconnue'}</p>
+                  <p className="text-xs text-slate-500">{member.category ?? 'Commerce'} · {member.city ?? 'Ville inconnue'}</p>
                   <button type="button" className="mt-1 rounded bg-indigo-100 px-2 py-1 text-[11px] font-semibold text-indigo-700">
                     Scanner ici
                   </button>
@@ -137,17 +138,17 @@ export function NetworkDetailView({ network, members, announcements, onClose, on
         ) : null}
 
         {tab === 'announcements' ? (
-          <section className="space-y-2 rounded-xl border border-zinc-700 bg-zinc-900/70 p-4 text-sm">
+          <section className="space-y-2 rounded-xl border border-white/70 bg-white/85 p-4 text-sm shadow-sm shadow-slate-900/5">
             {sortedAnnouncements.map((announcement) => (
-              <article key={announcement.id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+              <article key={announcement.id} className="rounded-lg border border-slate-200 bg-white p-3">
                 <p className="font-semibold">
                   {announcement.emoji ?? '📢'} {announcement.title.fr ?? announcement.title.en}
-                  {announcement.is_pinned ? <span className="ml-2 rounded bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-300">Épinglé</span> : null}
+                  {announcement.is_pinned ? <span className="ml-2 rounded bg-amber-50 px-2 py-0.5 text-[10px] text-amber-700">Épinglé</span> : null}
                 </p>
-                <p className="text-xs text-zinc-400">{announcement.content.fr ?? announcement.content.en}</p>
+                <p className="text-xs text-slate-500">{announcement.content.fr ?? announcement.content.en}</p>
               </article>
             ))}
-            {sortedAnnouncements.length === 0 ? <p className="text-zinc-400">Aucune annonce.</p> : null}
+            {sortedAnnouncements.length === 0 ? <p className="text-slate-500">Aucune annonce.</p> : null}
           </section>
         ) : null}
 
@@ -157,39 +158,39 @@ export function NetworkDetailView({ network, members, announcements, onClose, on
       </section>
 
       {showEnrollSheet ? (
-        <div className="fixed inset-x-0 bottom-0 rounded-t-2xl border border-zinc-700 bg-zinc-900 p-4 text-zinc-100">
+        <div className="fixed inset-x-0 bottom-0 rounded-t-2xl border border-white/70 bg-white/95 p-4 text-slate-900 shadow-[0_-8px_24px_rgba(15,23,42,0.08)] backdrop-blur">
           <p className="text-sm font-semibold">{networkName}</p>
-          <p className="text-xs text-zinc-400">Bonus bienvenue: {network.welcome_bonus_points} pts</p>
+          <p className="text-xs text-slate-500">Bonus bienvenue: {network.welcome_bonus_points} pts</p>
 
           <div className="mt-3 flex gap-2">
             {!network.is_member ? (
-              <button
+              <PrimaryButton
                 type="button"
                 onClick={() => {
                   void handleEnroll()
                 }}
                 disabled={loadingAction}
-                className="rounded-lg bg-emerald-500 px-3 py-2 text-xs font-semibold text-zinc-950"
+                className="h-9"
               >
                 Rejoindre gratuitement
-              </button>
+              </PrimaryButton>
             ) : (
-              <button
+              <SecondaryButton
                 type="button"
                 onClick={() => {
                   void handleLeave()
                 }}
                 disabled={loadingAction}
-                className="rounded-lg bg-red-900/50 px-3 py-2 text-xs text-red-200"
+                className="h-9 border-rose-200 text-rose-700 hover:bg-rose-50"
               >
                 Quitter le réseau
-              </button>
+              </SecondaryButton>
             )}
-            <button type="button" onClick={() => setShowEnrollSheet(false)} className="rounded-lg bg-zinc-800 px-3 py-2 text-xs">
+            <SecondaryButton type="button" onClick={() => setShowEnrollSheet(false)} className="h-9">
               Fermer
-            </button>
+            </SecondaryButton>
           </div>
-          {actionError ? <p className="mt-2 text-xs text-red-300">{actionError}</p> : null}
+          {actionError ? <p className="mt-2 text-xs text-rose-700">{actionError}</p> : null}
         </div>
       ) : null}
     </div>
@@ -211,7 +212,7 @@ function TabButton({
     <button
       type="button"
       onClick={() => onClick(value)}
-      className={`rounded-lg px-2 py-1.5 text-xs font-semibold ${tab === value ? 'bg-indigo-100 text-indigo-700' : 'text-zinc-400'}`}
+      className={`rounded-lg px-2 py-1.5 text-xs font-semibold ${tab === value ? 'bg-indigo-100 text-indigo-700' : 'text-slate-500 hover:bg-slate-100'}`}
     >
       {label}
     </button>

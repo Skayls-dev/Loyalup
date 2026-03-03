@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import type { TouchEventHandler } from 'react'
 import { useLoyalty } from '../hooks/useLoyalty'
 import { LoyaltyCard } from './LoyaltyCard'
+import { EmptyState, PrimaryButton, Skeleton, StatCard } from '../../../shared/components/client-ui'
 
 export function LoyaltyCardList() {
   const { cards, loading, error, totalPoints, refetch, offline } = useLoyalty()
@@ -33,7 +34,7 @@ export function LoyaltyCardList() {
     return (
       <div className="space-y-3">
         {Array.from({ length: 2 }).map((_, index) => (
-          <div key={index} className="h-40 animate-pulse rounded-2xl bg-zinc-800/70" />
+          <Skeleton key={index} className="h-36 rounded-2xl" />
         ))}
       </div>
     )
@@ -41,32 +42,36 @@ export function LoyaltyCardList() {
 
   if (cards.length === 0) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center text-zinc-300">
-        Scannez votre premier QR code pour rejoindre un programme
-      </div>
+      <EmptyState
+        title="Aucune carte fidélité"
+        description="Scannez votre premier QR code pour rejoindre un programme."
+      />
     )
   }
 
   return (
     <section onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} className="space-y-3">
-      <header className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-        <p className="text-xs uppercase tracking-wide text-zinc-400">Total points</p>
-        <p className="text-3xl font-black text-zinc-100">{totalPoints}</p>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs text-zinc-500">{offline ? 'Offline (cache)' : 'Synchronisé'}</span>
-          <button
-            type="button"
-            onClick={() => {
-              refetch().catch(() => null)
-            }}
-            className="rounded-md border border-zinc-700 px-2 py-1 text-xs text-zinc-300"
-          >
-            Rafraîchir
-          </button>
+      <div className="grid gap-3 md:grid-cols-[2fr_1fr]">
+        <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
+          <p className="text-xs uppercase tracking-wide text-slate-500">Total points</p>
+          <p className="mt-1 text-4xl font-black text-slate-900">{totalPoints}</p>
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-xs text-slate-500">{offline ? 'Hors ligne (cache)' : 'Dernière synchro: à l’instant'}</span>
+            <PrimaryButton
+              type="button"
+              onClick={() => {
+                refetch().catch(() => null)
+              }}
+              className="h-9"
+            >
+              Rafraîchir
+            </PrimaryButton>
+          </div>
         </div>
-      </header>
+        <StatCard label="Programmes" value={String(cards.length)} helper="Cartes actives" />
+      </div>
 
-      {error ? <p className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-xs text-red-300">{error}</p> : null}
+      {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
 
       <div className="space-y-3">
         {cards.map((card, index) => (

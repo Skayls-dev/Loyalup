@@ -3,6 +3,7 @@ import { useMemo, useRef } from 'react'
 import type { TouchEventHandler } from 'react'
 import { useTransactionHistory } from '../hooks/useTransactionHistory'
 import { TransactionItem } from './TransactionItem'
+import { EmptyState, SecondaryButton, Skeleton } from '../../../shared/components/client-ui'
 
 type TransactionHistoryProps = {
   fournisseur_id?: string
@@ -92,7 +93,7 @@ export function TransactionHistory({ fournisseur_id }: TransactionHistoryProps) 
     return (
       <div className="space-y-3">
         {Array.from({ length: 3 }).map((_, index) => (
-          <div key={index} className="h-16 animate-pulse rounded-lg bg-zinc-800/70" />
+          <Skeleton key={index} className="h-16" />
         ))}
       </div>
     )
@@ -100,23 +101,24 @@ export function TransactionHistory({ fournisseur_id }: TransactionHistoryProps) 
 
   if (transactions.length === 0) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center">
-        <History className="mx-auto mb-3 h-8 w-8 text-zinc-500" />
-        <p className="text-sm text-zinc-300">Aucune transaction encore</p>
-      </div>
+      <EmptyState
+        title="Aucune transaction"
+        description="Vos prochains passages en caisse apparaîtront ici."
+        icon={<History className="h-5 w-5" />}
+      />
     )
   }
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-xs text-zinc-400">
+      <div className="flex items-center justify-between text-xs text-slate-500">
         <span>{offline ? 'Offline (cache)' : 'Synchronisé'}</span>
-        <button type="button" onClick={() => refresh().catch(() => null)} className="rounded-md border border-zinc-700 px-2 py-1 text-zinc-300">
+        <SecondaryButton type="button" onClick={() => refresh().catch(() => null)} className="h-8 px-3">
           Rafraîchir
-        </button>
+        </SecondaryButton>
       </div>
 
-      {error ? <p className="rounded-md border border-red-900 bg-red-950/40 px-3 py-2 text-xs text-red-300">{error}</p> : null}
+      {error ? <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
 
       <div
         ref={containerRef}
@@ -125,11 +127,11 @@ export function TransactionHistory({ fournisseur_id }: TransactionHistoryProps) 
         }}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        className="max-h-[60vh] overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 p-4"
+        className="max-h-[60vh] overflow-y-auto rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-900/5 backdrop-blur"
       >
         {grouped.map(([label, rows]) => (
           <section key={label} className="mb-4 last:mb-0">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-400">{label}</h3>
+            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</h3>
             <div className="space-y-0">
               {rows.map((row) => (
                 <TransactionItem key={row.id} transaction={row} />
@@ -138,7 +140,7 @@ export function TransactionHistory({ fournisseur_id }: TransactionHistoryProps) 
           </section>
         ))}
 
-        {hasMore ? <p className="py-2 text-center text-xs text-zinc-500">Faites défiler pour charger plus</p> : null}
+        {hasMore ? <p className="py-2 text-center text-xs text-slate-500">Faites défiler pour charger plus</p> : null}
       </div>
     </div>
   )

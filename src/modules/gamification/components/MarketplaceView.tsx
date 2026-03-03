@@ -50,15 +50,15 @@ export function MarketplaceView({}: MarketplaceViewProps) {
   return (
     <div className="space-y-4">
       {/* Explanation */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border border-purple-200">
-        <h3 className="text-lg font-bold text-gray-800 mb-2">🏪 Place de Marché</h3>
-        <p className="text-sm text-gray-700">
+      <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-900/5">
+        <h3 className="mb-2 text-lg font-bold text-slate-900">🏪 Place de Marché</h3>
+        <p className="text-sm text-slate-600">
           Transférez vos points entre partenaires de la même coalition
         </p>
       </div>
 
       {/* Transfer form */}
-      <div className="space-y-4 bg-white p-4 rounded-lg border border-gray-200">
+      <div className="space-y-4 rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-900/5">
         {/* From provider */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -154,7 +154,7 @@ export function MarketplaceView({}: MarketplaceViewProps) {
             <button
               onClick={() => setShowPreview(!showPreview)}
               disabled={!fromProvider || !toProvider}
-              className="px-4 py-2 bg-purple-500 text-white font-semibold rounded-lg hover:bg-purple-600 disabled:opacity-50"
+              className="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-500 disabled:opacity-50"
             >
               Aperçu
             </button>
@@ -163,8 +163,8 @@ export function MarketplaceView({}: MarketplaceViewProps) {
 
         {/* Preview */}
         {showPreview && selectedOption && (
-          <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-4 rounded-lg space-y-3">
-            <h4 className="font-bold text-gray-800">📊 Aperçu du transfert</h4>
+          <div className="space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-4">
+            <h4 className="font-bold text-slate-900">📊 Aperçu du transfert</h4>
 
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
@@ -192,7 +192,7 @@ export function MarketplaceView({}: MarketplaceViewProps) {
             <button
               onClick={handleTransfer}
               disabled={loading}
-              className="w-full py-2 bg-green-500 text-white font-bold rounded-lg hover:bg-green-600 disabled:opacity-50"
+              className="w-full rounded-lg bg-emerald-600 py-2 font-bold text-white hover:bg-emerald-500 disabled:opacity-50"
             >
               {loading ? '⏳ Transfert...' : '✅ Confirmer le transfert'}
             </button>
@@ -200,7 +200,7 @@ export function MarketplaceView({}: MarketplaceViewProps) {
         )}
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm font-semibold">
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
             {error.message}
           </div>
         )}

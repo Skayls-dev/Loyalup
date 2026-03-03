@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { usePromotions } from '../hooks/usePromotions'
 import { PromoCard } from './PromoCard'
+import { EmptyState, Skeleton } from '../../../shared/components/client-ui'
 
 export function PromoList() {
   const {
@@ -22,7 +23,7 @@ export function PromoList() {
     return (
       <div className="space-y-3">
         {Array.from({ length: 2 }).map((_, index) => (
-          <div key={index} className="h-32 animate-pulse rounded-xl bg-zinc-800/70" />
+          <Skeleton key={index} className="h-32" />
         ))}
       </div>
     )
@@ -30,22 +31,20 @@ export function PromoList() {
 
   if (promotionsByProvider.every((group) => group.promotions.length === 0)) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center text-zinc-300">
-        Aucune promotion en cours
-      </div>
+      <EmptyState title="Aucune promotion en cours" description="Revenez bientôt pour profiter des offres limitées." />
     )
   }
 
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-zinc-100">Promotions</h2>
-        <span className="rounded-full border border-zinc-700 px-2 py-1 text-xs text-zinc-300">
+        <h2 className="text-sm font-semibold text-slate-900">Promotions</h2>
+        <span className="rounded-full border border-slate-200 bg-white/85 px-2 py-1 text-xs text-slate-600">
           {totalCount} promos actives
         </span>
       </div>
 
-      {error ? <p className="rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-xs text-red-300">{error}</p> : null}
+      {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
 
       {promotionsByProvider
         .filter((group) => group.promotions.length > 0)
@@ -55,7 +54,7 @@ export function PromoList() {
           return (
             <section key={group.fournisseur_id} className="space-y-2">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-zinc-200">{group.fournisseur_nom}</h3>
+                <h3 className="text-sm font-semibold text-slate-700">{group.fournisseur_nom}</h3>
                 {hasNew ? <span className="h-2.5 w-2.5 rounded-full bg-red-500" aria-label="Nouvelle promo" /> : null}
               </div>
 

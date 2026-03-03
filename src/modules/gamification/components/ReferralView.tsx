@@ -40,9 +40,9 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="bg-gradient-to-r from-blue-50 to-cyan-50 p-4 rounded-lg border border-blue-200">
-        <h3 className="text-lg font-bold text-gray-800 mb-2">👥 Parrainez vos amis</h3>
-        <p className="text-sm text-gray-700">
+      <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-900/5">
+        <h3 className="mb-2 text-lg font-bold text-slate-900">👥 Parrainez vos amis</h3>
+        <p className="text-sm text-slate-600">
           Partagez votre code de parrainage et gagnez 200 XP + des points bonus pour chaque ami qui s'inscrit!
         </p>
       </div>
@@ -51,27 +51,27 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
         <button
           onClick={handleGenerate}
           disabled={loading}
-          className="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all disabled:opacity-50"
+          className="w-full rounded-xl bg-indigo-600 py-3 font-bold text-white transition hover:bg-indigo-500 disabled:opacity-50"
         >
           {loading ? 'Génération...' : '🎉 Générer Mon Code'}
         </button>
       ) : (
         <div className="space-y-4">
           {/* Code display */}
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-lg border-2 border-purple-300">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Votre code de parrainage</p>
-            <div className="bg-white p-3 rounded border-2 border-purple-300 flex items-center justify-between">
+          <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-900/5">
+            <p className="mb-2 text-sm font-semibold text-slate-700">Votre code de parrainage</p>
+            <div className="flex items-center justify-between rounded border border-indigo-200 bg-indigo-50 p-3">
               <code className="text-xl font-bold text-purple-600">
                 {referralStats.code}
               </code>
               <button
                 onClick={handleCopy}
-                className="px-3 py-1 bg-purple-500 text-white text-sm rounded font-semibold hover:bg-purple-600 transition-colors"
+                className="rounded bg-indigo-600 px-3 py-1 text-sm font-semibold text-white hover:bg-indigo-500"
               >
                 {copied ? '✅' : '📋'}
               </button>
             </div>
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="mt-2 text-xs text-slate-500">
               Expire le {new Date(referralStats.url).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}
             </p>
           </div>
@@ -102,13 +102,13 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
           <div className="grid grid-cols-2 gap-3">
             <button
               onClick={handleShare}
-              className="flex items-center justify-center gap-2 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-cyan-600 transition-all"
+              className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-500"
             >
               📤 Partager
             </button>
             <button
               onClick={handleCopy}
-              className="flex items-center justify-center gap-2 py-2 bg-gray-200 text-gray-700 font-semibold rounded-lg hover:bg-gray-300 transition-all"
+              className="flex items-center justify-center gap-2 rounded-lg bg-slate-100 py-2 font-semibold text-slate-700 hover:bg-slate-200"
             >
               📋 Copier
             </button>
@@ -127,7 +127,7 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
       )}
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm font-semibold">
+        <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
           {error.message}
         </div>
       )}
