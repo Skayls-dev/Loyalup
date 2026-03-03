@@ -12,6 +12,19 @@ admin1@loyalup.test — role: admin — password: Test1234! (login via /admin/au
 
 ---
 
+Prod test accounts
+
+
+Email	Password
+client1@loyalup.test	Test1234!
+client2@loyalup.test	Test1234!
+provider1@loyalup.test	Test1234!
+provider2@loyalup.test	Test1234!
+admin1@loyalup.test	Test1234!
+superadmin@loyalup.test	SuperAdmin123!
+
+
+
 Local test data provisioning
 
 - Recreate baseline test users (including admin):
@@ -67,8 +80,15 @@ OpenAPI:
 
 - Source spec: `docs/openapi.yaml`
 - Hosted dev copy: `public/docs/openapi.yaml`
+- API guide (FR): `Documentation/loyalup-api-endpoints.md`
 
 SDK docs:
 
 - Hosted dev quickstart: `public/docs/sdk.md`
 - Package source: `packages/loyalup-sdk`
+
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZnRxaXZpenpndnZlZWN6YnB2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjI1NDIwOSwiZXhwIjoyMDg3ODMwMjA5fQ.Ao1RnFN7yUHL-E8L5kgfDvY5-aPwWJY0UwW2_ZYtNn4
+supabase secrets set API_KEY_PEPPER=un_secret_aleatoire_32_chars
+supabase secrets set VAPID_PUBLIC_KEY=xxx
+supabase secrets set VAPID_PRIVATE_KEY=xxx
+supabase secrets set VAPID_EMAIL=mailto:admin@loyalup.app
