@@ -68,9 +68,15 @@ Deno.serve(async (req) => {
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
   const providerUserId = userResult.user.id
 
-  const rateOk = await checkActionRateLimit(adminClient, providerUserId, 'manage_api_keys', 10)
-  if (!rateOk.allowed) {
-    return json({ error: 'Rate limit exceeded', retry_after: rateOk.retryAfterSeconds }, 429)
+  let body: RequestBody
+  try {
+    body = (await req.json()) as RequestBody
+  } catch {
+    return json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  if (!body?.action) {
+    return json({ error: 'Missing action' }, 400)
   }
 
   const { data: fournisseur, error: fournisseurError } = await adminClient
@@ -83,15 +89,13 @@ Deno.serve(async (req) => {
     return json({ error: 'Provider not found' }, 404)
   }
 
-  let body: RequestBody
-  try {
-    body = (await req.json()) as RequestBody
-  } catch {
-    return json({ error: 'Invalid JSON body' }, 400)
-  }
+  const isReadAction = body.action === 'LIST'
+  const rateKey = isReadAction ? 'manage_api_keys_list' : 'manage_api_keys_mutation'
+  const maxPerHour = isReadAction ? 300 : 30
 
-  if (!body?.action) {
-    return json({ error: 'Missing action' }, 400)
+  const rateOk = await checkActionRateLimit(adminClient, providerUserId, rateKey, maxPerHour)
+  if (!rateOk.allowed) {
+    return json({ error: 'Rate limit exceeded', retry_after: rateOk.retryAfterSeconds }, 429)
   }
 
   if (body.action === 'LIST') {
