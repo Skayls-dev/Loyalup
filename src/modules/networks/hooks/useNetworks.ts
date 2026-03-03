@@ -2,10 +2,12 @@ import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { enrollInNetwork, getAllNetworks, getClientNetworks, getEligibleNetworks, unenrollFromNetwork } from '../services/networkService'
 import type { NetworkFilters } from '../types/networkTypes'
+import { useAuth } from '../../auth/hooks/useAuth'
 
 export function useNetworks() {
   const [filters, setFilters] = useState<NetworkFilters>({})
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const allQuery = useQuery({
     queryKey: ['networks', 'all', filters],
@@ -15,11 +17,13 @@ export function useNetworks() {
   const enrolledQuery = useQuery({
     queryKey: ['networks', 'enrolled'],
     queryFn: () => getClientNetworks(),
+    enabled: Boolean(user?.id),
   })
 
   const eligibleQuery = useQuery({
     queryKey: ['networks', 'eligible'],
     queryFn: getEligibleNetworks,
+    enabled: Boolean(user?.id),
   })
 
   const enrollMutation = useMutation({

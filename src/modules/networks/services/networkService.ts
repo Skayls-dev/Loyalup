@@ -385,6 +385,10 @@ export async function getEligibleNetworks(): Promise<NetworkWithEligibility[]> {
   })
 
   if (error) {
+    if (isAuthFunctionError(error)) {
+      return []
+    }
+
     throw new Error(error.message)
   }
 
@@ -658,6 +662,10 @@ export async function getPlatformNetworkOverview(): Promise<Network[]> {
 }
 
 export async function getAnnouncementsForNetwork(networkId?: string): Promise<NetworkAnnouncement[]> {
+  if (!networkId) {
+    return []
+  }
+
   const { data, error } = await supabase.functions.invoke('manage-announcements', {
     body: {
       action: 'GET_ANNOUNCEMENTS',
@@ -666,6 +674,20 @@ export async function getAnnouncementsForNetwork(networkId?: string): Promise<Ne
   })
 
   if (error) {
+    if (isAuthFunctionError(error)) {
+      const { data: fallbackRows, error: fallbackError } = await supabase
+        .from('network_announcements')
+        .select('*')
+        .eq('network_id', networkId)
+        .order('published_at', { ascending: false })
+
+      if (fallbackError) {
+        throw new Error(fallbackError.message)
+      }
+
+      return (fallbackRows ?? []) as NetworkAnnouncement[]
+    }
+
     throw new Error(error.message)
   }
 

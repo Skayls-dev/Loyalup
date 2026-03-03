@@ -8,6 +8,7 @@ export function useNetworkAnnouncements(network_id?: string) {
   const query = useQuery({
     queryKey: ['network-announcements', network_id ?? 'all'],
     queryFn: () => getAnnouncementsForNetwork(network_id),
+    enabled: Boolean(network_id),
   })
 
   useEffect(() => {
