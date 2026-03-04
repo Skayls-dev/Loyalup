@@ -63,6 +63,10 @@ export function DeveloperPortal() {
   const hasApiKeys = apiKeys.length > 0
 
   const docsBaseUrl = useMemo(() => '/docs/sdk.md', [])
+  const openApiUrl = useMemo(
+    () => `https://petstore.swagger.io/?url=${encodeURIComponent(window.location.origin + '/docs/openapi.yaml')}`,
+    []
+  )
 
   useEffect(() => {
     const load = async () => {
@@ -205,7 +209,7 @@ export function DeveloperPortal() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-zinc-100">Developer Portal</h3>
         <div className="flex items-center gap-2 text-xs">
-          <a href="/docs/openapi.yaml" target="_blank" rel="noreferrer" className={secondaryButtonClass}>
+          <a href={openApiUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
             OpenAPI
           </a>
           <a href={docsBaseUrl} target="_blank" rel="noreferrer" className={secondaryButtonClass}>
