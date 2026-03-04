@@ -13,6 +13,9 @@ type AdminAction =
   | 'GET_WEBHOOK_FAILURES'
   | 'RETRY_WEBHOOK_DELIVERY'
   | 'GET_AUDIT_LOGS'
+  | 'LIST_PARTNERS'
+  | 'UPSERT_PARTNER'
+  | 'GENERATE_PARTNER_KEY'
   | 'LIST_SCAN_ADS'
   | 'UPSERT_SCAN_AD'
   | 'DELETE_SCAN_AD'
@@ -654,6 +657,189 @@ Deno.serve(async (req) => {
     return json({ success: true, logs: data ?? [] })
   }
 
+  if (action === 'LIST_PARTNERS') {
+    const { data: partners, error: partnersError } = await admin
+      .from('partners')
+      .select('id, code, name, status, created_at, updated_at')
+      .order('created_at', { ascending: false })
+
+    if (partnersError) {
+      return json({ error: partnersError.message }, 500)
+    }
+
+    const partnerRows = (partners ?? []) as Array<{
+      id: string
+      code: string
+      name: string
+      status: string
+      created_at: string
+      updated_at: string
+    }>
+
+    const partnerIds = partnerRows.map((partner) => partner.id)
+
+    const { data: credentials, error: credentialsError } = partnerIds.length
+      ? await admin
+          .from('partner_api_credentials')
+          .select('partner_id, is_active')
+          .in('partner_id', partnerIds)
+      : { data: [] as Array<{ partner_id: string; is_active: boolean }>, error: null }
+
+    if (credentialsError) {
+      return json({ error: credentialsError.message }, 500)
+    }
+
+    const countMap = new Map<string, { total: number; active: number }>()
+    for (const partnerId of partnerIds) {
+      countMap.set(partnerId, { total: 0, active: 0 })
+    }
+
+    for (const row of (credentials ?? []) as Array<{ partner_id: string; is_active: boolean }>) {
+      const current = countMap.get(row.partner_id) ?? { total: 0, active: 0 }
+      current.total += 1
+      if (row.is_active) {
+        current.active += 1
+      }
+      countMap.set(row.partner_id, current)
+    }
+
+    const enriched = partnerRows.map((partner) => {
+      const counts = countMap.get(partner.id) ?? { total: 0, active: 0 }
+      return {
+        ...partner,
+        credentials_count: counts.total,
+        active_credentials_count: counts.active,
+      }
+    })
+
+    return json({ success: true, partners: enriched })
+  }
+
+  if (action === 'UPSERT_PARTNER') {
+    const partnerId = body.id ? String(body.id).trim() : null
+    const code = String(body.code ?? '').trim().toUpperCase()
+    const name = String(body.name ?? '').trim()
+    const status = String(body.status ?? 'draft').trim()
+
+    if (!code || !name) {
+      return json({ error: 'code and name are required' }, 400)
+    }
+
+    if (!/^[A-Z0-9_\-]{2,40}$/.test(code)) {
+      return json({ error: 'Invalid code format' }, 400)
+    }
+
+    if (!['draft', 'sandbox_active', 'production_active', 'suspended'].includes(status)) {
+      return json({ error: 'Invalid status' }, 400)
+    }
+
+    const payload = {
+      id: partnerId ?? undefined,
+      code,
+      name,
+      status,
+    }
+
+    const { data, error } = await admin
+      .from('partners')
+      .upsert(payload, { onConflict: 'code' })
+      .select('id, code, name, status, created_at, updated_at')
+      .limit(1)
+
+    if (error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'UPSERT_PARTNER',
+        success: false,
+        metadata: { partner_id: partnerId, code, error: error.message },
+      })
+      return json({ error: error.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'UPSERT_PARTNER',
+      success: true,
+      metadata: { partner_id: data?.[0]?.id ?? partnerId, code, status },
+    })
+
+    return json({ success: true, partner: data?.[0] ?? null })
+  }
+
+  if (action === 'GENERATE_PARTNER_KEY') {
+    const partnerId = String(body.partner_id ?? '').trim()
+    const environment = String(body.environment ?? 'sandbox').trim()
+    const scopesInput = Array.isArray(body.scopes) ? body.scopes : []
+    const scopes = scopesInput.map((scope) => String(scope).trim()).filter(Boolean)
+    const expiresAt = body.expires_at ? String(body.expires_at).trim() : null
+
+    if (!partnerId) {
+      return json({ error: 'Missing partner_id' }, 400)
+    }
+
+    if (!['sandbox', 'production'].includes(environment)) {
+      return json({ error: 'Invalid environment' }, 400)
+    }
+
+    if (!scopes.length) {
+      return json({ error: 'scopes must contain at least one value' }, 400)
+    }
+
+    const { data: partner, error: partnerError } = await admin
+      .from('partners')
+      .select('id, code, status')
+      .eq('id', partnerId)
+      .maybeSingle<{ id: string; code: string; status: string }>()
+
+    if (partnerError || !partner) {
+      return json({ error: partnerError?.message ?? 'Partner not found' }, 404)
+    }
+
+    const pepper = Deno.env.get('PARTNER_API_KEY_PEPPER') || Deno.env.get('API_KEY_PEPPER') || 'loyalup_partner_pepper'
+
+    const rawKey = generatePartnerApiKey(environment as 'sandbox' | 'production')
+    const keyPrefix = rawKey.slice(0, 12)
+    const keyHash = await sha256Hex(`${rawKey}:${pepper}`)
+
+    const { data, error } = await admin
+      .from('partner_api_credentials')
+      .insert({
+        partner_id: partner.id,
+        key_prefix: keyPrefix,
+        key_hash: keyHash,
+        environment,
+        scopes,
+        expires_at: expiresAt || null,
+        is_active: true,
+      })
+      .select('id, partner_id, key_prefix, environment, scopes, is_active, expires_at, created_at, last_used_at')
+      .limit(1)
+
+    if (error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'GENERATE_PARTNER_KEY',
+        success: false,
+        metadata: { partner_id: partner.id, environment, error: error.message },
+      })
+      return json({ error: error.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'GENERATE_PARTNER_KEY',
+      success: true,
+      metadata: { partner_id: partner.id, partner_code: partner.code, environment, scopes },
+    })
+
+    return json({
+      success: true,
+      key: rawKey,
+      key_once: true,
+      credential: data?.[0] ?? null,
+    })
+  }
+
   if (action === 'LIST_SCAN_ADS') {
     const { data, error } = await admin
       .from('scan_screen_ads')
@@ -774,6 +960,31 @@ async function signPayload(secret: string, message: string) {
   return Array.from(new Uint8Array(signature))
     .map((byte) => byte.toString(16).padStart(2, '0'))
     .join('')
+}
+
+function generatePartnerApiKey(environment: 'sandbox' | 'production') {
+  const envSegment = environment === 'production' ? 'prod' : 'sbox'
+  const random = randomBase62(40)
+  return `lp_${envSegment}_${random}`
+}
+
+function randomBase62(length: number) {
+  const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+  const bytes = crypto.getRandomValues(new Uint8Array(length))
+  let out = ''
+
+  for (let index = 0; index < bytes.length; index += 1) {
+    out += alphabet[bytes[index] % alphabet.length]
+  }
+
+  return out
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const bytes = new TextEncoder().encode(value)
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  const hashArray = Array.from(new Uint8Array(digest))
+  return hashArray.map((item) => item.toString(16).padStart(2, '0')).join('')
 }
 
 function json(payload: Record<string, unknown>, status = 200) {

@@ -69,6 +69,29 @@ export type ScanAdRow = {
   updated_at: string
 }
 
+export type PartnerRow = {
+  id: string
+  code: string
+  name: string
+  status: 'draft' | 'sandbox_active' | 'production_active' | 'suspended'
+  created_at: string
+  updated_at: string
+  credentials_count: number
+  active_credentials_count: number
+}
+
+export type PartnerCredentialRow = {
+  id: string
+  partner_id: string
+  key_prefix: string
+  environment: 'sandbox' | 'production'
+  scopes: string[]
+  is_active: boolean
+  expires_at: string | null
+  created_at: string
+  last_used_at: string | null
+}
+
 export async function getAdminOverview() {
   const data = await invoke<{ overview: AdminOverview }>({ action: 'GET_OVERVIEW' })
   return data.overview
@@ -192,6 +215,41 @@ export async function upsertScanAd(payload: {
 
 export async function deleteScanAd(id: string) {
   return invoke({ action: 'DELETE_SCAN_AD', id })
+}
+
+export async function listPartners() {
+  const data = await invoke<{ partners: PartnerRow[] }>({ action: 'LIST_PARTNERS' })
+  return data.partners ?? []
+}
+
+export async function upsertPartner(payload: {
+  id?: string
+  code: string
+  name: string
+  status: 'draft' | 'sandbox_active' | 'production_active' | 'suspended'
+}) {
+  const data = await invoke<{ partner: PartnerRow | null }>({
+    action: 'UPSERT_PARTNER',
+    ...payload,
+  })
+
+  return data.partner
+}
+
+export async function generatePartnerKey(payload: {
+  partner_id: string
+  environment: 'sandbox' | 'production'
+  scopes: string[]
+  expires_at?: string | null
+}) {
+  return invoke<{
+    key: string
+    key_once: true
+    credential: PartnerCredentialRow
+  }>({
+    action: 'GENERATE_PARTNER_KEY',
+    ...payload,
+  })
 }
 
 async function invoke<TData = Record<string, unknown>>(body: Record<string, unknown>) {

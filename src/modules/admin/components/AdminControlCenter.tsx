@@ -7,10 +7,13 @@ import {
   getAdminApiUsage,
   getAdminOverview,
   getAdminWebhookFailures,
+  generatePartnerKey,
   impersonateAdminUser,
+  listPartners,
   listScanAds,
   listAdminUsers,
   retryAdminWebhookDelivery,
+  upsertPartner,
   upsertScanAd,
   toggleAdminUserBlock,
   updateAdminProviderTier,
@@ -19,6 +22,7 @@ import {
   type AdminOverview,
   type AdminUserRow,
   type ApiUsageRow,
+  type PartnerRow,
   type ScanAdRow,
   type WebhookFailureRow,
 } from '../services/adminConsoleService'
@@ -62,6 +66,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [apiUsage, setApiUsage] = useState<ApiUsageRow[]>([])
   const [webhookFailures, setWebhookFailures] = useState<WebhookFailureRow[]>([])
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogRow[]>([])
+  const [partners, setPartners] = useState<PartnerRow[]>([])
   const [scanAds, setScanAds] = useState<ScanAdRow[]>([])
   const [editingAdId, setEditingAdId] = useState<string | null>(null)
   const [adTitle, setAdTitle] = useState('')
@@ -70,6 +75,14 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [adCtaUrl, setAdCtaUrl] = useState('')
   const [adDisplayOrder, setAdDisplayOrder] = useState(0)
   const [adActive, setAdActive] = useState(true)
+  const [partnerCode, setPartnerCode] = useState('')
+  const [partnerName, setPartnerName] = useState('')
+  const [partnerStatus, setPartnerStatus] = useState<'draft' | 'sandbox_active' | 'production_active' | 'suspended'>('draft')
+  const [selectedPartnerId, setSelectedPartnerId] = useState('')
+  const [partnerKeyEnv, setPartnerKeyEnv] = useState<'sandbox' | 'production'>('sandbox')
+  const [partnerScopes, setPartnerScopes] = useState('transfers:write')
+  const [generatedPartnerKey, setGeneratedPartnerKey] = useState('')
+  const [generatingPartnerKey, setGeneratingPartnerKey] = useState(false)
 
   const apiErrorRate = useMemo(() => {
     if (apiUsage.length === 0) {
@@ -85,13 +98,14 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
     setStatus('')
 
     try {
-      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs, nextScanAds] = await Promise.all([
+      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs, nextScanAds, nextPartners] = await Promise.all([
         getAdminOverview(),
         listAdminUsers({ page: 1, limit: 50, search }),
         getAdminApiUsage(200),
         getAdminWebhookFailures(150),
         getAdminAuditLogs(150),
         listScanAds(),
+        listPartners(),
       ])
 
       setOverview(nextOverview)
@@ -101,6 +115,11 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setWebhookFailures(nextFailures)
       setAuditLogs(nextAuditLogs)
       setScanAds(nextScanAds)
+      setPartners(nextPartners)
+
+      if (!selectedPartnerId && nextPartners.length > 0) {
+        setSelectedPartnerId(nextPartners[0].id)
+      }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Failed to load admin data')
     } finally {
@@ -466,6 +485,153 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
 
       {activeTab === 'api' ? (
         <div className="space-y-2">
+          <div className={panelClass}>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#605E5C]">Partner onboarding</p>
+
+            <div className="grid gap-2 md:grid-cols-3">
+              <input
+                value={partnerCode}
+                onChange={(event) => setPartnerCode(event.target.value.toUpperCase())}
+                placeholder="Code partenaire"
+                className={inputClass}
+              />
+              <input
+                value={partnerName}
+                onChange={(event) => setPartnerName(event.target.value)}
+                placeholder="Nom partenaire"
+                className={inputClass}
+              />
+              <select
+                value={partnerStatus}
+                onChange={(event) =>
+                  setPartnerStatus(event.target.value as 'draft' | 'sandbox_active' | 'production_active' | 'suspended')
+                }
+                className={inputClass}
+              >
+                <option value="draft">draft</option>
+                <option value="sandbox_active">sandbox_active</option>
+                <option value="production_active">production_active</option>
+                <option value="suspended">suspended</option>
+              </select>
+            </div>
+
+            <div className="mt-2 flex gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void upsertPartner({
+                    code: partnerCode,
+                    name: partnerName,
+                    status: partnerStatus,
+                  })
+                    .then((partner) => {
+                      setStatus(partner ? `Partner ${partner.code} saved` : 'Partner saved')
+                      setGeneratedPartnerKey('')
+                      setPartnerCode('')
+                      setPartnerName('')
+                      setPartnerStatus('draft')
+                      return loadAll()
+                    })
+                    .catch((error) => setStatus(error instanceof Error ? error.message : 'Partner save failed'))
+                }}
+                className={primaryButtonClass}
+              >
+                Save partner
+              </button>
+            </div>
+
+            <div className="mt-3 grid gap-2 md:grid-cols-4">
+              <select
+                value={selectedPartnerId}
+                onChange={(event) => setSelectedPartnerId(event.target.value)}
+                className={inputClass}
+              >
+                <option value="">Select partner</option>
+                {partners.map((partner) => (
+                  <option key={partner.id} value={partner.id}>
+                    {partner.code} - {partner.name}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={partnerKeyEnv}
+                onChange={(event) => setPartnerKeyEnv(event.target.value as 'sandbox' | 'production')}
+                className={inputClass}
+              >
+                <option value="sandbox">sandbox</option>
+                <option value="production">production</option>
+              </select>
+
+              <input
+                value={partnerScopes}
+                onChange={(event) => setPartnerScopes(event.target.value)}
+                placeholder="Scopes (comma separated)"
+                className={inputClass}
+              />
+
+              <button
+                type="button"
+                disabled={!selectedPartnerId || generatingPartnerKey}
+                onClick={() => {
+                  setGeneratingPartnerKey(true)
+                  const scopes = partnerScopes
+                    .split(',')
+                    .map((value) => value.trim())
+                    .filter(Boolean)
+
+                  void generatePartnerKey({
+                    partner_id: selectedPartnerId,
+                    environment: partnerKeyEnv,
+                    scopes,
+                  })
+                    .then((result) => {
+                      setGeneratedPartnerKey(result.key)
+                      setStatus('Partner API key generated (visible once)')
+                      return loadAll()
+                    })
+                    .catch((error) => setStatus(error instanceof Error ? error.message : 'Partner key generation failed'))
+                    .finally(() => setGeneratingPartnerKey(false))
+                }}
+                className={primaryButtonClass}
+              >
+                {generatingPartnerKey ? 'Generating…' : 'Generate key'}
+              </button>
+            </div>
+
+            {generatedPartnerKey ? (
+              <div className="mt-2 rounded border border-[#edebe9] bg-[#faf9f8] p-2 text-xs text-[#323130]">
+                <p className="font-semibold text-[#323130]">Copy now (one-time display)</p>
+                <p className="mt-1 break-all text-[#605E5C]">{generatedPartnerKey}</p>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#605E5C]">
+              <span>Partner</span>
+              <span>Status</span>
+              <span>Credentials</span>
+              <span>Created</span>
+            </div>
+
+            {partners.map((partner) => (
+              <article key={partner.id} className={rowClass}>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-[2fr_1fr_1fr_1fr] md:items-center">
+                  <div>
+                    <p className="font-semibold text-[#323130]">{partner.code}</p>
+                    <p className="text-[#605E5C]">{partner.name}</p>
+                  </div>
+                  <p className="text-[#323130]">{partner.status}</p>
+                  <p className="text-[#605E5C]">
+                    active {partner.active_credentials_count} / total {partner.credentials_count}
+                  </p>
+                  <p className="text-[#605E5C]">{new Date(partner.created_at).toLocaleDateString('fr-FR')}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-[#605E5C]">Error rate: {apiErrorRate.toFixed(1)}%</p>
             <button
