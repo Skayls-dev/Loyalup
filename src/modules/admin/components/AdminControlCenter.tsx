@@ -9,10 +9,12 @@ import {
   getAdminWebhookFailures,
   generatePartnerKey,
   impersonateAdminUser,
+  listPartnerAccessRequests,
   listPartners,
   listScanAds,
   listAdminUsers,
   retryAdminWebhookDelivery,
+  reviewPartnerAccessRequest,
   upsertPartner,
   upsertScanAd,
   toggleAdminUserBlock,
@@ -23,6 +25,7 @@ import {
   type AdminUserRow,
   type ApiUsageRow,
   type PartnerRow,
+  type PartnerAccessRequestRow,
   type ScanAdRow,
   type WebhookFailureRow,
 } from '../services/adminConsoleService'
@@ -67,6 +70,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [webhookFailures, setWebhookFailures] = useState<WebhookFailureRow[]>([])
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogRow[]>([])
   const [partners, setPartners] = useState<PartnerRow[]>([])
+  const [partnerAccessRequests, setPartnerAccessRequests] = useState<PartnerAccessRequestRow[]>([])
   const [scanAds, setScanAds] = useState<ScanAdRow[]>([])
   const [editingAdId, setEditingAdId] = useState<string | null>(null)
   const [adTitle, setAdTitle] = useState('')
@@ -98,7 +102,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
     setStatus('')
 
     try {
-      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs, nextScanAds, nextPartners] = await Promise.all([
+      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs, nextScanAds, nextPartners, nextPartnerRequests] = await Promise.all([
         getAdminOverview(),
         listAdminUsers({ page: 1, limit: 50, search }),
         getAdminApiUsage(200),
@@ -106,6 +110,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
         getAdminAuditLogs(150),
         listScanAds(),
         listPartners(),
+        listPartnerAccessRequests('pending'),
       ])
 
       setOverview(nextOverview)
@@ -116,6 +121,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setAuditLogs(nextAuditLogs)
       setScanAds(nextScanAds)
       setPartners(nextPartners)
+      setPartnerAccessRequests(nextPartnerRequests)
 
       if (!selectedPartnerId && nextPartners.length > 0) {
         setSelectedPartnerId(nextPartners[0].id)
@@ -630,6 +636,59 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                 </div>
               </article>
             ))}
+          </div>
+
+          <div className={panelClass}>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#605E5C]">Production access requests</p>
+            {partnerAccessRequests.length === 0 ? (
+              <p className="text-xs text-[#605E5C]">No pending requests</p>
+            ) : (
+              <div className="space-y-2">
+                {partnerAccessRequests.map((request) => (
+                  <article key={request.id} className={rowClass}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-[#323130]">{request.partner_code} - {request.partner_name}</p>
+                        <p className="text-[#605E5C]">{new Date(request.created_at).toLocaleString('fr-FR')}</p>
+                        {request.notes ? <p className="text-[#605E5C]">{request.notes}</p> : null}
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void reviewPartnerAccessRequest({ request_id: request.id, decision: 'approved' })
+                              .then(() => {
+                                setStatus('Production access approved')
+                                return loadAll()
+                              })
+                              .catch((error) => setStatus(error instanceof Error ? error.message : 'Approval failed'))
+                          }}
+                          className={primaryButtonClass}
+                        >
+                          Approve
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void reviewPartnerAccessRequest({ request_id: request.id, decision: 'rejected' })
+                              .then(() => {
+                                setStatus('Production access rejected')
+                                return loadAll()
+                              })
+                              .catch((error) => setStatus(error instanceof Error ? error.message : 'Rejection failed'))
+                          }}
+                          className={secondaryButtonClass}
+                        >
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-2">

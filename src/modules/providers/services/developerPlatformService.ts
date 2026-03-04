@@ -47,6 +47,37 @@ export type WhiteLabelConfig = {
   updated_at: string
 }
 
+export type PartnerProfile = {
+  id: string
+  code: string
+  name: string
+  status: 'draft' | 'sandbox_active' | 'production_active' | 'suspended'
+  created_at: string
+  updated_at: string
+}
+
+export type PartnerApiCredential = {
+  id: string
+  partner_id: string
+  key_prefix: string
+  environment: 'sandbox' | 'production'
+  scopes: string[]
+  is_active: boolean
+  expires_at: string | null
+  last_used_at: string | null
+  created_at: string
+}
+
+export type PartnerAccessRequest = {
+  id: string
+  status: 'pending' | 'approved' | 'rejected'
+  requested_environment: 'production'
+  notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+}
+
 export async function listApiKeys() {
   const data = await invokeFunction<{ keys: ProviderApiKey[] }>('manage-api-keys', {
     action: 'LIST',
@@ -164,6 +195,50 @@ export async function verifyWhiteLabelDomain(customDomain: string, verificationT
     custom_domain: customDomain,
     verification_token: verificationToken,
   })
+}
+
+export async function getPartnerProfile() {
+  return invokeFunction<{ partner: PartnerProfile; can_use_production: boolean }>('partner-self-service', {
+    action: 'GET_PROFILE',
+  })
+}
+
+export async function listPartnerKeys() {
+  const data = await invokeFunction<{ keys: PartnerApiCredential[] }>('partner-self-service', {
+    action: 'LIST_KEYS',
+  })
+
+  return data.keys ?? []
+}
+
+export async function createPartnerKey(params: {
+  environment: 'sandbox' | 'production'
+  scopes: string[]
+  expires_at?: string | null
+}) {
+  return invokeFunction<{
+    key: string
+    key_once: true
+    credential: PartnerApiCredential
+  }>('partner-self-service', {
+    action: 'CREATE_KEY',
+    ...params,
+  })
+}
+
+export async function requestPartnerProductionAccess(notes?: string) {
+  return invokeFunction<{ request: PartnerAccessRequest | null; already_active?: boolean }>('partner-self-service', {
+    action: 'REQUEST_PRODUCTION_ACCESS',
+    notes: notes ?? null,
+  })
+}
+
+export async function listPartnerAccessRequests() {
+  const data = await invokeFunction<{ requests: PartnerAccessRequest[] }>('partner-self-service', {
+    action: 'LIST_REQUESTS',
+  })
+
+  return data.requests ?? []
 }
 
 async function invokeFunction<TData>(name: string, body: Record<string, unknown>) {

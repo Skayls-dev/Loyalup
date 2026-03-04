@@ -16,6 +16,8 @@ type AdminAction =
   | 'LIST_PARTNERS'
   | 'UPSERT_PARTNER'
   | 'GENERATE_PARTNER_KEY'
+  | 'LIST_PARTNER_ACCESS_REQUESTS'
+  | 'REVIEW_PARTNER_ACCESS_REQUEST'
   | 'LIST_SCAN_ADS'
   | 'UPSERT_SCAN_AD'
   | 'DELETE_SCAN_AD'
@@ -838,6 +840,130 @@ Deno.serve(async (req) => {
       key_once: true,
       credential: data?.[0] ?? null,
     })
+  }
+
+  if (action === 'LIST_PARTNER_ACCESS_REQUESTS') {
+    const status = String(body.status ?? 'pending').trim()
+    const limit = Math.min(200, Math.max(1, Number(body.limit ?? 100)))
+
+    let query = admin
+      .from('partner_access_requests')
+      .select('id, partner_id, fournisseur_id, requested_environment, status, notes, reviewed_by, reviewed_at, created_at, partners!inner(code, name)')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (status !== 'all') {
+      if (!['pending', 'approved', 'rejected'].includes(status)) {
+        return json({ error: 'Invalid status filter' }, 400)
+      }
+      query = query.eq('status', status)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      return json({ error: error.message }, 500)
+    }
+
+    const requestRows = (data ?? []) as Array<{
+      id: string
+      partner_id: string
+      fournisseur_id: string
+      requested_environment: string
+      status: string
+      notes: string | null
+      reviewed_by: string | null
+      reviewed_at: string | null
+      created_at: string
+      partners?: { code?: string; name?: string }
+    }>
+
+    const requests = requestRows.map((row) => ({
+      id: row.id,
+      partner_id: row.partner_id,
+      fournisseur_id: row.fournisseur_id,
+      requested_environment: row.requested_environment,
+      status: row.status,
+      notes: row.notes,
+      reviewed_by: row.reviewed_by,
+      reviewed_at: row.reviewed_at,
+      created_at: row.created_at,
+      partner_code: row.partners?.code ?? '',
+      partner_name: row.partners?.name ?? '',
+    }))
+
+    return json({ success: true, requests })
+  }
+
+  if (action === 'REVIEW_PARTNER_ACCESS_REQUEST') {
+    const requestId = String(body.request_id ?? '').trim()
+    const decision = String(body.decision ?? '').trim()
+    const notes = body.notes ? String(body.notes).trim().slice(0, 500) : null
+
+    if (!requestId || !['approved', 'rejected'].includes(decision)) {
+      return json({ error: 'Invalid request_id or decision' }, 400)
+    }
+
+    const { data: request, error: requestError } = await admin
+      .from('partner_access_requests')
+      .select('id, partner_id, status')
+      .eq('id', requestId)
+      .maybeSingle<{ id: string; partner_id: string; status: 'pending' | 'approved' | 'rejected' }>()
+
+    if (requestError || !request?.id) {
+      return json({ error: requestError?.message ?? 'Request not found' }, 404)
+    }
+
+    if (request.status !== 'pending') {
+      return json({ error: 'Request already reviewed' }, 409)
+    }
+
+    const nowIso = new Date().toISOString()
+    const { error: updateRequestError } = await admin
+      .from('partner_access_requests')
+      .update({
+        status: decision,
+        notes,
+        reviewed_by: adminUserId,
+        reviewed_at: nowIso,
+      })
+      .eq('id', requestId)
+
+    if (updateRequestError) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'REVIEW_PARTNER_ACCESS_REQUEST',
+        success: false,
+        metadata: { request_id: requestId, decision, error: updateRequestError.message },
+      })
+      return json({ error: updateRequestError.message }, 500)
+    }
+
+    if (decision === 'approved') {
+      const { error: partnerUpdateError } = await admin
+        .from('partners')
+        .update({ status: 'production_active' })
+        .eq('id', request.partner_id)
+
+      if (partnerUpdateError) {
+        await writeAuditLog(admin, {
+          adminUserId,
+          action: 'REVIEW_PARTNER_ACCESS_REQUEST',
+          success: false,
+          metadata: { request_id: requestId, decision, error: partnerUpdateError.message },
+        })
+        return json({ error: partnerUpdateError.message }, 500)
+      }
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'REVIEW_PARTNER_ACCESS_REQUEST',
+      success: true,
+      metadata: { request_id: requestId, decision },
+    })
+
+    return json({ success: true, reviewed: true })
   }
 
   if (action === 'LIST_SCAN_ADS') {

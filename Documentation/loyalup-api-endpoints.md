@@ -17,6 +17,7 @@ Ce document unique décrit :
   - [4.5 Stats](#45-stats)
   - [4.6 Sandbox](#46-sandbox)
   - [4.7 Partner Transfers (Sprint 1)](#47-partner-transfers-sprint-1)
+  - [4.8 Partner Self-Service (Sprint 2)](#48-partner-self-service-sprint-2)
 - [5) Erreurs fréquentes](#5-erreurs-fréquentes)
 - [6) Swagger / OpenAPI](#6-swagger--openapi)
 - [7) Exemple cURL](#7-exemple-curl)
@@ -169,6 +170,49 @@ Endpoint: `/partner/v1/transfers`
 - `direction` ∈ `credit | debit` (défaut: `credit`)
 - `transaction_ref` est unique par partenaire (idempotence)
 - Si l’utilisateur externe n’est pas encore lié, LoyalUp peut créer et lier automatiquement un compte client
+
+## 4.8 Partner Self-Service (Sprint 2)
+
+Endpoint: `/partner-self-service`
+
+Ce endpoint est utilisé côté **Provider Dashboard / Developer Portal** (auth provider via token Supabase), pour éviter que l’admin génère manuellement toutes les clés partenaire.
+
+### POST `/partner-self-service` avec `action=GET_PROFILE`
+- Description : récupère (ou auto-provisionne) le profil partenaire lié au provider
+- Retour : `partner`, `can_use_production`
+
+### POST `/partner-self-service` avec `action=LIST_KEYS`
+- Description : liste les clés partenaire du provider
+
+### POST `/partner-self-service` avec `action=CREATE_KEY`
+- Description : génère une clé API partenaire (one-time reveal)
+- Body :
+
+```json
+{
+  "action": "CREATE_KEY",
+  "environment": "sandbox",
+  "scopes": ["transfers:write"]
+}
+```
+
+- Règle :
+  - `sandbox` autorisé directement,
+  - `production` autorisé uniquement si partenaire `production_active`.
+
+### POST `/partner-self-service` avec `action=REQUEST_PRODUCTION_ACCESS`
+- Description : soumet une demande d’activation production
+- Body optionnel :
+
+```json
+{
+  "action": "REQUEST_PRODUCTION_ACCESS",
+  "notes": "Go-live prévu semaine prochaine"
+}
+```
+
+### POST `/partner-self-service` avec `action=LIST_REQUESTS`
+- Description : historique des demandes production du partenaire
 
 ## 4.3 Services
 

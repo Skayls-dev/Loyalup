@@ -92,6 +92,20 @@ export type PartnerCredentialRow = {
   last_used_at: string | null
 }
 
+export type PartnerAccessRequestRow = {
+  id: string
+  partner_id: string
+  fournisseur_id: string
+  requested_environment: 'production'
+  status: 'pending' | 'approved' | 'rejected'
+  notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  created_at: string
+  partner_code: string
+  partner_name: string
+}
+
 export async function getAdminOverview() {
   const data = await invoke<{ overview: AdminOverview }>({ action: 'GET_OVERVIEW' })
   return data.overview
@@ -248,6 +262,26 @@ export async function generatePartnerKey(payload: {
     credential: PartnerCredentialRow
   }>({
     action: 'GENERATE_PARTNER_KEY',
+    ...payload,
+  })
+}
+
+export async function listPartnerAccessRequests(status: 'pending' | 'approved' | 'rejected' | 'all' = 'pending') {
+  const data = await invoke<{ requests: PartnerAccessRequestRow[] }>({
+    action: 'LIST_PARTNER_ACCESS_REQUESTS',
+    status,
+  })
+
+  return data.requests ?? []
+}
+
+export async function reviewPartnerAccessRequest(payload: {
+  request_id: string
+  decision: 'approved' | 'rejected'
+  notes?: string
+}) {
+  return invoke<{ reviewed: boolean }>({
+    action: 'REVIEW_PARTNER_ACCESS_REQUEST',
     ...payload,
   })
 }
