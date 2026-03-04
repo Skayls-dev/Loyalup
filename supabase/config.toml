@@ -37,6 +37,9 @@ verify_jwt = false
 [functions.manage-api-keys]
 verify_jwt = false
 
+[functions.partner-transfers]
+verify_jwt = false
+
 [functions.manage-webhooks]
 verify_jwt = false
 

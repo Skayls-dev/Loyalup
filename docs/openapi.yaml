@@ -13,6 +13,10 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
+    PartnerApiKey:
+      type: apiKey
+      in: header
+      name: X-Partner-Key
   schemas:
     ApiSuccess:
       type: object
@@ -38,6 +42,46 @@ components:
             message:
               type: string
 paths:
+  /partner/v1/transfers:
+    post:
+      summary: Transfer partner points into LoyalUp wallet
+      security:
+        - PartnerApiKey: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [external_user_id, transaction_ref, points]
+              properties:
+                external_user_id:
+                  type: string
+                transaction_ref:
+                  type: string
+                points:
+                  type: integer
+                  minimum: 1
+                direction:
+                  type: string
+                  enum: [credit, debit]
+                display_name:
+                  type: string
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Transfer accepted or duplicate
+        '409':
+          description: Transfer rejected (e.g., insufficient balance)
+        '401':
+          description: Invalid partner key
   /api-v1-clients:
     get:
       summary: List clients

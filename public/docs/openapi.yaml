@@ -13,7 +13,14 @@ components:
       type: apiKey
       in: header
       name: X-API-Key
+    PartnerApiKey:
+      type: apiKey
+      in: header
+      name: X-Partner-Key
 paths:
+  /partner/v1/transfers:
+    post:
+      summary: Transfer partner points into LoyalUp wallet
   /api-v1-clients:
     get:
       summary: List clients

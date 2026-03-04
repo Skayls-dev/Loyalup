@@ -16,6 +16,7 @@ Ce document unique décrit :
   - [4.4 Promotions](#44-promotions)
   - [4.5 Stats](#45-stats)
   - [4.6 Sandbox](#46-sandbox)
+  - [4.7 Partner Transfers (Sprint 1)](#47-partner-transfers-sprint-1)
 - [5) Erreurs fréquentes](#5-erreurs-fréquentes)
 - [6) Swagger / OpenAPI](#6-swagger--openapi)
 - [7) Exemple cURL](#7-exemple-curl)
@@ -140,6 +141,34 @@ Endpoint: `/api-v1-transactions`
   "description": "Passage caisse"
 }
 ```
+
+## 4.7 Partner Transfers (Sprint 1)
+
+Endpoint: `/partner/v1/transfers`
+
+### POST `/partner/v1/transfers`
+- Description : transfert de points d’un partenaire externe vers le wallet LoyalUp d’un utilisateur lié
+- Auth requise : `X-Partner-Key`
+- Header requis : `Idempotency-Key`
+- Body requis :
+
+```json
+{
+  "external_user_id": "kuvaago-user-123",
+  "transaction_ref": "tx-2026-03-04-0001",
+  "points": 120,
+  "direction": "credit",
+  "display_name": "Client Kuvaago",
+  "metadata": {
+    "source": "kuvaago",
+    "campaign": "spring"
+  }
+}
+```
+
+- `direction` ∈ `credit | debit` (défaut: `credit`)
+- `transaction_ref` est unique par partenaire (idempotence)
+- Si l’utilisateur externe n’est pas encore lié, LoyalUp peut créer et lier automatiquement un compte client
 
 ## 4.3 Services
 
