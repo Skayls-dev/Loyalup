@@ -843,7 +843,8 @@ Deno.serve(async (req) => {
   }
 
   if (action === 'LIST_PARTNER_ACCESS_REQUESTS') {
-    const status = String(body.status ?? 'pending').trim()
+    const rawStatus = String(body.status ?? 'pending').trim().toLowerCase()
+    const status = ['pending', 'approved', 'rejected', 'all'].includes(rawStatus) ? rawStatus : 'pending'
     const limit = Math.min(200, Math.max(1, Number(body.limit ?? 100)))
 
     let query = admin
@@ -853,9 +854,6 @@ Deno.serve(async (req) => {
       .limit(limit)
 
     if (status !== 'all') {
-      if (!['pending', 'approved', 'rejected'].includes(status)) {
-        return json({ error: 'Invalid status filter' }, 400)
-      }
       query = query.eq('status', status)
     }
 
