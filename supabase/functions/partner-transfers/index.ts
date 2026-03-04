@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 
 type TransferRequest = {
   external_user_id?: string
+  email?: string
   transaction_ref?: string
   points?: number
   direction?: 'credit' | 'debit'
@@ -66,6 +67,7 @@ Deno.serve(async (req) => {
     }
 
     const externalUserId = body.external_user_id?.trim()
+    const email = normalizeOptionalEmail(body.email)
     const transactionRef = body.transaction_ref?.trim()
     const points = Number(body.points ?? 0)
     const direction = body.direction === 'debit' ? 'debit' : 'credit'
@@ -104,6 +106,7 @@ Deno.serve(async (req) => {
       partnerId: credential.partner_id,
       partnerCode: credential.partners.code,
       externalUserId,
+      email,
       displayName: body.display_name,
       createIfMissing: body.create_user_if_missing !== false,
     })
@@ -226,11 +229,12 @@ async function resolveOrCreateLinkedUser(
     partnerId: string
     partnerCode: string
     externalUserId: string
+    email?: string | null
     displayName?: string
     createIfMissing: boolean
   },
 ): Promise<string | null> {
-  const { partnerId, partnerCode, externalUserId, displayName, createIfMissing } = params
+  const { partnerId, partnerCode, externalUserId, email, displayName, createIfMissing } = params
 
   const existing = await admin
     .from('partner_user_links')
@@ -249,17 +253,18 @@ async function resolveOrCreateLinkedUser(
 
   const sanitizedExternal = sanitizeEmailPart(externalUserId)
   const randomSuffix = crypto.randomUUID().replaceAll('-', '').slice(0, 10)
-  const generatedEmail = `${partnerCode.toLowerCase()}.${sanitizedExternal}.${randomSuffix}@partner.loyalup.local`
+  const generatedEmail = email || `${partnerCode.toLowerCase()}.${sanitizedExternal}.${randomSuffix}@partner.loyalup.local`
   const generatedPassword = `P-${crypto.randomUUID()}-A1!`
 
   const created = await admin.auth.admin.createUser({
     email: generatedEmail,
     password: generatedPassword,
-    email_confirm: true,
+    email_confirm: email ? false : true,
     user_metadata: {
       role: 'client',
       source_partner: partnerCode,
       external_user_id: externalUserId,
+      activation_required: !email,
     },
   })
 
@@ -410,6 +415,24 @@ function sanitizeEmailPart(value: string): string {
     .replace(/[^a-z0-9]+/g, '.')
     .replace(/^\.+|\.+$/g, '')
     .slice(0, 40) || 'user'
+}
+
+function normalizeOptionalEmail(value?: string): string | null {
+  if (!value) {
+    return null
+  }
+
+  const normalized = value.trim().toLowerCase()
+  if (!normalized) {
+    return null
+  }
+
+  const basicEmailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!basicEmailPattern.test(normalized)) {
+    return null
+  }
+
+  return normalized
 }
 
 function json(payload: unknown, status = 200): Response {

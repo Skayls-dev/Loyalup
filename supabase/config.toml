@@ -43,6 +43,9 @@ verify_jwt = false
 [functions.partner-self-service]
 verify_jwt = false
 
+[functions.partner-account-claim]
+verify_jwt = false
+
 [functions.manage-webhooks]
 verify_jwt = false
 

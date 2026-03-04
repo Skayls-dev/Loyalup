@@ -244,3 +244,17 @@ export async function completeSocialProfile(role: SocialRole, nom: string): Prom
 
   return getCurrentUser()
 }
+
+export async function updateCurrentUserPassword(password: string): Promise<void> {
+  const normalized = password.trim()
+
+  if (normalized.length < 8) {
+    throw new Error('Le mot de passe doit contenir au moins 8 caractères.')
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: normalized })
+
+  if (error) {
+    throw error
+  }
+}
