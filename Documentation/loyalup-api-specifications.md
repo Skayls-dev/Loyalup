@@ -258,6 +258,9 @@ Headers requis :
 - `X-Partner-Key`
 - `Content-Type: application/json`
 
+Alias de compatibilité (même comportement) :
+- `POST /loyalup-account-claim`
+
 Action 1: `GET_STATUS`
 
 ```json
@@ -281,6 +284,51 @@ Action 2: `START_CLAIM`
 Usage :
 - `GET_STATUS` permet au partenaire de savoir si le compte LoyalUp lié nécessite encore activation.
 - `START_CLAIM` associe l’email réel et génère un magic link (`action_link`) à envoyer à l’utilisateur final.
+
+Réponse `GET_STATUS` (exemple) :
+
+```json
+{
+  "success": true,
+  "status": {
+    "partner_code": "PROVIDER_3",
+    "external_user_id": "partner-user-123",
+    "loyalup_user_id": "uuid",
+    "activation_required": true,
+    "email": "client@example.com",
+    "email_masked": "cl***@example.com",
+    "email_confirmed_at": null
+  }
+}
+```
+
+Réponse `START_CLAIM` (exemple) :
+
+```json
+{
+  "success": true,
+  "claim": {
+    "external_user_id": "partner-user-123",
+    "loyalup_user_id": "uuid",
+    "email": "client@example.com",
+    "action_link": "https://...",
+    "email_otp": "123456",
+    "hashed_token": "...",
+    "redirect_to": "https://loyalup-pink.vercel.app/auth/callback"
+  }
+}
+```
+
+Notes sécurité :
+- `action_link`, `email_otp` et `hashed_token` sont des secrets de preuve d’authentification : ne jamais les exposer dans un frontend public.
+- Le partenaire doit déclencher l’envoi sécurisé vers l’utilisateur final (email/SMS) côté serveur.
+- `redirect_to` doit pointer vers un domaine contrôlé (par défaut: `/auth/callback` côté LoyalUp).
+
+Flow recommandé côté partenaire :
+1. Appeler `GET_STATUS` avec `external_user_id`.
+2. Si `activation_required=true`, appeler `START_CLAIM` avec l’email réel utilisateur.
+3. Envoyer le `action_link` à l’utilisateur.
+4. Après callback, l’utilisateur final peut définir son mot de passe LoyalUp depuis l’écran Profil > Sécurité du compte.
 
 ---
 
@@ -338,6 +386,15 @@ Partner Transfers :
 - `400 transaction_ref is required`
 - `403 Partner production access not enabled`
 - `409 insufficient_balance`
+
+Partner Account Claim :
+- `400 Missing action`
+- `400 external_user_id is required`
+- `400 A valid email is required` (action `START_CLAIM`)
+- `401 Missing X-Partner-Key` / `Invalid partner key`
+- `403 Partner is not active`
+- `404 User link not found`
+- `409` si collision email ou mise à jour utilisateur impossible
 
 ---
 

@@ -157,6 +157,53 @@ paths:
         '409':
           description: Claim conflict (e.g. email collision)
 
+  /loyalup-account-claim:
+    post:
+      summary: Compatibility alias of /partner-account-claim
+      security:
+        - PartnerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [action, external_user_id]
+                  properties:
+                    action:
+                      type: string
+                      enum: [GET_STATUS]
+                    external_user_id:
+                      type: string
+                - type: object
+                  required: [action, external_user_id, email]
+                  properties:
+                    action:
+                      type: string
+                      enum: [START_CLAIM]
+                    external_user_id:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                    redirect_to:
+                      type: string
+                      format: uri
+      responses:
+        '200':
+          description: Status payload or claim payload with action_link
+        '400':
+          description: Invalid action or payload
+        '401':
+          description: Invalid partner key
+        '403':
+          description: Partner inactive
+        '404':
+          description: User link not found
+        '409':
+          description: Claim conflict (e.g. email collision)
+
   /api-v1-clients:
     get:
       summary: List clients

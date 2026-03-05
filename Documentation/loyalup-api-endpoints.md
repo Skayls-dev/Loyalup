@@ -258,6 +258,9 @@ Headers requis :
 - `X-Partner-Key`
 - `Content-Type: application/json`
 
+Alias de compatibilité (même comportement) :
+- `POST /loyalup-account-claim`
+
 Action 1: `GET_STATUS`
 
 ```json
