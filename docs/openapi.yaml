@@ -59,6 +59,113 @@ components:
               type: string
             api_version:
               type: string
+    PartnerTransferSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        status:
+          type: string
+          enum: [accepted, duplicate]
+        transfer_id:
+          type: string
+          format: uuid
+        transaction_ref:
+          type: string
+        partner_code:
+          type: string
+        external_user_id:
+          type: string
+        loyalup_user_id:
+          type: string
+          format: uuid
+        points_delta:
+          type: integer
+        resulting_balance:
+          type: integer
+    PartnerApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          oneOf:
+            - type: string
+            - type: object
+              properties:
+                code:
+                  type: string
+                message:
+                  type: string
+        details:
+          type: array
+          items:
+            type: object
+            properties:
+              path:
+                type: array
+                items:
+                  oneOf:
+                    - type: string
+                    - type: integer
+              message:
+                type: string
+                
+    PartnerClaimStatusResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        status:
+          type: object
+          properties:
+            partner_code:
+              type: string
+            external_user_id:
+              type: string
+            loyalup_user_id:
+              type: string
+              format: uuid
+            activation_required:
+              type: boolean
+            email:
+              type: string
+              format: email
+            email_masked:
+              type: string
+            email_confirmed_at:
+              type: [string, 'null']
+              format: date-time
+    PartnerClaimStartResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        claim:
+          type: object
+          properties:
+            external_user_id:
+              type: string
+            loyalup_user_id:
+              type: string
+              format: uuid
+            email:
+              type: string
+              format: email
+            action_link:
+              type: string
+              format: uri
+            email_otp:
+              type: string
+            hashed_token:
+              type: string
+            redirect_to:
+              type: string
+              format: uri
 paths:
   /partner-transfers:
     post:
@@ -101,14 +208,57 @@ paths:
       responses:
         '200':
           description: Accepted or duplicate transfer response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerTransferSuccess'
+              examples:
+                accepted:
+                  value:
+                    success: true
+                    status: accepted
+                    transfer_id: 43ab17f3-ecf0-4ce1-a47e-2ecfdbf0561b
+                    transaction_ref: order-2026-03-04-0001
+                    partner_code: PROVIDER_3
+                    external_user_id: partner-user-123
+                    loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                    points_delta: 120
+                    resulting_balance: 450
+                duplicate:
+                  value:
+                    success: true
+                    status: duplicate
+                    transfer_id: 43ab17f3-ecf0-4ce1-a47e-2ecfdbf0561b
+                    transaction_ref: order-2026-03-04-0001
+                    partner_code: PROVIDER_3
+                    external_user_id: partner-user-123
+                    loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                    points_delta: 120
+                    resulting_balance: 450
         '400':
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '401':
           description: Invalid or missing partner key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '403':
           description: Partner inactive or production access not enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '409':
           description: Transfer rejected (e.g. insufficient_balance)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
 
   /partner-account-claim:
     post:
@@ -146,16 +296,65 @@ paths:
       responses:
         '200':
           description: Status payload or claim payload with action_link (returned to caller; no partner-side email/SMS dispatch by default)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PartnerClaimStatusResponse'
+                  - $ref: '#/components/schemas/PartnerClaimStartResponse'
+              examples:
+                get_status:
+                  value:
+                    success: true
+                    status:
+                      partner_code: PROVIDER_3
+                      external_user_id: partner-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      activation_required: true
+                      email: client@example.com
+                      email_masked: cl***@example.com
+                      email_confirmed_at: null
+                start_claim:
+                  value:
+                    success: true
+                    claim:
+                      external_user_id: partner-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      email: client@example.com
+                      action_link: https://yyftqivizzgvveeczbpv.supabase.co/auth/v1/verify
+                      email_otp: '123456'
+                      hashed_token: token_hash
+                      redirect_to: https://loyalup-pink.vercel.app/auth/callback
         '400':
           description: Invalid action or payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '401':
           description: Invalid partner key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '403':
           description: Partner inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '404':
           description: User link not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '409':
           description: Claim conflict (e.g. email collision)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
 
   /loyalup-account-claim:
     post:
@@ -193,16 +392,65 @@ paths:
       responses:
         '200':
           description: Status payload or claim payload with action_link (returned to caller; no partner-side email/SMS dispatch by default)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/PartnerClaimStatusResponse'
+                  - $ref: '#/components/schemas/PartnerClaimStartResponse'
+              examples:
+                get_status:
+                  value:
+                    success: true
+                    status:
+                      partner_code: PROVIDER_3
+                      external_user_id: partner-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      activation_required: true
+                      email: client@example.com
+                      email_masked: cl***@example.com
+                      email_confirmed_at: null
+                start_claim:
+                  value:
+                    success: true
+                    claim:
+                      external_user_id: partner-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      email: client@example.com
+                      action_link: https://yyftqivizzgvveeczbpv.supabase.co/auth/v1/verify
+                      email_otp: '123456'
+                      hashed_token: token_hash
+                      redirect_to: https://loyalup-pink.vercel.app/auth/callback
         '400':
           description: Invalid action or payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '401':
           description: Invalid partner key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '403':
           description: Partner inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '404':
           description: User link not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '409':
           description: Claim conflict (e.g. email collision)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
 
   /api-v1-clients:
     get:
