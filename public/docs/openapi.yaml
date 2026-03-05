@@ -1,10 +1,10 @@
 openapi: 3.1.0
 info:
   title: LoyalUp Public API
-  version: 1.0.0
-  description: Public API for providers to manage clients, services, promotions, transactions, stats and sandbox checks.
+  version: 1.1.0
+  description: Provider API plus Partner Transfer and Partner Account Claim endpoints.
 servers:
-  - url: https://YOUR_PROJECT.supabase.co/functions/v1
+  - url: https://yyftqivizzgvveeczbpv.supabase.co/functions/v1
 security:
   - ApiKeyAuth: []
 components:
@@ -17,35 +17,226 @@ components:
       type: apiKey
       in: header
       name: X-Partner-Key
+  schemas:
+    ProviderApiSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+        meta:
+          type: object
+          properties:
+            request_id:
+              type: string
+            timestamp:
+              type: string
+            api_version:
+              type: string
+            rate_limit_remaining:
+              type: integer
+    ProviderApiError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+        meta:
+          type: object
+          properties:
+            request_id:
+              type: string
+            timestamp:
+              type: string
+            api_version:
+              type: string
 paths:
-  /partner/v1/transfers:
+  /partner-transfers:
     post:
-      summary: Transfer partner points into LoyalUp wallet
+      summary: Credit/debit points to a LoyalUp linked user using partner credentials
+      security:
+        - PartnerApiKey: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [external_user_id, transaction_ref, points]
+              properties:
+                external_user_id:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                transaction_ref:
+                  type: string
+                points:
+                  type: integer
+                  minimum: 1
+                direction:
+                  type: string
+                  enum: [credit, debit]
+                display_name:
+                  type: string
+                create_user_if_missing:
+                  type: boolean
+                metadata:
+                  type: object
+      responses:
+        '200':
+          description: Accepted or duplicate transfer response
+        '400':
+          description: Validation error
+        '401':
+          description: Invalid or missing partner key
+        '403':
+          description: Partner inactive or production access not enabled
+        '409':
+          description: Transfer rejected (e.g. insufficient_balance)
+
+  /partner-account-claim:
+    post:
+      summary: Get activation status or start claim flow for a linked partner user
+      security:
+        - PartnerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [action, external_user_id]
+                  properties:
+                    action:
+                      type: string
+                      enum: [GET_STATUS]
+                    external_user_id:
+                      type: string
+                - type: object
+                  required: [action, external_user_id, email]
+                  properties:
+                    action:
+                      type: string
+                      enum: [START_CLAIM]
+                    external_user_id:
+                      type: string
+                    email:
+                      type: string
+                      format: email
+                    redirect_to:
+                      type: string
+                      format: uri
+      responses:
+        '200':
+          description: Status payload or claim payload with action_link
+        '400':
+          description: Invalid action or payload
+        '401':
+          description: Invalid partner key
+        '403':
+          description: Partner inactive
+        '404':
+          description: User link not found
+        '409':
+          description: Claim conflict (e.g. email collision)
+
   /api-v1-clients:
     get:
       summary: List clients
-    post:
-      summary: Credit or debit client points
+      responses:
+        '200':
+          description: Clients list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderApiSuccess'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderApiError'
+
   /api-v1-transactions:
     get:
       summary: List transactions
+      responses:
+        '200':
+          description: Transaction list
     post:
       summary: Create a POS transaction
+      responses:
+        '200':
+          description: Created transaction
+
   /api-v1-services:
     get:
       summary: List provider services
+      responses:
+        '200':
+          description: Service list
     post:
       summary: Create service
+      responses:
+        '200':
+          description: Created service
     put:
       summary: Update service
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Updated service
+
   /api-v1-promotions:
     get:
-      summary: List promotions
+      summary: List active promotions
+      responses:
+        '200':
+          description: Promotion list
     post:
       summary: Create promotion
+      responses:
+        '200':
+          description: Created promotion
+
   /api-v1-stats:
     get:
       summary: Get provider stats
+      responses:
+        '200':
+          description: Stats summary
+
   /api-v1-sandbox:
     get:
-      summary: Sandbox endpoint
+      summary: Sandbox status/echo endpoint (sandbox keys only)
+      parameters:
+        - in: query
+          name: mode
+          schema:
+            type: string
+            enum: [status, echo]
+      responses:
+        '200':
+          description: Sandbox response
