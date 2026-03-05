@@ -283,7 +283,7 @@ Action 2: `START_CLAIM`
 
 Usage :
 - `GET_STATUS` permet au partenaire de savoir si le compte LoyalUp lié nécessite encore activation.
-- `START_CLAIM` associe l’email réel et génère un magic link (`action_link`) à envoyer à l’utilisateur final.
+- `START_CLAIM` associe l’email réel et génère un magic link (`action_link`) renvoyé dans la réponse API.
 
 ---
 

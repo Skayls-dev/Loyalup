@@ -145,7 +145,7 @@ paths:
                       format: uri
       responses:
         '200':
-          description: Status payload or claim payload with action_link
+          description: Status payload or claim payload with action_link (returned to caller; no partner-side email/SMS dispatch by default)
         '400':
           description: Invalid action or payload
         '401':
@@ -192,7 +192,7 @@ paths:
                       format: uri
       responses:
         '200':
-          description: Status payload or claim payload with action_link
+          description: Status payload or claim payload with action_link (returned to caller; no partner-side email/SMS dispatch by default)
         '400':
           description: Invalid action or payload
         '401':

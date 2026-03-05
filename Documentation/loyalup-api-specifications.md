@@ -283,7 +283,7 @@ Action 2: `START_CLAIM`
 
 Usage :
 - `GET_STATUS` permet au partenaire de savoir si le compte LoyalUp lié nécessite encore activation.
-- `START_CLAIM` associe l’email réel et génère un magic link (`action_link`) à envoyer à l’utilisateur final.
+- `START_CLAIM` associe l’email réel et génère un magic link (`action_link`) renvoyé dans la réponse API.
 
 Réponse `GET_STATUS` (exemple) :
 
@@ -321,14 +321,15 @@ Réponse `START_CLAIM` (exemple) :
 
 Notes sécurité :
 - `action_link`, `email_otp` et `hashed_token` sont des secrets de preuve d’authentification : ne jamais les exposer dans un frontend public.
-- Le partenaire doit déclencher l’envoi sécurisé vers l’utilisateur final (email/SMS) côté serveur.
+- Comportement actuel volontaire : aucun envoi email/SMS n’est fait automatiquement côté partenaire backend ; l’UI partenaire affiche `action_link` (open/copy).
+- Envoi serveur (email/SMS) possible plus tard via une edge function dédiée.
 - `redirect_to` doit pointer vers un domaine contrôlé (par défaut: `/auth/callback` côté LoyalUp).
 
 Flow recommandé côté partenaire :
 1. Appeler `GET_STATUS` avec `external_user_id`.
 2. Si `activation_required=true`, appeler `START_CLAIM` avec l’email réel utilisateur.
-3. Envoyer le `action_link` à l’utilisateur.
-4. Après callback, l’utilisateur final peut définir son mot de passe LoyalUp depuis l’écran Profil > Sécurité du compte.
+3. Récupérer `action_link` et le présenter dans l’UI partenaire (open/copy).
+4. Après callback/magic link, l’utilisateur final peut définir son mot de passe LoyalUp depuis l’écran Profil > Sécurité du compte.
 
 ---
 
