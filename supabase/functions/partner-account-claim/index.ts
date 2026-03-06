@@ -144,11 +144,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const appBaseUrl = (Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('SITE_URL') || 'https://loyalup-pink.vercel.app').replace(/\/$/, '')
-    const requestedRedirectTo = body.redirect_to?.trim()
-    const redirectTo = requestedRedirectTo && requestedRedirectTo.startsWith('http')
-      ? requestedRedirectTo
-      : `${appBaseUrl}/auth/callback`
+    const redirectTo = resolveSafeRedirectTo(body.redirect_to)
 
     const magicLink = await admin.auth.admin.generateLink({
       type: 'magiclink',
@@ -281,6 +277,24 @@ function maskEmail(email: string): string | null {
   }
 
   return `${local.slice(0, 2)}***@${domain}`
+}
+
+function resolveSafeRedirectTo(requestedRedirectTo?: string): string {
+  const fallbackBaseUrl = 'https://loyalup-pink.vercel.app'
+  const configuredBaseUrl = (Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('SITE_URL') || fallbackBaseUrl).replace(/\/$/, '')
+  const safeBaseUrl = isLocalUrl(configuredBaseUrl) ? fallbackBaseUrl : configuredBaseUrl
+
+  const requested = requestedRedirectTo?.trim()
+  if (requested && requested.startsWith('http') && !isLocalUrl(requested)) {
+    return requested
+  }
+
+  return `${safeBaseUrl}/auth/callback`
+}
+
+function isLocalUrl(value: string): boolean {
+  const lower = value.toLowerCase()
+  return lower.includes('localhost') || lower.includes('127.0.0.1')
 }
 
 function json(payload: unknown, status = 200): Response {
