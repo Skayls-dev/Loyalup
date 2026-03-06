@@ -624,6 +624,9 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                             }
 
                             setStatus('Temporary password generated, displayed, and copied. User must change it on first login.')
+                            window.alert(
+                              `Temporary password for ${user.email || user.id}:\n\n${temporaryPassword}\n\nCopy it now and share it securely.`,
+                            )
                           })
                           .catch((error) =>
                             setStatus(error instanceof Error ? error.message : 'Temporary password generation failed'),
@@ -637,7 +640,9 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     <button
                       type="button"
                       onClick={() => {
-                        const confirmed = window.confirm(`Generate reset password link for ${user.email || user.id}?`)
+                        const confirmed = window.confirm(
+                          `Generate reset password link for ${user.email || user.id}? This returns a reset link, not a temporary password.`,
+                        )
                         if (!confirmed) {
                           return
                         }
@@ -660,7 +665,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                       }}
                       className={secondaryButtonClass}
                     >
-                      Reset password
+                      Reset link
                     </button>
 
                     <button
