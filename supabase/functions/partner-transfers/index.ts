@@ -191,7 +191,7 @@ Deno.serve(async (req) => {
       resulting_balance: walletUpdate.balance,
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unexpected error'
+    const message = extractErrorMessage(error)
     return json({ error: message }, 500)
   }
 })
@@ -269,7 +269,7 @@ async function resolveOrCreateLinkedUser(
   })
 
   if (created.error || !created.data.user?.id) {
-    throw created.error ?? new Error('Unable to create linked LoyalUp user')
+    throw new Error(created.error?.message ?? 'Unable to create linked LoyalUp user')
   }
 
   const loyalupUserId = created.data.user.id
@@ -283,7 +283,7 @@ async function resolveOrCreateLinkedUser(
   })
 
   if (profileUpsert.error) {
-    throw profileUpsert.error
+    throw new Error(profileUpsert.error.message)
   }
 
   const linkInsert = await admin.from('partner_user_links').insert({
@@ -305,7 +305,7 @@ async function resolveOrCreateLinkedUser(
       return reloaded.data.loyalup_user_id
     }
 
-    throw linkInsert.error
+    throw new Error(linkInsert.error.message)
   }
 
   return loyalupUserId
@@ -357,7 +357,7 @@ async function claimTransfer(
     return { claimed: false, existing: existing.data }
   }
 
-  throw insertResult.error ?? new Error('Unable to claim transfer')
+  throw new Error(insertResult.error?.message ?? 'Unable to claim transfer')
 }
 
 async function applyWalletDelta(
@@ -372,7 +372,7 @@ async function applyWalletDelta(
     .maybeSingle<{ id: string; balance: number }>()
 
   if (wallet.error) {
-    throw wallet.error
+    throw new Error(wallet.error.message)
   }
 
   const currentBalance = Number(wallet.data?.balance ?? 0)
@@ -389,7 +389,7 @@ async function applyWalletDelta(
   })
 
   if (upsert.error) {
-    throw upsert.error
+    throw new Error(upsert.error.message)
   }
 
   return { ok: true, balance: nextBalance }
@@ -433,6 +433,21 @@ function normalizeOptionalEmail(value?: string): string | null {
   }
 
   return normalized
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  if (typeof error === 'object' && error !== null && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message
+    }
+  }
+
+  return 'Unexpected error'
 }
 
 function json(payload: unknown, status = 200): Response {
