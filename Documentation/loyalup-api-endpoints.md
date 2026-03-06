@@ -331,6 +331,52 @@ Flow recommandé côté partenaire :
 3. Récupérer `action_link` et le présenter dans l’UI partenaire (open/copy).
 4. Après callback/magic link, l’utilisateur final peut définir son mot de passe LoyalUp depuis l’écran Profil > Sécurité du compte.
 
+### POST `/partner-activate` (MVP simplifié)
+Headers requis :
+- `X-Partner-Key`
+- `Content-Type: application/json`
+
+Body :
+
+```json
+{
+  "external_user_id": "partner-user-123",
+  "email": "client@example.com",
+  "display_name": "Jean Martin",
+  "redirect_to": "https://loyalup-pink.vercel.app/auth/callback",
+  "create_user_if_missing": true
+}
+```
+
+Comportement :
+- Endpoint one-call pour simplifier l’activation côté partner.
+- Si le lien n’existe pas, LoyalUp peut auto-créer le compte + lien (`create_user_if_missing=true` par défaut).
+- Puis LoyalUp génère directement le magic link et renvoie `action_link`.
+
+Réponse (exemple) :
+
+```json
+{
+  "success": true,
+  "activation": {
+    "partner_code": "PROVIDER_3",
+    "external_user_id": "partner-user-123",
+    "loyalup_user_id": "uuid",
+    "linked_user_created": true,
+    "email": "client@example.com",
+    "action_link": "https://...",
+    "email_otp": "123456",
+    "hashed_token": "...",
+    "redirect_to": "https://loyalup-pink.vercel.app/auth/callback"
+  }
+}
+```
+
+Flow recommandé (simple) :
+1. Le partner appelle `POST /partner-activate`.
+2. Il récupère `action_link`.
+3. Il ouvre ou copie ce lien dans l’UI partner.
+
 ---
 
 ## 6. Partner Self-Service (Sprint 2)

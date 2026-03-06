@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: LoyalUp Public API
   version: 1.1.0
-  description: Provider API plus Partner Transfer and Partner Account Claim endpoints.
+  description: Provider API plus Partner Transfer, Partner Account Claim, and Partner Activate endpoints.
 servers:
   - url: https://yyftqivizzgvveeczbpv.supabase.co/functions/v1
 security:
@@ -152,6 +152,37 @@ components:
             loyalup_user_id:
               type: string
               format: uuid
+            email:
+              type: string
+              format: email
+            action_link:
+              type: string
+              format: uri
+            email_otp:
+              type: string
+            hashed_token:
+              type: string
+            redirect_to:
+              type: string
+              format: uri
+    PartnerActivateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        activation:
+          type: object
+          properties:
+            partner_code:
+              type: string
+            external_user_id:
+              type: string
+            loyalup_user_id:
+              type: string
+              format: uuid
+            linked_user_created:
+              type: boolean
             email:
               type: string
               format: email
@@ -446,6 +477,83 @@ paths:
                 $ref: '#/components/schemas/PartnerApiError'
         '409':
           description: Claim conflict (e.g. email collision)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+
+  /partner-activate:
+    post:
+      summary: One-call partner activation (auto-link if needed, then generate action_link)
+      security:
+        - PartnerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [external_user_id, email]
+              properties:
+                external_user_id:
+                  type: string
+                email:
+                  type: string
+                  format: email
+                display_name:
+                  type: string
+                redirect_to:
+                  type: string
+                  format: uri
+                create_user_if_missing:
+                  type: boolean
+      responses:
+        '200':
+          description: Activation payload with action_link
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerActivateResponse'
+              examples:
+                activated:
+                  value:
+                    success: true
+                    activation:
+                      partner_code: PROVIDER_3
+                      external_user_id: partner-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      linked_user_created: true
+                      email: client@example.com
+                      action_link: https://yyftqivizzgvveeczbpv.supabase.co/auth/v1/verify
+                      email_otp: '123456'
+                      hashed_token: token_hash
+                      redirect_to: https://loyalup-pink.vercel.app/auth/callback
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '401':
+          description: Invalid partner key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '403':
+          description: Partner inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '404':
+          description: User link not found and auto-link disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '409':
+          description: Activation conflict (e.g. email collision)
           content:
             application/json:
               schema:

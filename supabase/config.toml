@@ -49,6 +49,9 @@ verify_jwt = false
 [functions.loyalup-account-claim]
 verify_jwt = false
 
+[functions.partner-activate]
+verify_jwt = false
+
 [functions.manage-webhooks]
 verify_jwt = false
 
