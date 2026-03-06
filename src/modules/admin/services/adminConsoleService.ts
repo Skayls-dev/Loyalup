@@ -185,6 +185,15 @@ export async function deleteAdminUser(userId: string) {
   })
 }
 
+export async function resetAdminUserPassword(userId: string) {
+  const data = await invoke<{ reset_link: string | null }>({
+    action: 'RESET_USER_PASSWORD',
+    user_id: userId,
+  })
+
+  return data.reset_link
+}
+
 export async function toggleAdminUserBlock(userId: string, blocked: boolean) {
   return invoke({
     action: 'TOGGLE_USER_BLOCK',

@@ -16,6 +16,7 @@ import {
   listAdminUsers,
   getUserProviderRelations,
   retryAdminWebhookDelivery,
+  resetAdminUserPassword,
   reviewPartnerAccessRequest,
   upsertPartner,
   upsertScanAd,
@@ -595,6 +596,35 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                       className={secondaryButtonClass}
                     >
                       Delete
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const confirmed = window.confirm(`Generate reset password link for ${user.email || user.id}?`)
+                        if (!confirmed) {
+                          return
+                        }
+
+                        void resetAdminUserPassword(user.id)
+                          .then(async (resetLink) => {
+                            if (!resetLink) {
+                              setStatus('No reset link returned')
+                              return
+                            }
+
+                            if (navigator.clipboard?.writeText) {
+                              await navigator.clipboard.writeText(resetLink).catch(() => undefined)
+                            }
+
+                            window.open(resetLink, '_blank', 'noopener,noreferrer')
+                            setStatus('Password reset link generated (copied/opened)')
+                          })
+                          .catch((error) => setStatus(error instanceof Error ? error.message : 'Password reset failed'))
+                      }}
+                      className={secondaryButtonClass}
+                    >
+                      Reset password
                     </button>
 
                     <button

@@ -4,6 +4,7 @@ type AdminAction =
   | 'GET_OVERVIEW'
   | 'LIST_USERS'
   | 'GET_USER_PROVIDER_RELATIONS'
+  | 'RESET_USER_PASSWORD'
   | 'DELETE_USER'
   | 'UPDATE_USER_ROLE'
   | 'UPDATE_PROVIDER_TIER'
@@ -373,6 +374,59 @@ Deno.serve(async (req) => {
     })
 
     return json({ success: true, deleted: true, user_id: userId })
+  }
+
+  if (action === 'RESET_USER_PASSWORD') {
+    const userId = String(body.user_id ?? '').trim()
+    if (!userId) {
+      return json({ error: 'Missing user_id' }, 400)
+    }
+
+    const userResult = await admin.auth.admin.getUserById(userId)
+    if (userResult.error || !userResult.data.user?.email) {
+      return json({ error: userResult.error?.message ?? 'User not found or missing email' }, 404)
+    }
+
+    const appBaseUrl = resolveSafeAppBaseUrl()
+    const resetRedirectTo = `${appBaseUrl}/auth/callback`
+
+    const generated = await admin.auth.admin.generateLink({
+      type: 'recovery',
+      email: userResult.data.user.email,
+      options: {
+        redirectTo: resetRedirectTo,
+      },
+    })
+
+    if (generated.error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'RESET_USER_PASSWORD',
+        targetUserId: userId,
+        success: false,
+        metadata: { error: generated.error.message },
+      })
+      return json({ error: generated.error.message }, 500)
+    }
+
+    const resetLink = generated.data.properties?.action_link ?? null
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'RESET_USER_PASSWORD',
+      targetUserId: userId,
+      success: Boolean(resetLink),
+      metadata: {
+        reset_email: userResult.data.user.email,
+      },
+    })
+
+    return json({
+      success: true,
+      user_id: userId,
+      reset_link: resetLink,
+      redirect_to: resetRedirectTo,
+    })
   }
 
   if (action === 'UPDATE_USER_ROLE') {
@@ -1281,6 +1335,18 @@ function randomBase62(length: number) {
   }
 
   return out
+}
+
+function resolveSafeAppBaseUrl() {
+  const fallbackBaseUrl = 'https://loyalup-pink.vercel.app'
+  const configured = String(Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('SITE_URL') || fallbackBaseUrl).replace(/\/$/, '')
+  const lower = configured.toLowerCase()
+
+  if (lower.includes('localhost') || lower.includes('127.0.0.1')) {
+    return fallbackBaseUrl
+  }
+
+  return configured
 }
 
 async function sha256Hex(value: string): Promise<string> {
