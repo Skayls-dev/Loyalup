@@ -106,6 +106,43 @@ export type PartnerAccessRequestRow = {
   partner_name: string
 }
 
+export type AdminRelatedProviderRow = {
+  fournisseur_id: string
+  provider_user_id: string | null
+  nom_commerce: string | null
+  tier: 'free' | 'starter' | 'premium' | 'enterprise' | null
+  solde: number
+  total_visites: number
+  updated_at: string
+}
+
+export type AdminRelatedClientRow = {
+  client_id: string
+  email: string | null
+  nom: string | null
+  solde: number
+  total_visites: number
+  updated_at: string
+}
+
+export type AdminUserProviderRelations = {
+  subject: {
+    user_id: string
+    email: string | null
+    nom: string | null
+    role: 'client' | 'fournisseur' | 'admin' | null
+    fournisseur_id: string | null
+    nom_commerce: string | null
+    tier: 'free' | 'starter' | 'premium' | 'enterprise' | null
+  }
+  providers: AdminRelatedProviderRow[]
+  clients: AdminRelatedClientRow[]
+  totals: {
+    providers_count: number
+    clients_count: number
+  }
+}
+
 export async function getAdminOverview() {
   const data = await invoke<{ overview: AdminOverview }>({ action: 'GET_OVERVIEW' })
   return data.overview
@@ -130,6 +167,15 @@ export async function updateAdminUserRole(userId: string, role: 'client' | 'four
     user_id: userId,
     role,
   })
+}
+
+export async function getUserProviderRelations(userId: string) {
+  const data = await invoke<AdminUserProviderRelations>({
+    action: 'GET_USER_PROVIDER_RELATIONS',
+    user_id: userId,
+  })
+
+  return data
 }
 
 export async function toggleAdminUserBlock(userId: string, blocked: boolean) {

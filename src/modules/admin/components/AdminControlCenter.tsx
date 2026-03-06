@@ -13,6 +13,7 @@ import {
   listPartners,
   listScanAds,
   listAdminUsers,
+  getUserProviderRelations,
   retryAdminWebhookDelivery,
   reviewPartnerAccessRequest,
   upsertPartner,
@@ -22,6 +23,7 @@ import {
   updateAdminUserRole,
   type AdminAuditLogRow,
   type AdminOverview,
+  type AdminUserProviderRelations,
   type AdminUserRow,
   type ApiUsageRow,
   type PartnerRow,
@@ -87,6 +89,9 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [partnerScopes, setPartnerScopes] = useState('transfers:write')
   const [generatedPartnerKey, setGeneratedPartnerKey] = useState('')
   const [generatingPartnerKey, setGeneratingPartnerKey] = useState(false)
+  const [relationsLoading, setRelationsLoading] = useState(false)
+  const [relationsUserId, setRelationsUserId] = useState<string | null>(null)
+  const [relationsData, setRelationsData] = useState<AdminUserProviderRelations | null>(null)
 
   const apiErrorRate = useMemo(() => {
     if (apiUsage.length === 0) {
@@ -386,6 +391,65 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
               <span>Email</span>
               <span>Actions</span>
             </div>
+
+            {relationsData ? (
+              <div className={`${panelClass} space-y-2`}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-[#605E5C]">
+                    Relations for {relationsData.subject.nom || relationsData.subject.email || relationsData.subject.user_id}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRelationsData(null)
+                      setRelationsUserId(null)
+                    }}
+                    className={secondaryButtonClass}
+                  >
+                    Close
+                  </button>
+                </div>
+
+                <div className="grid gap-2 md:grid-cols-2">
+                  <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2">
+                    <p className="text-xs font-semibold text-[#323130]">
+                      User → Providers ({relationsData.totals.providers_count})
+                    </p>
+                    {relationsData.providers.length === 0 ? (
+                      <p className="mt-1 text-xs text-[#605E5C]">No linked providers found.</p>
+                    ) : (
+                      <div className="mt-1 space-y-1">
+                        {relationsData.providers.map((provider) => (
+                          <div key={`${relationsData.subject.user_id}-${provider.fournisseur_id}`} className="rounded border border-[#edebe9] bg-white p-2 text-xs text-[#323130]">
+                            <p className="font-semibold">{provider.nom_commerce || provider.fournisseur_id}</p>
+                            <p className="text-[#605E5C]">tier: {provider.tier ?? 'n/a'} • balance: {provider.solde} • visits: {provider.total_visites}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2">
+                    <p className="text-xs font-semibold text-[#323130]">
+                      Provider → LoyalUp users ({relationsData.totals.clients_count})
+                    </p>
+                    {relationsData.clients.length === 0 ? (
+                      <p className="mt-1 text-xs text-[#605E5C]">No linked LoyalUp users found.</p>
+                    ) : (
+                      <div className="mt-1 space-y-1">
+                        {relationsData.clients.map((client) => (
+                          <div key={`${relationsData.subject.user_id}-${client.client_id}`} className="rounded border border-[#edebe9] bg-white p-2 text-xs text-[#323130]">
+                            <p className="font-semibold">{client.nom || client.email || client.client_id}</p>
+                            <p className="text-[#605E5C]">{client.email || 'no email'} • balance: {client.solde} • visits: {client.total_visites}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             {filteredUsers.map((user) => (
               <article key={user.id} className={rowClass}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -480,6 +544,25 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                       className={secondaryButtonClass}
                     >
                       Impersonate
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={relationsLoading && relationsUserId === user.id}
+                      onClick={() => {
+                        setRelationsLoading(true)
+                        setRelationsUserId(user.id)
+                        void getUserProviderRelations(user.id)
+                          .then((data) => {
+                            setRelationsData(data)
+                            setStatus('User-provider relations loaded')
+                          })
+                          .catch((error) => setStatus(error instanceof Error ? error.message : 'Failed to load relations'))
+                          .finally(() => setRelationsLoading(false))
+                      }}
+                      className={secondaryButtonClass}
+                    >
+                      {relationsLoading && relationsUserId === user.id ? 'Loading…' : 'Relations'}
                     </button>
                   </div>
                 </div>

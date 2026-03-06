@@ -3,6 +3,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 type AdminAction =
   | 'GET_OVERVIEW'
   | 'LIST_USERS'
+  | 'GET_USER_PROVIDER_RELATIONS'
   | 'UPDATE_USER_ROLE'
   | 'UPDATE_PROVIDER_TIER'
   | 'TOGGLE_USER_BLOCK'
@@ -192,6 +193,142 @@ Deno.serve(async (req) => {
         limit,
         from,
         to,
+      },
+    })
+  }
+
+  if (action === 'GET_USER_PROVIDER_RELATIONS') {
+    const userId = String(body.user_id ?? '').trim()
+    if (!userId) {
+      return json({ error: 'Missing user_id' }, 400)
+    }
+
+    const { data: subjectProfile, error: subjectError } = await admin
+      .from('profiles')
+      .select('id, email, nom, role')
+      .eq('id', userId)
+      .maybeSingle<{ id: string; email: string; nom: string; role: string }>()
+
+    if (subjectError) {
+      return json({ error: subjectError.message }, 500)
+    }
+
+    const { data: providerRow, error: providerError } = await admin
+      .from('fournisseurs')
+      .select('id, user_id, nom_commerce, tier')
+      .eq('user_id', userId)
+      .maybeSingle<{ id: string; user_id: string; nom_commerce: string | null; tier: string | null }>()
+
+    if (providerError) {
+      return json({ error: providerError.message }, 500)
+    }
+
+    const { data: userProviderLinks, error: userProviderLinksError } = await admin
+      .from('client_points')
+      .select('fournisseur_id, solde, total_visites, updated_at, fournisseurs!inner(id, user_id, nom_commerce, tier)')
+      .eq('client_id', userId)
+      .order('updated_at', { ascending: false })
+
+    if (userProviderLinksError) {
+      return json({ error: userProviderLinksError.message }, 500)
+    }
+
+    const providers = ((userProviderLinks ?? []) as Array<{
+      fournisseur_id: string
+      solde: number
+      total_visites: number
+      updated_at: string
+      fournisseurs?: {
+        id?: string
+        user_id?: string
+        nom_commerce?: string | null
+        tier?: string | null
+      }
+    }>).map((row) => ({
+      fournisseur_id: row.fournisseur_id,
+      provider_user_id: row.fournisseurs?.user_id ?? null,
+      nom_commerce: row.fournisseurs?.nom_commerce ?? null,
+      tier: row.fournisseurs?.tier ?? null,
+      solde: Number(row.solde ?? 0),
+      total_visites: Number(row.total_visites ?? 0),
+      updated_at: row.updated_at,
+    }))
+
+    let clients: Array<{
+      client_id: string
+      email: string | null
+      nom: string | null
+      solde: number
+      total_visites: number
+      updated_at: string
+    }> = []
+
+    if (providerRow?.id) {
+      const { data: providerClientRows, error: providerClientRowsError } = await admin
+        .from('client_points')
+        .select('client_id, solde, total_visites, updated_at')
+        .eq('fournisseur_id', providerRow.id)
+        .order('updated_at', { ascending: false })
+
+      if (providerClientRowsError) {
+        return json({ error: providerClientRowsError.message }, 500)
+      }
+
+      const rows = (providerClientRows ?? []) as Array<{
+        client_id: string
+        solde: number
+        total_visites: number
+        updated_at: string
+      }>
+
+      const clientIds = [...new Set(rows.map((row) => row.client_id))]
+      const { data: clientProfiles, error: clientProfilesError } = clientIds.length
+        ? await admin
+            .from('profiles')
+            .select('id, email, nom')
+            .in('id', clientIds)
+        : { data: [] as Array<{ id: string; email: string | null; nom: string | null }>, error: null }
+
+      if (clientProfilesError) {
+        return json({ error: clientProfilesError.message }, 500)
+      }
+
+      const profileMap = new Map(
+        ((clientProfiles ?? []) as Array<{ id: string; email: string | null; nom: string | null }>).map((row) => [
+          row.id,
+          row,
+        ]),
+      )
+
+      clients = rows.map((row) => {
+        const profile = profileMap.get(row.client_id)
+        return {
+          client_id: row.client_id,
+          email: profile?.email ?? null,
+          nom: profile?.nom ?? null,
+          solde: Number(row.solde ?? 0),
+          total_visites: Number(row.total_visites ?? 0),
+          updated_at: row.updated_at,
+        }
+      })
+    }
+
+    return json({
+      success: true,
+      subject: {
+        user_id: userId,
+        email: subjectProfile?.email ?? null,
+        nom: subjectProfile?.nom ?? null,
+        role: subjectProfile?.role ?? null,
+        fournisseur_id: providerRow?.id ?? null,
+        nom_commerce: providerRow?.nom_commerce ?? null,
+        tier: providerRow?.tier ?? null,
+      },
+      providers,
+      clients,
+      totals: {
+        providers_count: providers.length,
+        clients_count: clients.length,
       },
     })
   }
