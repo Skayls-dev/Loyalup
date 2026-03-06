@@ -178,6 +178,13 @@ export async function getUserProviderRelations(userId: string) {
   return data
 }
 
+export async function deleteAdminUser(userId: string) {
+  return invoke({
+    action: 'DELETE_USER',
+    user_id: userId,
+  })
+}
+
 export async function toggleAdminUserBlock(userId: string, blocked: boolean) {
   return invoke({
     action: 'TOGGLE_USER_BLOCK',

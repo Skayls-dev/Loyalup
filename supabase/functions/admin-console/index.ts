@@ -4,6 +4,7 @@ type AdminAction =
   | 'GET_OVERVIEW'
   | 'LIST_USERS'
   | 'GET_USER_PROVIDER_RELATIONS'
+  | 'DELETE_USER'
   | 'UPDATE_USER_ROLE'
   | 'UPDATE_PROVIDER_TIER'
   | 'TOGGLE_USER_BLOCK'
@@ -331,6 +332,47 @@ Deno.serve(async (req) => {
         clients_count: clients.length,
       },
     })
+  }
+
+  if (action === 'DELETE_USER') {
+    const userId = String(body.user_id ?? '').trim()
+    if (!userId) {
+      return json({ error: 'Missing user_id' }, 400)
+    }
+
+    if (userId === adminUserId) {
+      return json({ error: 'You cannot delete your own admin account' }, 400)
+    }
+
+    const userResult = await admin.auth.admin.getUserById(userId)
+    if (userResult.error || !userResult.data.user?.id) {
+      return json({ error: userResult.error?.message ?? 'User not found' }, 404)
+    }
+
+    const deleteResult = await admin.auth.admin.deleteUser(userId)
+    if (deleteResult.error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'DELETE_USER',
+        targetUserId: userId,
+        success: false,
+        metadata: { error: deleteResult.error.message },
+      })
+
+      return json({ error: deleteResult.error.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'DELETE_USER',
+      targetUserId: userId,
+      success: true,
+      metadata: {
+        deleted_email: userResult.data.user.email ?? null,
+      },
+    })
+
+    return json({ success: true, deleted: true, user_id: userId })
   }
 
   if (action === 'UPDATE_USER_ROLE') {

@@ -3,6 +3,7 @@ import {
   bulkImportAdminUsers,
   bulkUpdateAdminUsers,
   deleteScanAd,
+  deleteAdminUser,
   getAdminAuditLogs,
   getAdminApiUsage,
   getAdminOverview,
@@ -574,6 +575,26 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                       className={secondaryButtonClass}
                     >
                       Impersonate
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const confirmed = window.confirm(`Delete user ${user.email || user.id}? This cannot be undone.`)
+                        if (!confirmed) {
+                          return
+                        }
+
+                        void deleteAdminUser(user.id)
+                          .then(() => {
+                            setStatus('User deleted')
+                            return loadAll()
+                          })
+                          .catch((error) => setStatus(error instanceof Error ? error.message : 'User deletion failed'))
+                      }}
+                      className={secondaryButtonClass}
+                    >
+                      Delete
                     </button>
 
                     <button
