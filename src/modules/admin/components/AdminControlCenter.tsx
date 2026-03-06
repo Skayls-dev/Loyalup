@@ -92,6 +92,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [relationsLoading, setRelationsLoading] = useState(false)
   const [relationsUserId, setRelationsUserId] = useState<string | null>(null)
   const [relationsData, setRelationsData] = useState<AdminUserProviderRelations | null>(null)
+  const [relationsSearch, setRelationsSearch] = useState('')
 
   const apiErrorRate = useMemo(() => {
     if (apiUsage.length === 0) {
@@ -403,6 +404,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     onClick={() => {
                       setRelationsData(null)
                       setRelationsUserId(null)
+                      setRelationsSearch('')
                     }}
                     className={secondaryButtonClass}
                   >
@@ -410,43 +412,71 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                   </button>
                 </div>
 
-                <div className="grid gap-2 md:grid-cols-2">
-                  <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2">
-                    <p className="text-xs font-semibold text-[#323130]">
-                      User → Providers ({relationsData.totals.providers_count})
-                    </p>
-                    {relationsData.providers.length === 0 ? (
-                      <p className="mt-1 text-xs text-[#605E5C]">No linked providers found.</p>
-                    ) : (
-                      <div className="mt-1 space-y-1">
-                        {relationsData.providers.map((provider) => (
-                          <div key={`${relationsData.subject.user_id}-${provider.fournisseur_id}`} className="rounded border border-[#edebe9] bg-white p-2 text-xs text-[#323130]">
-                            <p className="font-semibold">{provider.nom_commerce || provider.fournisseur_id}</p>
-                            <p className="text-[#605E5C]">tier: {provider.tier ?? 'n/a'} • balance: {provider.solde} • visits: {provider.total_visites}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                <input
+                  value={relationsSearch}
+                  onChange={(event) => setRelationsSearch(event.target.value)}
+                  placeholder="Filter relations: provider name, user email, client name"
+                  className={inputClass}
+                />
 
-                  <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2">
-                    <p className="text-xs font-semibold text-[#323130]">
-                      Provider → LoyalUp users ({relationsData.totals.clients_count})
-                    </p>
-                    {relationsData.clients.length === 0 ? (
-                      <p className="mt-1 text-xs text-[#605E5C]">No linked LoyalUp users found.</p>
-                    ) : (
-                      <div className="mt-1 space-y-1">
-                        {relationsData.clients.map((client) => (
-                          <div key={`${relationsData.subject.user_id}-${client.client_id}`} className="rounded border border-[#edebe9] bg-white p-2 text-xs text-[#323130]">
-                            <p className="font-semibold">{client.nom || client.email || client.client_id}</p>
-                            <p className="text-[#605E5C]">{client.email || 'no email'} • balance: {client.solde} • visits: {client.total_visites}</p>
+                {(() => {
+                  const keyword = relationsSearch.trim().toLowerCase()
+                  const filteredProviders = keyword
+                    ? relationsData.providers.filter((provider) =>
+                        [provider.nom_commerce, provider.provider_user_id, provider.fournisseur_id]
+                          .filter(Boolean)
+                          .some((value) => String(value).toLowerCase().includes(keyword)),
+                      )
+                    : relationsData.providers
+
+                  const filteredClients = keyword
+                    ? relationsData.clients.filter((client) =>
+                        [client.nom, client.email, client.client_id]
+                          .filter(Boolean)
+                          .some((value) => String(value).toLowerCase().includes(keyword)),
+                      )
+                    : relationsData.clients
+
+                  return (
+                    <div className="grid gap-2 md:grid-cols-2">
+                      <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2">
+                        <p className="text-xs font-semibold text-[#323130]">
+                          User → Providers ({filteredProviders.length}/{relationsData.totals.providers_count})
+                        </p>
+                        {filteredProviders.length === 0 ? (
+                          <p className="mt-1 text-xs text-[#605E5C]">No linked providers found.</p>
+                        ) : (
+                          <div className="mt-1 space-y-1">
+                            {filteredProviders.map((provider) => (
+                              <div key={`${relationsData.subject.user_id}-${provider.fournisseur_id}`} className="rounded border border-[#edebe9] bg-white p-2 text-xs text-[#323130]">
+                                <p className="font-semibold">{provider.nom_commerce || provider.fournisseur_id}</p>
+                                <p className="text-[#605E5C]">tier: {provider.tier ?? 'n/a'} • balance: {provider.solde} • visits: {provider.total_visites}</p>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
+
+                      <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2">
+                        <p className="text-xs font-semibold text-[#323130]">
+                          Provider → LoyalUp users ({filteredClients.length}/{relationsData.totals.clients_count})
+                        </p>
+                        {filteredClients.length === 0 ? (
+                          <p className="mt-1 text-xs text-[#605E5C]">No linked LoyalUp users found.</p>
+                        ) : (
+                          <div className="mt-1 space-y-1">
+                            {filteredClients.map((client) => (
+                              <div key={`${relationsData.subject.user_id}-${client.client_id}`} className="rounded border border-[#edebe9] bg-white p-2 text-xs text-[#323130]">
+                                <p className="font-semibold">{client.nom || client.email || client.client_id}</p>
+                                <p className="text-[#605E5C]">{client.email || 'no email'} • balance: {client.solde} • visits: {client.total_visites}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
               </div>
             ) : null}
 
@@ -555,6 +585,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                         void getUserProviderRelations(user.id)
                           .then((data) => {
                             setRelationsData(data)
+                            setRelationsSearch('')
                             setStatus('User-provider relations loaded')
                           })
                           .catch((error) => setStatus(error instanceof Error ? error.message : 'Failed to load relations'))
