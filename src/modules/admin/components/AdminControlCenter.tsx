@@ -629,6 +629,36 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
 
                     <button
                       type="button"
+                      onClick={() => {
+                        const confirmed = window.confirm(`Generate and copy reset password link for ${user.email || user.id}?`)
+                        if (!confirmed) {
+                          return
+                        }
+
+                        void resetAdminUserPassword(user.id)
+                          .then(async (resetLink) => {
+                            if (!resetLink) {
+                              setStatus('No reset link returned')
+                              return
+                            }
+
+                            if (navigator.clipboard?.writeText) {
+                              await navigator.clipboard.writeText(resetLink)
+                              setStatus('Password reset link copied')
+                              return
+                            }
+
+                            setStatus('Clipboard unavailable: open reset link then copy manually')
+                          })
+                          .catch((error) => setStatus(error instanceof Error ? error.message : 'Password reset copy failed'))
+                      }}
+                      className={secondaryButtonClass}
+                    >
+                      Copy reset link
+                    </button>
+
+                    <button
+                      type="button"
                       disabled={relationsLoading && relationsUserId === user.id}
                       onClick={() => {
                         setRelationsLoading(true)
