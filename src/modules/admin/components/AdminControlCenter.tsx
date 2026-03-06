@@ -94,10 +94,70 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [generatedTempPassword, setGeneratedTempPassword] = useState('')
   const [generatedTempPasswordUser, setGeneratedTempPasswordUser] = useState('')
   const [generatingPartnerKey, setGeneratingPartnerKey] = useState(false)
+  const [confirmDeleteUser, setConfirmDeleteUser] = useState<AdminUserRow | null>(null)
+  const [confirmTempPasswordUser, setConfirmTempPasswordUser] = useState<AdminUserRow | null>(null)
+  const [confirmResetLinkUser, setConfirmResetLinkUser] = useState<AdminUserRow | null>(null)
+  const [confirmCopyResetLinkUser, setConfirmCopyResetLinkUser] = useState<AdminUserRow | null>(null)
+  const [tempPasswordModal, setTempPasswordModal] = useState<{ userLabel: string; password: string } | null>(null)
   const [relationsLoading, setRelationsLoading] = useState(false)
   const [relationsUserId, setRelationsUserId] = useState<string | null>(null)
   const [relationsData, setRelationsData] = useState<AdminUserProviderRelations | null>(null)
   const [relationsSearch, setRelationsSearch] = useState('')
+
+  const handleDeleteUser = async (user: AdminUserRow) => {
+    await deleteAdminUser(user.id)
+    setStatus('User deleted')
+    await loadAll()
+  }
+
+  const handleGenerateTempPassword = async (user: AdminUserRow) => {
+    const temporaryPassword = await setAdminUserTemporaryPassword(user.id)
+    if (!temporaryPassword) {
+      setStatus('No temporary password returned')
+      return
+    }
+
+    setGeneratedTempPassword(temporaryPassword)
+    setGeneratedTempPasswordUser(user.email || user.id)
+    setTempPasswordModal({ userLabel: user.email || user.id, password: temporaryPassword })
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(temporaryPassword).catch(() => undefined)
+    }
+
+    setStatus('Temporary password generated, displayed, and copied. User must change it on first login.')
+  }
+
+  const handleGenerateResetLink = async (user: AdminUserRow) => {
+    const resetLink = await resetAdminUserPassword(user.id)
+    if (!resetLink) {
+      setStatus('No reset link returned')
+      return
+    }
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(resetLink).catch(() => undefined)
+    }
+
+    window.open(resetLink, '_blank', 'noopener,noreferrer')
+    setStatus('Password reset link generated (copied/opened)')
+  }
+
+  const handleCopyResetLink = async (user: AdminUserRow) => {
+    const resetLink = await resetAdminUserPassword(user.id)
+    if (!resetLink) {
+      setStatus('No reset link returned')
+      return
+    }
+
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(resetLink)
+      setStatus('Password reset link copied')
+      return
+    }
+
+    setStatus('Clipboard unavailable: open reset link then copy manually')
+  }
 
   const apiErrorRate = useMemo(() => {
     if (apiUsage.length === 0) {
@@ -584,17 +644,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     <button
                       type="button"
                       onClick={() => {
-                        const confirmed = window.confirm(`Delete user ${user.email || user.id}? This cannot be undone.`)
-                        if (!confirmed) {
-                          return
-                        }
-
-                        void deleteAdminUser(user.id)
-                          .then(() => {
-                            setStatus('User deleted')
-                            return loadAll()
-                          })
-                          .catch((error) => setStatus(error instanceof Error ? error.message : 'User deletion failed'))
+                        setConfirmDeleteUser(user)
                       }}
                       className={secondaryButtonClass}
                     >
@@ -604,33 +654,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     <button
                       type="button"
                       onClick={() => {
-                        const confirmed = window.confirm(`Generate temporary password for ${user.email || user.id}? User will be forced to change it at first login.`)
-                        if (!confirmed) {
-                          return
-                        }
-
-                        void setAdminUserTemporaryPassword(user.id)
-                          .then(async (temporaryPassword) => {
-                            if (!temporaryPassword) {
-                              setStatus('No temporary password returned')
-                              return
-                            }
-
-                            setGeneratedTempPassword(temporaryPassword)
-                            setGeneratedTempPasswordUser(user.email || user.id)
-
-                            if (navigator.clipboard?.writeText) {
-                              await navigator.clipboard.writeText(temporaryPassword).catch(() => undefined)
-                            }
-
-                            setStatus('Temporary password generated, displayed, and copied. User must change it on first login.')
-                            window.alert(
-                              `Temporary password for ${user.email || user.id}:\n\n${temporaryPassword}\n\nCopy it now and share it securely.`,
-                            )
-                          })
-                          .catch((error) =>
-                            setStatus(error instanceof Error ? error.message : 'Temporary password generation failed'),
-                          )
+                        setConfirmTempPasswordUser(user)
                       }}
                       className={secondaryButtonClass}
                     >
@@ -640,28 +664,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     <button
                       type="button"
                       onClick={() => {
-                        const confirmed = window.confirm(
-                          `Generate reset password link for ${user.email || user.id}? This returns a reset link, not a temporary password.`,
-                        )
-                        if (!confirmed) {
-                          return
-                        }
-
-                        void resetAdminUserPassword(user.id)
-                          .then(async (resetLink) => {
-                            if (!resetLink) {
-                              setStatus('No reset link returned')
-                              return
-                            }
-
-                            if (navigator.clipboard?.writeText) {
-                              await navigator.clipboard.writeText(resetLink).catch(() => undefined)
-                            }
-
-                            window.open(resetLink, '_blank', 'noopener,noreferrer')
-                            setStatus('Password reset link generated (copied/opened)')
-                          })
-                          .catch((error) => setStatus(error instanceof Error ? error.message : 'Password reset failed'))
+                        setConfirmResetLinkUser(user)
                       }}
                       className={secondaryButtonClass}
                     >
@@ -671,27 +674,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     <button
                       type="button"
                       onClick={() => {
-                        const confirmed = window.confirm(`Generate and copy reset password link for ${user.email || user.id}?`)
-                        if (!confirmed) {
-                          return
-                        }
-
-                        void resetAdminUserPassword(user.id)
-                          .then(async (resetLink) => {
-                            if (!resetLink) {
-                              setStatus('No reset link returned')
-                              return
-                            }
-
-                            if (navigator.clipboard?.writeText) {
-                              await navigator.clipboard.writeText(resetLink)
-                              setStatus('Password reset link copied')
-                              return
-                            }
-
-                            setStatus('Clipboard unavailable: open reset link then copy manually')
-                          })
-                          .catch((error) => setStatus(error instanceof Error ? error.message : 'Password reset copy failed'))
+                        setConfirmCopyResetLinkUser(user)
                       }}
                       className={secondaryButtonClass}
                     >
@@ -722,6 +705,79 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
               </article>
             ))}
           </div>
+
+          {confirmDeleteUser ? (
+            <ActionModal
+              title="Delete user"
+              message={`Delete user ${confirmDeleteUser.email || confirmDeleteUser.id}? This cannot be undone.`}
+              confirmLabel="Delete"
+              onCancel={() => setConfirmDeleteUser(null)}
+              onConfirm={() => {
+                const selectedUser = confirmDeleteUser
+                setConfirmDeleteUser(null)
+                void handleDeleteUser(selectedUser).catch((error) =>
+                  setStatus(error instanceof Error ? error.message : 'User deletion failed'),
+                )
+              }}
+              danger
+            />
+          ) : null}
+
+          {confirmTempPasswordUser ? (
+            <ActionModal
+              title="Generate temporary password"
+              message={`Generate temporary password for ${confirmTempPasswordUser.email || confirmTempPasswordUser.id}? User will be forced to change it at first login.`}
+              confirmLabel="Generate"
+              onCancel={() => setConfirmTempPasswordUser(null)}
+              onConfirm={() => {
+                const selectedUser = confirmTempPasswordUser
+                setConfirmTempPasswordUser(null)
+                void handleGenerateTempPassword(selectedUser).catch((error) =>
+                  setStatus(error instanceof Error ? error.message : 'Temporary password generation failed'),
+                )
+              }}
+            />
+          ) : null}
+
+          {confirmResetLinkUser ? (
+            <ActionModal
+              title="Generate reset link"
+              message={`Generate reset password link for ${confirmResetLinkUser.email || confirmResetLinkUser.id}? This returns a reset link, not a temporary password.`}
+              confirmLabel="Generate link"
+              onCancel={() => setConfirmResetLinkUser(null)}
+              onConfirm={() => {
+                const selectedUser = confirmResetLinkUser
+                setConfirmResetLinkUser(null)
+                void handleGenerateResetLink(selectedUser).catch((error) =>
+                  setStatus(error instanceof Error ? error.message : 'Password reset failed'),
+                )
+              }}
+            />
+          ) : null}
+
+          {confirmCopyResetLinkUser ? (
+            <ActionModal
+              title="Copy reset link"
+              message={`Generate and copy reset password link for ${confirmCopyResetLinkUser.email || confirmCopyResetLinkUser.id}?`}
+              confirmLabel="Generate and copy"
+              onCancel={() => setConfirmCopyResetLinkUser(null)}
+              onConfirm={() => {
+                const selectedUser = confirmCopyResetLinkUser
+                setConfirmCopyResetLinkUser(null)
+                void handleCopyResetLink(selectedUser).catch((error) =>
+                  setStatus(error instanceof Error ? error.message : 'Password reset copy failed'),
+                )
+              }}
+            />
+          ) : null}
+
+          {tempPasswordModal ? (
+            <TempPasswordModal
+              userLabel={tempPasswordModal.userLabel}
+              password={tempPasswordModal.password}
+              onClose={() => setTempPasswordModal(null)}
+            />
+          ) : null}
 
           {generatedTempPassword ? (
             <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2 text-xs text-[#323130]">
@@ -1279,4 +1335,92 @@ function splitCsvLine(line: string): string[] {
 
   values.push(current)
   return values
+}
+
+type ActionModalProps = {
+  title: string
+  message: string
+  confirmLabel: string
+  onCancel: () => void
+  onConfirm: () => void
+  danger?: boolean
+}
+
+function ActionModal({
+  title,
+  message,
+  confirmLabel,
+  onCancel,
+  onConfirm,
+  danger = false,
+}: ActionModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-lg rounded-md border border-[#edebe9] bg-white p-4 shadow-xl">
+        <p className="text-base font-semibold text-[#323130]">{title}</p>
+        <p className="mt-2 text-sm text-[#605E5C]">{message}</p>
+
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="h-8 rounded border border-[#d2d0ce] bg-white px-3 text-xs font-semibold text-[#323130] transition hover:bg-[#f3f2f1]"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className={`h-8 rounded px-3 text-xs font-semibold text-white transition ${
+              danger ? 'bg-[#a4262c] hover:bg-[#7f1d22]' : 'bg-[#0078D4] hover:bg-[#106ebe]'
+            }`}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+type TempPasswordModalProps = {
+  userLabel: string
+  password: string
+  onClose: () => void
+}
+
+function TempPasswordModal({ userLabel, password, onClose }: TempPasswordModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="w-full max-w-lg rounded-md border border-[#edebe9] bg-white p-4 shadow-xl">
+        <p className="text-base font-semibold text-[#323130]">Temporary password generated</p>
+        <p className="mt-2 text-sm text-[#605E5C]">User: {userLabel}</p>
+        <p className="mt-3 break-all rounded border border-[#edebe9] bg-[#faf9f8] px-3 py-2 text-sm font-semibold text-[#323130]">
+          {password}
+        </p>
+        <p className="mt-2 text-xs text-[#605E5C]">Copy it now and share it securely.</p>
+
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (navigator.clipboard?.writeText) {
+                void navigator.clipboard.writeText(password)
+              }
+            }}
+            className="h-8 rounded border border-[#0078D4] bg-white px-3 text-xs font-semibold text-[#0078D4] transition hover:bg-[#f3f2f1]"
+          >
+            Copy
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe]"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
