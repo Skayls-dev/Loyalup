@@ -382,11 +382,16 @@ async function applyWalletDelta(
     return { ok: false, errorCode: 'insufficient_balance' }
   }
 
-  const upsert = await admin.from('partner_points_wallets').upsert({
-    loyalup_user_id: loyalupUserId,
-    balance: nextBalance,
-    updated_at: new Date().toISOString(),
-  })
+  const upsert = await admin.from('partner_points_wallets').upsert(
+    {
+      loyalup_user_id: loyalupUserId,
+      balance: nextBalance,
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: 'loyalup_user_id',
+    },
+  )
 
   if (upsert.error) {
     throw new Error(upsert.error.message)
