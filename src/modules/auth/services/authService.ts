@@ -252,7 +252,24 @@ export async function updateCurrentUserPassword(password: string): Promise<void>
     throw new Error('Le mot de passe doit contenir au moins 8 caractères.')
   }
 
-  const { error } = await supabase.auth.updateUser({ password: normalized })
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError) {
+    throw userError
+  }
+
+  const nextMetadata = {
+    ...(user?.user_metadata ?? {}),
+    force_password_change: false,
+  }
+
+  const { error } = await supabase.auth.updateUser({
+    password: normalized,
+    data: nextMetadata,
+  })
 
   if (error) {
     throw error

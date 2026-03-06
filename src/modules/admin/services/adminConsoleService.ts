@@ -194,6 +194,15 @@ export async function resetAdminUserPassword(userId: string) {
   return data.reset_link
 }
 
+export async function setAdminUserTemporaryPassword(userId: string) {
+  const data = await invoke<{ temporary_password: string | null }>({
+    action: 'SET_TEMP_PASSWORD',
+    user_id: userId,
+  })
+
+  return data.temporary_password
+}
+
 export async function toggleAdminUserBlock(userId: string, blocked: boolean) {
   return invoke({
     action: 'TOGGLE_USER_BLOCK',

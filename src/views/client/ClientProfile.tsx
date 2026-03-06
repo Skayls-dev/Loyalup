@@ -20,7 +20,7 @@ function formatRoleLabel(role: string | null) {
 }
 
 export function ClientProfile() {
-  const { user, profile, role, loading } = useAuth()
+  const { user, profile, role, loading, hydrateCurrentUser } = useAuth()
   const { segment, score, loading: segmentLoading } = useMySegment()
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -51,6 +51,7 @@ export function ClientProfile() {
   const sourcePartner = String(user?.user_metadata?.source_partner ?? '').trim()
   const isPartnerLinked = Boolean(sourcePartner)
   const isShadowAccount = displayEmail.toLowerCase().endsWith('@partner.loyalup.local')
+  const mustChangePassword = Boolean(user?.user_metadata?.force_password_change)
 
   const handleSavePassword = async () => {
     setPasswordError(null)
@@ -70,6 +71,7 @@ export function ClientProfile() {
 
     try {
       await updateCurrentUserPassword(newPassword)
+      await hydrateCurrentUser()
       setPasswordSuccess('Mot de passe mis à jour avec succès.')
       setNewPassword('')
       setConfirmPassword('')
@@ -124,6 +126,12 @@ export function ClientProfile() {
 
           <SectionCard>
             <h2 className="mb-3 text-[17px] font-semibold text-slate-900">Sécurité du compte</h2>
+
+            {mustChangePassword ? (
+              <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                Mot de passe temporaire détecté: vous devez définir un nouveau mot de passe pour continuer.
+              </div>
+            ) : null}
 
             {isShadowAccount ? (
               <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">

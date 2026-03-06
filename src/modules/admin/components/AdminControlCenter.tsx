@@ -17,6 +17,7 @@ import {
   getUserProviderRelations,
   retryAdminWebhookDelivery,
   resetAdminUserPassword,
+  setAdminUserTemporaryPassword,
   reviewPartnerAccessRequest,
   upsertPartner,
   upsertScanAd,
@@ -90,6 +91,8 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [partnerKeyEnv, setPartnerKeyEnv] = useState<'sandbox' | 'production'>('sandbox')
   const [partnerScopes, setPartnerScopes] = useState('transfers:write')
   const [generatedPartnerKey, setGeneratedPartnerKey] = useState('')
+  const [generatedTempPassword, setGeneratedTempPassword] = useState('')
+  const [generatedTempPasswordUser, setGeneratedTempPasswordUser] = useState('')
   const [generatingPartnerKey, setGeneratingPartnerKey] = useState(false)
   const [relationsLoading, setRelationsLoading] = useState(false)
   const [relationsUserId, setRelationsUserId] = useState<string | null>(null)
@@ -601,6 +604,39 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     <button
                       type="button"
                       onClick={() => {
+                        const confirmed = window.confirm(`Generate temporary password for ${user.email || user.id}? User will be forced to change it at first login.`)
+                        if (!confirmed) {
+                          return
+                        }
+
+                        void setAdminUserTemporaryPassword(user.id)
+                          .then(async (temporaryPassword) => {
+                            if (!temporaryPassword) {
+                              setStatus('No temporary password returned')
+                              return
+                            }
+
+                            setGeneratedTempPassword(temporaryPassword)
+                            setGeneratedTempPasswordUser(user.email || user.id)
+
+                            if (navigator.clipboard?.writeText) {
+                              await navigator.clipboard.writeText(temporaryPassword).catch(() => undefined)
+                            }
+
+                            setStatus('Temporary password generated, displayed, and copied. User must change it on first login.')
+                          })
+                          .catch((error) =>
+                            setStatus(error instanceof Error ? error.message : 'Temporary password generation failed'),
+                          )
+                      }}
+                      className={secondaryButtonClass}
+                    >
+                      Temp password
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
                         const confirmed = window.confirm(`Generate reset password link for ${user.email || user.id}?`)
                         if (!confirmed) {
                           return
@@ -681,6 +717,14 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
               </article>
             ))}
           </div>
+
+          {generatedTempPassword ? (
+            <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2 text-xs text-[#323130]">
+              <p className="font-semibold text-[#323130]">Temporary password (one-time display)</p>
+              <p className="mt-1 text-[#605E5C]">User: {generatedTempPasswordUser}</p>
+              <p className="mt-1 break-all text-[#605E5C]">{generatedTempPassword}</p>
+            </div>
+          ) : null}
         </div>
       ) : null}
 

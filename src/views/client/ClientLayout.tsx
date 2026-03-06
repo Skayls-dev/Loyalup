@@ -6,12 +6,23 @@ import { useAuth } from '../../modules/auth/hooks/useAuth'
 import { Badge, SecondaryButton } from '../../shared/components/client-ui'
 
 export function ClientLayout() {
-  const { logout, loading } = useAuth()
+  const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const isScanRoute = location.pathname === '/client/scan'
+  const mustChangePassword = Boolean(user?.user_metadata?.force_password_change)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [promoBadgeCount, setPromoBadgeCount] = useState(0)
+
+  useEffect(() => {
+    if (!mustChangePassword) {
+      return
+    }
+
+    if (location.pathname !== '/client/profile') {
+      navigate('/client/profile', { replace: true })
+    }
+  }, [location.pathname, mustChangePassword, navigate])
 
   useEffect(() => {
     const onToast = (event: Event) => {

@@ -5,6 +5,7 @@ type AdminAction =
   | 'LIST_USERS'
   | 'GET_USER_PROVIDER_RELATIONS'
   | 'RESET_USER_PASSWORD'
+  | 'SET_TEMP_PASSWORD'
   | 'DELETE_USER'
   | 'UPDATE_USER_ROLE'
   | 'UPDATE_PROVIDER_TIER'
@@ -426,6 +427,77 @@ Deno.serve(async (req) => {
       user_id: userId,
       reset_link: resetLink,
       redirect_to: resetRedirectTo,
+    })
+  }
+
+  if (action === 'SET_TEMP_PASSWORD') {
+    const userId = String(body.user_id ?? '').trim()
+    if (!userId) {
+      return json({ error: 'Missing user_id' }, 400)
+    }
+
+    if (userId === adminUserId) {
+      return json({ error: 'You cannot set a temporary password for your own admin account' }, 400)
+    }
+
+    const userResult = await admin.auth.admin.getUserById(userId)
+    if (userResult.error || !userResult.data.user?.id) {
+      return json({ error: userResult.error?.message ?? 'User not found' }, 404)
+    }
+
+    const { data: targetProfile, error: targetProfileError } = await admin
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle<{ role: string }>()
+
+    if (targetProfileError) {
+      return json({ error: targetProfileError.message }, 500)
+    }
+
+    if (targetProfile?.role !== 'client') {
+      return json({ error: 'Temporary password first-login policy is currently supported for client accounts only' }, 400)
+    }
+
+    const temporaryPassword = generateTemporaryPassword(14)
+    const existingMetadata = userResult.data.user.user_metadata ?? {}
+
+    const updated = await admin.auth.admin.updateUserById(userId, {
+      password: temporaryPassword,
+      user_metadata: {
+        ...existingMetadata,
+        force_password_change: true,
+        password_set_by_admin_at: new Date().toISOString(),
+      },
+    })
+
+    if (updated.error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'SET_TEMP_PASSWORD',
+        targetUserId: userId,
+        success: false,
+        metadata: { error: updated.error.message },
+      })
+
+      return json({ error: updated.error.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'SET_TEMP_PASSWORD',
+      targetUserId: userId,
+      success: true,
+      metadata: {
+        user_email: userResult.data.user.email ?? null,
+      },
+    })
+
+    return json({
+      success: true,
+      user_id: userId,
+      temporary_password: temporaryPassword,
+      force_password_change: true,
     })
   }
 
@@ -1328,6 +1400,19 @@ function generatePartnerApiKey(environment: 'sandbox' | 'production') {
 function randomBase62(length: number) {
   const alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
   const bytes = crypto.getRandomValues(new Uint8Array(length))
+  let out = ''
+
+  for (let index = 0; index < bytes.length; index += 1) {
+    out += alphabet[bytes[index] % alphabet.length]
+  }
+
+  return out
+}
+
+function generateTemporaryPassword(length: number) {
+  const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*+-_'
+  const safeLength = Math.max(10, length)
+  const bytes = crypto.getRandomValues(new Uint8Array(safeLength))
   let out = ''
 
   for (let index = 0; index < bytes.length; index += 1) {
