@@ -5,7 +5,7 @@ import { LoyaltyCard } from './LoyaltyCard'
 import { EmptyState, PrimaryButton, Skeleton, StatCard } from '../../../shared/components/client-ui'
 
 export function LoyaltyCardList() {
-  const { cards, loading, error, totalPoints, refetch, offline } = useLoyalty()
+  const { cards, loading, error, totalPoints, loyaltyPoints, partnerPoints, refetch, offline } = useLoyalty()
   const touchStartY = useRef<number | null>(null)
 
   const onTouchStart: TouchEventHandler<HTMLDivElement> = (event) => {
@@ -55,6 +55,10 @@ export function LoyaltyCardList() {
         <div className="rounded-2xl border border-slate-200/60 bg-white/80 p-5 shadow-sm shadow-slate-900/5 backdrop-blur-xl">
           <p className="text-xs uppercase tracking-wide text-slate-500">Total points</p>
           <p className="mt-1 text-4xl font-black text-slate-900">{totalPoints}</p>
+          <div className="mt-2 space-y-1 text-xs text-slate-500">
+            <p>LoyalUp: {loyaltyPoints}</p>
+            <p>Partner: {partnerPoints}</p>
+          </div>
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs text-slate-500">{offline ? 'Hors ligne (cache)' : 'Dernière synchro: à l’instant'}</span>
             <PrimaryButton

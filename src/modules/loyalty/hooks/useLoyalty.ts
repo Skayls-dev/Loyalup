@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '../../auth/hooks/useAuth'
 import {
   getClientCards,
+  getClientPartnerBalance,
   getRewardRules,
   subscribeToPoints,
   type LoyaltyCardBase,
@@ -20,6 +21,8 @@ type UseLoyaltyResult = {
   cards: LoyaltyCard[]
   loading: boolean
   error: string | null
+  loyaltyPoints: number
+  partnerPoints: number
   totalPoints: number
   refetch: () => Promise<void>
   offline: boolean
@@ -64,19 +67,44 @@ export function useLoyalty(): UseLoyaltyResult {
     staleTime: QUERY_STALE.fiveMinutes,
     queryFn: async () => {
       if (!user?.id) {
-        return [] as LoyaltyCard[]
+        return {
+          cards: [] as LoyaltyCard[],
+          partnerPoints: 0,
+        }
       }
 
       try {
-        const nextCards = await hydrateCards(user.id)
-        localStorage.setItem(cacheKeyFor(user.id), JSON.stringify(nextCards))
+        const [nextCards, partnerWallet] = await Promise.all([
+          hydrateCards(user.id),
+          getClientPartnerBalance().catch(() => ({ partner_balance: 0, updated_at: null })),
+        ])
+
+        localStorage.setItem(
+          cacheKeyFor(user.id),
+          JSON.stringify({ cards: nextCards, partnerPoints: Number(partnerWallet.partner_balance ?? 0) }),
+        )
         setOffline(false)
-        return nextCards
+        return {
+          cards: nextCards,
+          partnerPoints: Number(partnerWallet.partner_balance ?? 0),
+        }
       } catch {
         const cached = localStorage.getItem(cacheKeyFor(user.id))
         if (cached) {
           setOffline(true)
-          return JSON.parse(cached) as LoyaltyCard[]
+          const parsed = JSON.parse(cached) as { cards?: LoyaltyCard[]; partnerPoints?: number } | LoyaltyCard[]
+
+          if (Array.isArray(parsed)) {
+            return {
+              cards: parsed,
+              partnerPoints: 0,
+            }
+          }
+
+          return {
+            cards: parsed.cards ?? [],
+            partnerPoints: Number(parsed.partnerPoints ?? 0),
+          }
         }
 
         throw new Error('Unable to load loyalty cards')
@@ -84,11 +112,12 @@ export function useLoyalty(): UseLoyaltyResult {
     },
   })
 
-  const cards = liveCards ?? (query.data ?? [])
+  const cards = liveCards ?? (query.data?.cards ?? [])
+  const partnerPoints = Number(query.data?.partnerPoints ?? 0)
 
   const refetch = useCallback(async () => {
     const { data } = await query.refetch()
-    setLiveCards(data ?? [])
+    setLiveCards(data?.cards ?? [])
   }, [query])
 
   useEffect(() => {
@@ -138,12 +167,15 @@ export function useLoyalty(): UseLoyaltyResult {
     }
   }, [])
 
-  const totalPoints = useMemo(() => cards.reduce((sum, card) => sum + card.solde, 0), [cards])
+  const loyaltyPoints = useMemo(() => cards.reduce((sum, card) => sum + card.solde, 0), [cards])
+  const totalPoints = loyaltyPoints + partnerPoints
 
   return {
     cards,
     loading: query.isLoading || query.isFetching,
     error: query.error instanceof Error ? query.error.message : null,
+    loyaltyPoints,
+    partnerPoints,
     totalPoints,
     refetch,
     offline,

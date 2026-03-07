@@ -56,6 +56,11 @@ export type UseRewardResponse = {
   new_balance: number
 }
 
+export type PartnerBalanceResponse = {
+  partner_balance: number
+  updated_at: string | null
+}
+
 type PointsCallback = (nextSolde: number) => void
 type RewardsCallback = (reward: ClientReward) => void
 
@@ -286,6 +291,33 @@ export async function getClientPointsBalance(client_id: string, fournisseur_id: 
     }
 
     return Number(data?.solde ?? 0)
+  })
+}
+
+export async function getClientPartnerBalance(): Promise<PartnerBalanceResponse> {
+  return withCachedRead('loyalty:partner-wallet:me', async () => {
+    const { data, error } = await supabase.functions.invoke<{
+      success: boolean
+      partner_balance: number
+      updated_at: string | null
+      error?: string
+    }>('get-client-partner-balance', {
+      method: 'POST',
+      body: {},
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (!data || data.success !== true) {
+      throw new Error(data?.error ?? 'Invalid partner wallet response')
+    }
+
+    return {
+      partner_balance: Number(data.partner_balance ?? 0),
+      updated_at: data.updated_at ?? null,
+    }
   })
 }
 

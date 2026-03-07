@@ -52,6 +52,9 @@ verify_jwt = false
 [functions.partner-activate]
 verify_jwt = false
 
+[functions.get-client-partner-balance]
+verify_jwt = true
+
 [functions.manage-webhooks]
 verify_jwt = false
 
