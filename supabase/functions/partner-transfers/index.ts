@@ -115,6 +115,11 @@ Deno.serve(async (req) => {
       return json({ error: 'User is not linked and auto-provisioning is disabled' }, 404)
     }
 
+    const enrollment = await ensurePartnerClientEnrollment(admin, credential.partner_id, linkedUserId)
+    if (!enrollment.ok) {
+      return json({ error: enrollment.error }, 409)
+    }
+
     const claimedTransfer = await claimTransfer(admin, {
       partnerId: credential.partner_id,
       credentialId: credential.id,
@@ -358,6 +363,47 @@ async function claimTransfer(
   }
 
   throw new Error(insertResult.error?.message ?? 'Unable to claim transfer')
+}
+
+async function ensurePartnerClientEnrollment(
+  admin: ReturnType<typeof createClient>,
+  partnerId: string,
+  loyalupUserId: string,
+): Promise<{ ok: true; fournisseurIds: string[] } | { ok: false; error: string }> {
+  const { data: links, error: linksError } = await admin
+    .from('partner_provider_links')
+    .select('fournisseur_id')
+    .eq('partner_id', partnerId)
+
+  if (linksError) {
+    return { ok: false, error: linksError.message }
+  }
+
+  const fournisseurIds = ((links ?? []) as Array<{ fournisseur_id: string }>)
+    .map((row) => row.fournisseur_id)
+    .filter(Boolean)
+
+  if (fournisseurIds.length === 0) {
+    return { ok: false, error: 'Partner is not linked to any provider' }
+  }
+
+  const rows = fournisseurIds.map((fournisseurId) => ({
+    client_id: loyalupUserId,
+    fournisseur_id: fournisseurId,
+    solde: 0,
+    total_visites: 0,
+    updated_at: new Date().toISOString(),
+  }))
+
+  const upsert = await admin
+    .from('client_points')
+    .upsert(rows, { onConflict: 'client_id,fournisseur_id' })
+
+  if (upsert.error) {
+    return { ok: false, error: upsert.error.message }
+  }
+
+  return { ok: true, fournisseurIds }
 }
 
 async function applyWalletDelta(
