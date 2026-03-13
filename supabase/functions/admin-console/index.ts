@@ -17,6 +17,7 @@ type AdminAction =
   | 'GET_WEBHOOK_FAILURES'
   | 'RETRY_WEBHOOK_DELIVERY'
   | 'GET_AUDIT_LOGS'
+  | 'LIST_PROVIDERS_WITH_PARTNERS'
   | 'LIST_PARTNERS'
   | 'UPSERT_PARTNER'
   | 'DELETE_PARTNER'
@@ -1000,6 +1001,67 @@ Deno.serve(async (req) => {
     }
 
     return json({ success: true, logs: data ?? [] })
+  }
+
+  if (action === 'LIST_PROVIDERS_WITH_PARTNERS') {
+    const { data: providers, error: providersError } = await admin
+      .from('fournisseurs')
+      .select('id, user_id, nom_commerce, tier, created_at')
+      .order('created_at', { ascending: false })
+
+    if (providersError) {
+      return json({ error: providersError.message }, 500)
+    }
+
+    const providerRows = (providers ?? []) as Array<{
+      id: string
+      user_id: string
+      nom_commerce: string | null
+      tier: string | null
+      created_at: string
+    }>
+
+    const providerIds = providerRows.map((provider) => provider.id)
+
+    const { data: links, error: linksError } = providerIds.length
+      ? await admin
+          .from('partner_provider_links')
+          .select('fournisseur_id, role, partners!inner(id, code, name, status)')
+          .in('fournisseur_id', providerIds)
+      : { data: [] as Array<{ fournisseur_id: string; role: string; partners?: { id: string; code: string; name: string; status: string } }>, error: null }
+
+    if (linksError) {
+      return json({ error: linksError.message }, 500)
+    }
+
+    const linkMap = new Map(
+      ((links ?? []) as Array<{
+        fournisseur_id: string
+        role: string
+        partners?: { id: string; code: string; name: string; status: string }
+      }>).map((row) => [
+        row.fournisseur_id,
+        {
+          role: row.role,
+          partner: row.partners
+            ? {
+                id: row.partners.id,
+                code: row.partners.code,
+                name: row.partners.name,
+                status: row.partners.status,
+              }
+            : null,
+        },
+      ]),
+    )
+
+    return json({
+      success: true,
+      providers: providerRows.map((provider) => ({
+        ...provider,
+        partner_link: linkMap.get(provider.id) ?? null,
+      })),
+    })
   }
 
   if (action === 'LIST_PARTNERS') {
