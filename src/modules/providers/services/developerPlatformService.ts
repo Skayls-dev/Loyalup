@@ -203,6 +203,14 @@ export async function getPartnerProfile() {
   })
 }
 
+export async function upsertPartnerProfile(payload: { code: string; name: string }) {
+  return invokeFunction<{ partner: PartnerProfile; can_use_production: boolean }>('partner-self-service', {
+    action: 'UPSERT_PROFILE',
+    code: payload.code,
+    name: payload.name,
+  })
+}
+
 export async function listPartnerKeys() {
   const data = await invokeFunction<{ keys: PartnerApiCredential[] }>('partner-self-service', {
     action: 'LIST_KEYS',

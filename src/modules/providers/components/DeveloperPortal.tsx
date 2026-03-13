@@ -9,6 +9,7 @@ import {
   listPartnerAccessRequests,
   listPartnerKeys,
   listWebhooks,
+  upsertPartnerProfile,
   requestPartnerProductionAccess,
   revokeApiKey,
   rotateApiKey,
@@ -52,6 +53,9 @@ export function DeveloperPortal() {
   const [partnerKeyEnv, setPartnerKeyEnv] = useState<'sandbox' | 'production'>('sandbox')
   const [partnerSelectedScopes, setPartnerSelectedScopes] = useState<string[]>(['transfers:write'])
   const [partnerRequestNotes, setPartnerRequestNotes] = useState('')
+  const [partnerCodeInput, setPartnerCodeInput] = useState('')
+  const [partnerNameInput, setPartnerNameInput] = useState('')
+  const [savingPartnerProfile, setSavingPartnerProfile] = useState(false)
   const [creatingPartnerKey, setCreatingPartnerKey] = useState(false)
   const [submittingPartnerRequest, setSubmittingPartnerRequest] = useState(false)
   const [createdKey, setCreatedKey] = useState('')
@@ -84,6 +88,8 @@ export function DeveloperPortal() {
         setWebhooks(hooks)
         setPartnerProfile(partnerInfo.partner)
         setPartnerCanUseProduction(partnerInfo.can_use_production)
+        setPartnerCodeInput(partnerInfo.partner.code)
+        setPartnerNameInput(partnerInfo.partner.name)
         setPartnerKeys(nextPartnerKeys)
         setPartnerRequests(nextPartnerRequests)
       } catch (error) {
@@ -108,8 +114,36 @@ export function DeveloperPortal() {
     setWebhooks(hooks)
     setPartnerProfile(partnerInfo.partner)
     setPartnerCanUseProduction(partnerInfo.can_use_production)
+    setPartnerCodeInput(partnerInfo.partner.code)
+    setPartnerNameInput(partnerInfo.partner.name)
     setPartnerKeys(nextPartnerKeys)
     setPartnerRequests(nextPartnerRequests)
+  }
+
+  const savePartnerProfileAction = async () => {
+    if (!partnerCodeInput.trim() || !partnerNameInput.trim()) {
+      setStatus('Code et nom partenaire requis')
+      return
+    }
+
+    setSavingPartnerProfile(true)
+
+    try {
+      const result = await upsertPartnerProfile({
+        code: partnerCodeInput.trim().toUpperCase(),
+        name: partnerNameInput.trim(),
+      })
+
+      setPartnerProfile(result.partner)
+      setPartnerCanUseProduction(result.can_use_production)
+      setPartnerCodeInput(result.partner.code)
+      setPartnerNameInput(result.partner.name)
+      setStatus('Profil partenaire mis a jour')
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : 'Partner onboarding failed')
+    } finally {
+      setSavingPartnerProfile(false)
+    }
   }
 
   const createKeyAction = async () => {
@@ -264,6 +298,34 @@ export function DeveloperPortal() {
               ? `Partner: ${partnerProfile.code} • status: ${partnerProfile.status}`
               : 'Profil partenaire indisponible'}
           </p>
+
+          <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+            <p className="text-xs font-semibold text-zinc-300">Self onboarding partenaire</p>
+            <div className="grid gap-2 md:grid-cols-3">
+              <input
+                value={partnerCodeInput}
+                onChange={(event) => setPartnerCodeInput(event.target.value)}
+                placeholder="Code partenaire (ex: KUVAAGO)"
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
+              />
+              <input
+                value={partnerNameInput}
+                onChange={(event) => setPartnerNameInput(event.target.value)}
+                placeholder="Nom partenaire"
+                className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  void savePartnerProfileAction()
+                }}
+                disabled={savingPartnerProfile}
+                className="rounded-md bg-zinc-100 px-2 py-2 text-xs font-semibold text-zinc-900 disabled:opacity-60"
+              >
+                {savingPartnerProfile ? 'Enregistrement…' : 'Enregistrer onboarding'}
+              </button>
+            </div>
+          </div>
 
           <div className="grid gap-2 md:grid-cols-3">
             <select

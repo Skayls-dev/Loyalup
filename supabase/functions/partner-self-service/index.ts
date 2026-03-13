@@ -1,9 +1,17 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 
-type Action = 'GET_PROFILE' | 'LIST_KEYS' | 'CREATE_KEY' | 'REQUEST_PRODUCTION_ACCESS' | 'LIST_REQUESTS'
+type Action =
+  | 'GET_PROFILE'
+  | 'UPSERT_PROFILE'
+  | 'LIST_KEYS'
+  | 'CREATE_KEY'
+  | 'REQUEST_PRODUCTION_ACCESS'
+  | 'LIST_REQUESTS'
 
 type RequestBody = {
   action?: Action
+  code?: string
+  name?: string
   environment?: 'sandbox' | 'production'
   scopes?: string[]
   expires_at?: string | null
@@ -88,6 +96,47 @@ Deno.serve(async (req) => {
       success: true,
       partner,
       can_use_production: partner.status === 'production_active',
+    })
+  }
+
+  if (action === 'UPSERT_PROFILE') {
+    const code = String(body.code ?? '').trim().toUpperCase()
+    const name = String(body.name ?? '').trim()
+
+    if (!code || !name) {
+      return json({ error: 'code and name are required' }, 400)
+    }
+
+    if (!/^[A-Z0-9_\-]{2,40}$/.test(code)) {
+      return json({ error: 'Invalid code format' }, 400)
+    }
+
+    const { data, error } = await admin
+      .from('partners')
+      .update({ code, name })
+      .eq('id', partner.id)
+      .select('id, code, name, status, created_at, updated_at')
+      .maybeSingle<{
+        id: string
+        code: string
+        name: string
+        status: 'draft' | 'sandbox_active' | 'production_active' | 'suspended'
+        created_at: string
+        updated_at: string
+      }>()
+
+    if (error) {
+      if (error.code === '23505') {
+        return json({ error: 'Partner code already used' }, 409)
+      }
+
+      return json({ error: error.message }, 500)
+    }
+
+    return json({
+      success: true,
+      partner: data,
+      can_use_production: data?.status === 'production_active',
     })
   }
 
