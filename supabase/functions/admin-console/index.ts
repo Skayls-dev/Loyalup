@@ -19,6 +19,7 @@ type AdminAction =
   | 'GET_AUDIT_LOGS'
   | 'LIST_PARTNERS'
   | 'UPSERT_PARTNER'
+  | 'DELETE_PARTNER'
   | 'GENERATE_PARTNER_KEY'
   | 'LIST_PARTNER_ACCESS_REQUESTS'
   | 'REVIEW_PARTNER_ACCESS_REQUEST'
@@ -1108,6 +1109,47 @@ Deno.serve(async (req) => {
     })
 
     return json({ success: true, partner: data?.[0] ?? null })
+  }
+
+  if (action === 'DELETE_PARTNER') {
+    const partnerId = String(body.id ?? '').trim()
+    if (!partnerId) {
+      return json({ error: 'Missing id' }, 400)
+    }
+
+    const { data: partner, error: partnerLookupError } = await admin
+      .from('partners')
+      .select('id, code, name')
+      .eq('id', partnerId)
+      .maybeSingle<{ id: string; code: string; name: string }>()
+
+    if (partnerLookupError || !partner?.id) {
+      return json({ error: partnerLookupError?.message ?? 'Partner not found' }, 404)
+    }
+
+    const { error } = await admin
+      .from('partners')
+      .delete()
+      .eq('id', partnerId)
+
+    if (error) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'DELETE_PARTNER',
+        success: false,
+        metadata: { partner_id: partnerId, partner_code: partner.code, error: error.message },
+      })
+      return json({ error: error.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'DELETE_PARTNER',
+      success: true,
+      metadata: { partner_id: partnerId, partner_code: partner.code, partner_name: partner.name },
+    })
+
+    return json({ success: true, deleted: true, id: partnerId, code: partner.code })
   }
 
   if (action === 'GENERATE_PARTNER_KEY') {
