@@ -72,7 +72,18 @@ Deno.serve(async (req) => {
     .eq('id', adminUserId)
     .maybeSingle<{ role: string }>()
 
-  const isAdminActor = profile?.role === 'admin' || profile?.role === 'super_admin'
+  const metadataRole = String(userResult.user?.user_metadata?.role ?? userResult.user?.app_metadata?.role ?? '').trim()
+  const metadataSuperAdmin = Boolean(
+    userResult.user?.user_metadata?.super_admin ?? userResult.user?.app_metadata?.super_admin,
+  )
+
+  const isAdminActor =
+    profile?.role === 'admin' ||
+    profile?.role === 'super_admin' ||
+    metadataRole === 'admin' ||
+    metadataRole === 'super_admin' ||
+    metadataSuperAdmin
+
   if (profileError || !isAdminActor) {
     return json({ error: 'Forbidden' }, 403)
   }
