@@ -38,6 +38,7 @@ const secondaryButtonClass =
   'rounded-xl border border-zinc-700/80 bg-zinc-900/70 px-2.5 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60'
 
 type OnboardingStepState = 'done' | 'active' | 'todo'
+type WizardStep = 1 | 2 | 3
 
 export function DeveloperPortal() {
   const [activeTab, setActiveTab] = useState<'partner' | 'provider' | 'webhooks'>('partner')
@@ -57,6 +58,7 @@ export function DeveloperPortal() {
   const [partnerRequestNotes, setPartnerRequestNotes] = useState('')
   const [partnerCodeInput, setPartnerCodeInput] = useState('')
   const [partnerNameInput, setPartnerNameInput] = useState('')
+  const [wizardStep, setWizardStep] = useState<WizardStep>(1)
   const [savingPartnerProfile, setSavingPartnerProfile] = useState(false)
   const [creatingPartnerKey, setCreatingPartnerKey] = useState(false)
   const [submittingPartnerRequest, setSubmittingPartnerRequest] = useState(false)
@@ -70,33 +72,50 @@ export function DeveloperPortal() {
   const hasSandboxPartnerKey = partnerKeys.some((key) => key.environment === 'sandbox' && key.is_active)
   const hasPendingProductionRequest = partnerRequests.some((request) => request.status === 'pending')
   const hasOnboardingProfile = Boolean(partnerProfile?.code && partnerProfile?.name)
+  const step3Done = partnerCanUseProduction || hasPendingProductionRequest
 
-  const onboardingSteps: Array<{ key: string; label: string; hint: string; state: OnboardingStepState }> = [
+  const onboardingSteps: Array<{ step: WizardStep; key: string; label: string; hint: string; state: OnboardingStepState }> = [
     {
+      step: 1,
       key: 'profile',
       label: '1. Configurer le profil partenaire',
       hint: 'Definir code et nom partenaire.',
-      state: hasOnboardingProfile ? 'done' : 'active',
+      state: hasOnboardingProfile ? 'done' : wizardStep === 1 ? 'active' : 'todo',
     },
     {
+      step: 2,
       key: 'sandbox',
       label: '2. Generer une cle sandbox',
       hint: 'Creer au moins une cle active pour les tests.',
-      state: hasSandboxPartnerKey ? 'done' : hasOnboardingProfile ? 'active' : 'todo',
+      state:
+        hasSandboxPartnerKey
+          ? 'done'
+          : hasOnboardingProfile && wizardStep === 2
+            ? 'active'
+            : hasOnboardingProfile
+              ? 'todo'
+              : 'todo',
     },
     {
+      step: 3,
       key: 'production',
       label: '3. Demander l acces production',
       hint: 'Envoyer la demande puis attendre validation admin.',
-      state: partnerCanUseProduction
+      state: step3Done
         ? 'done'
-        : hasPendingProductionRequest
-          ? 'active'
-          : hasSandboxPartnerKey
+        : hasSandboxPartnerKey
+          ? wizardStep === 3
             ? 'active'
-            : 'todo',
+            : 'todo'
+          : 'todo',
     },
   ]
+
+  const canOpenStep = (step: WizardStep) => {
+    if (step === 1) return true
+    if (step === 2) return hasOnboardingProfile
+    return hasOnboardingProfile && hasSandboxPartnerKey
+  }
 
   const docsBaseUrl = useMemo(() => '/docs/sdk.md', [])
   const openApiUrl = useMemo(
@@ -171,6 +190,7 @@ export function DeveloperPortal() {
       setPartnerCodeInput(result.partner.code)
       setPartnerNameInput(result.partner.name)
       setStatus('Profil partenaire mis a jour')
+      setWizardStep(2)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Partner onboarding failed')
     } finally {
@@ -236,6 +256,7 @@ export function DeveloperPortal() {
       setCreatedPartnerKey(data.key)
       setStatus('Clé API partenaire créée')
       await refresh()
+      setWizardStep(3)
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Failed to create partner key')
     } finally {
@@ -332,10 +353,25 @@ export function DeveloperPortal() {
           </p>
 
           <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
-            <p className="text-xs font-semibold text-zinc-300">Parcours self onboarding</p>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold text-zinc-300">Parcours self onboarding (wizard)</p>
+              <p className="text-xs text-zinc-500">Etape {wizardStep}/3</p>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-zinc-100 transition-all"
+                style={{ width: `${wizardStep === 1 ? 33 : wizardStep === 2 ? 66 : 100}%` }}
+              />
+            </div>
             <div className="grid gap-2 md:grid-cols-3">
               {onboardingSteps.map((step) => (
-                <article key={step.key} className="rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
+                <button
+                  key={step.key}
+                  type="button"
+                  disabled={!canOpenStep(step.step)}
+                  onClick={() => setWizardStep(step.step)}
+                  className="rounded-md border border-zinc-800 bg-zinc-900/60 p-2 text-left disabled:opacity-50"
+                >
                   <p
                     className={`text-xs font-semibold ${
                       step.state === 'done'
@@ -349,104 +385,132 @@ export function DeveloperPortal() {
                     {step.label}
                   </p>
                   <p className="mt-1 text-xs text-zinc-500">{step.hint}</p>
-                </article>
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
-            <p className="text-xs font-semibold text-zinc-300">Self onboarding partenaire</p>
-            <div className="grid gap-2 md:grid-cols-3">
-              <input
-                value={partnerCodeInput}
-                onChange={(event) => setPartnerCodeInput(event.target.value)}
-                placeholder="Code partenaire (ex: KUVAAGO)"
-                className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
-              />
-              <input
-                value={partnerNameInput}
-                onChange={(event) => setPartnerNameInput(event.target.value)}
-                placeholder="Nom partenaire"
-                className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
+          {wizardStep === 1 ? (
+            <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+              <p className="text-xs font-semibold text-zinc-300">Etape 1: Self onboarding partenaire</p>
+              <div className="grid gap-2 md:grid-cols-3">
+                <input
+                  value={partnerCodeInput}
+                  onChange={(event) => setPartnerCodeInput(event.target.value)}
+                  placeholder="Code partenaire (ex: KUVAAGO)"
+                  className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
+                />
+                <input
+                  value={partnerNameInput}
+                  onChange={(event) => setPartnerNameInput(event.target.value)}
+                  placeholder="Nom partenaire"
+                  className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    void savePartnerProfileAction()
+                  }}
+                  disabled={savingPartnerProfile}
+                  className="rounded-md bg-zinc-100 px-2 py-2 text-xs font-semibold text-zinc-900 disabled:opacity-60"
+                >
+                  {savingPartnerProfile ? 'Enregistrement…' : 'Enregistrer onboarding'}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {wizardStep === 2 ? (
+            <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+              <p className="text-xs font-semibold text-zinc-300">Etape 2: Generer une clé partenaire sandbox</p>
+              <div className="grid gap-2 md:grid-cols-3">
+                <select
+                  value={partnerKeyEnv}
+                  onChange={(event) => setPartnerKeyEnv(event.target.value as 'sandbox' | 'production')}
+                  className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
+                >
+                  <option value="sandbox">Sandbox</option>
+                  <option value="production" disabled={!partnerCanUseProduction}>Production</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void createPartnerKeyAction()
+                  }}
+                  disabled={creatingPartnerKey}
+                  className="rounded-md bg-zinc-100 px-2 py-2 text-xs font-semibold text-zinc-900 disabled:opacity-60"
+                >
+                  {creatingPartnerKey ? 'Génération…' : 'Générer clé partenaire'}
+                </button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {partnerScopesAvailable.map((scope) => {
+                  const active = partnerSelectedScopes.includes(scope)
+                  return (
+                    <button
+                      key={scope}
+                      type="button"
+                      onClick={() => {
+                        setPartnerSelectedScopes((prev) =>
+                          prev.includes(scope) ? prev.filter((value) => value !== scope) : [...prev, scope],
+                        )
+                      }}
+                      className={`rounded-md px-2 py-1 text-xs ${active ? 'bg-zinc-100 text-zinc-900' : 'border border-zinc-700 text-zinc-300'}`}
+                    >
+                      {scope}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {createdPartnerKey ? (
+                <div className="rounded-md border border-emerald-900/60 bg-emerald-950/40 p-2 text-xs text-emerald-200">
+                  <p className="font-semibold">Copiez cette clé partenaire maintenant (affichée une seule fois)</p>
+                  <p className="mt-1 break-all">{createdPartnerKey}</p>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {wizardStep === 3 ? (
+            <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+              <p className="text-xs font-semibold text-zinc-300">Etape 3: Demande d’accès production</p>
+              <textarea
+                value={partnerRequestNotes}
+                onChange={(event) => setPartnerRequestNotes(event.target.value)}
+                placeholder="Contexte technique / volume prévu / contact"
+                className="h-20 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
               />
               <button
                 type="button"
                 onClick={() => {
-                  void savePartnerProfileAction()
+                  void requestProductionAccessAction()
                 }}
-                disabled={savingPartnerProfile}
+                disabled={submittingPartnerRequest || partnerCanUseProduction}
                 className="rounded-md bg-zinc-100 px-2 py-2 text-xs font-semibold text-zinc-900 disabled:opacity-60"
               >
-                {savingPartnerProfile ? 'Enregistrement…' : 'Enregistrer onboarding'}
+                {partnerCanUseProduction ? 'Production déjà active' : submittingPartnerRequest ? 'Envoi…' : 'Demander accès prod'}
               </button>
-            </div>
-          </div>
-
-          <div className="grid gap-2 md:grid-cols-3">
-            <select
-              value={partnerKeyEnv}
-              onChange={(event) => setPartnerKeyEnv(event.target.value as 'sandbox' | 'production')}
-              className="rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
-            >
-              <option value="sandbox">Sandbox</option>
-              <option value="production" disabled={!partnerCanUseProduction}>Production</option>
-            </select>
-            <button
-              type="button"
-              onClick={() => {
-                void createPartnerKeyAction()
-              }}
-              disabled={creatingPartnerKey}
-              className="rounded-md bg-zinc-100 px-2 py-2 text-xs font-semibold text-zinc-900 disabled:opacity-60"
-            >
-              {creatingPartnerKey ? 'Génération…' : 'Générer clé partenaire'}
-            </button>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {partnerScopesAvailable.map((scope) => {
-              const active = partnerSelectedScopes.includes(scope)
-              return (
-                <button
-                  key={scope}
-                  type="button"
-                  onClick={() => {
-                    setPartnerSelectedScopes((prev) =>
-                      prev.includes(scope) ? prev.filter((value) => value !== scope) : [...prev, scope],
-                    )
-                  }}
-                  className={`rounded-md px-2 py-1 text-xs ${active ? 'bg-zinc-100 text-zinc-900' : 'border border-zinc-700 text-zinc-300'}`}
-                >
-                  {scope}
-                </button>
-              )
-            })}
-          </div>
-
-          {createdPartnerKey ? (
-            <div className="rounded-md border border-emerald-900/60 bg-emerald-950/40 p-2 text-xs text-emerald-200">
-              <p className="font-semibold">Copiez cette clé partenaire maintenant (affichée une seule fois)</p>
-              <p className="mt-1 break-all">{createdPartnerKey}</p>
             </div>
           ) : null}
 
-          <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
-            <p className="text-xs font-semibold text-zinc-300">Demande d’accès production</p>
-            <textarea
-              value={partnerRequestNotes}
-              onChange={(event) => setPartnerRequestNotes(event.target.value)}
-              placeholder="Contexte technique / volume prévu / contact"
-              className="h-20 rounded-md border border-zinc-700 bg-zinc-950 px-2 py-2 text-xs text-zinc-100"
-            />
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
-              onClick={() => {
-                void requestProductionAccessAction()
-              }}
-              disabled={submittingPartnerRequest || partnerCanUseProduction}
-              className="rounded-md bg-zinc-100 px-2 py-2 text-xs font-semibold text-zinc-900 disabled:opacity-60"
+              onClick={() => setWizardStep((prev) => (prev > 1 ? ((prev - 1) as WizardStep) : prev))}
+              disabled={wizardStep === 1}
+              className={secondaryButtonClass}
             >
-              {partnerCanUseProduction ? 'Production déjà active' : submittingPartnerRequest ? 'Envoi…' : 'Demander accès prod'}
+              Précédent
+            </button>
+            <button
+              type="button"
+              onClick={() => setWizardStep((prev) => (prev < 3 ? ((prev + 1) as WizardStep) : prev))}
+              disabled={(wizardStep === 1 && !hasOnboardingProfile) || (wizardStep === 2 && !hasSandboxPartnerKey) || wizardStep === 3}
+              className={secondaryButtonClass}
+            >
+              Suivant
             </button>
           </div>
 
