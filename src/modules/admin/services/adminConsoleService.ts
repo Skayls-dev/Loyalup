@@ -13,7 +13,7 @@ export type AdminOverview = {
 export type AdminUserRow = {
   id: string
   email: string
-  role: 'client' | 'fournisseur' | 'admin'
+  role: 'client' | 'fournisseur' | 'admin' | 'super_admin'
   nom: string
   provider_tier: 'free' | 'starter' | 'premium' | 'enterprise' | null
   blocked: boolean
@@ -130,7 +130,7 @@ export type AdminUserProviderRelations = {
     user_id: string
     email: string | null
     nom: string | null
-    role: 'client' | 'fournisseur' | 'admin' | null
+    role: 'client' | 'fournisseur' | 'admin' | 'super_admin' | null
     fournisseur_id: string | null
     nom_commerce: string | null
     tier: 'free' | 'starter' | 'premium' | 'enterprise' | null

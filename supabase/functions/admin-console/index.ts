@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
     .eq('id', adminUserId)
     .maybeSingle<{ role: string }>()
 
-  if (profileError || profile?.role !== 'admin') {
+  const isAdminActor = profile?.role === 'admin' || profile?.role === 'super_admin'
+  if (profileError || !isAdminActor) {
     return json({ error: 'Forbidden' }, 403)
   }
 
@@ -95,7 +96,10 @@ Deno.serve(async (req) => {
     ] = await Promise.all([
       admin.from('fournisseurs').select('id', { count: 'exact', head: true }),
       admin.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'client'),
-      admin.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'admin'),
+      admin
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .in('role', ['admin', 'super_admin']),
       admin.from('profiles').select('id', { count: 'exact', head: true }),
       admin.from('transactions').select('id', { count: 'exact', head: true }),
       admin.from('api_usage').select('id', { count: 'exact', head: true }).gte('status_code', 400),
