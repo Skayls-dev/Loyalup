@@ -173,15 +173,12 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
     setStatus('')
 
     try {
-      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs, nextScanAds, nextPartners, nextPartnerRequests] = await Promise.all([
+      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs] = await Promise.all([
         getAdminOverview(),
         listAdminUsers({ page: 1, limit: 50, search }),
         getAdminApiUsage(200),
         getAdminWebhookFailures(150),
         getAdminAuditLogs(150),
-        listScanAds(),
-        listPartners(),
-        listPartnerAccessRequests('pending'),
       ])
 
       setOverview(nextOverview)
@@ -190,12 +187,33 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setApiUsage(nextUsage)
       setWebhookFailures(nextFailures)
       setAuditLogs(nextAuditLogs)
-      setScanAds(nextScanAds)
-      setPartners(nextPartners)
-      setPartnerAccessRequests(nextPartnerRequests)
 
-      if (!selectedPartnerId && nextPartners.length > 0) {
-        setSelectedPartnerId(nextPartners[0].id)
+      // Optional modules should not block core admin/user management flows.
+      const [adsResult, partnersResult, partnerRequestsResult] = await Promise.allSettled([
+        listScanAds(),
+        listPartners(),
+        listPartnerAccessRequests('pending'),
+      ])
+
+      if (adsResult.status === 'fulfilled') {
+        setScanAds(adsResult.value)
+      } else {
+        setScanAds([])
+      }
+
+      if (partnersResult.status === 'fulfilled') {
+        setPartners(partnersResult.value)
+        if (!selectedPartnerId && partnersResult.value.length > 0) {
+          setSelectedPartnerId(partnersResult.value[0].id)
+        }
+      } else {
+        setPartners([])
+      }
+
+      if (partnerRequestsResult.status === 'fulfilled') {
+        setPartnerAccessRequests(partnerRequestsResult.value)
+      } else {
+        setPartnerAccessRequests([])
       }
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'Failed to load admin data')
