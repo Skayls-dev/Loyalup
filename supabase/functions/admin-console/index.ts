@@ -355,6 +355,22 @@ Deno.serve(async (req) => {
       return json({ error: userResult.error?.message ?? 'User not found' }, 404)
     }
 
+    const cleanupResult = await cleanupUserDataBeforeDelete(admin, userId)
+    if (!cleanupResult.ok) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'DELETE_USER',
+        targetUserId: userId,
+        success: false,
+        metadata: {
+          error: cleanupResult.error,
+          cleanup: cleanupResult.steps,
+        },
+      })
+
+      return json({ error: cleanupResult.error }, 500)
+    }
+
     const deleteResult = await admin.auth.admin.deleteUser(userId)
     if (deleteResult.error) {
       await writeAuditLog(admin, {
@@ -362,7 +378,10 @@ Deno.serve(async (req) => {
         action: 'DELETE_USER',
         targetUserId: userId,
         success: false,
-        metadata: { error: deleteResult.error.message },
+        metadata: {
+          error: deleteResult.error.message,
+          cleanup: cleanupResult.steps,
+        },
       })
 
       return json({ error: deleteResult.error.message }, 500)
@@ -375,6 +394,7 @@ Deno.serve(async (req) => {
       success: true,
       metadata: {
         deleted_email: userResult.data.user.email ?? null,
+        cleanup: cleanupResult.steps,
       },
     })
 
@@ -1453,6 +1473,91 @@ function json(payload: Record<string, unknown>, status = 200) {
       'Content-Type': 'application/json',
     },
   })
+}
+
+type CleanupStepResult = {
+  step: string
+  ok: boolean
+  count?: number
+  error?: string
+}
+
+async function cleanupUserDataBeforeDelete(
+  admin: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<{ ok: true; steps: CleanupStepResult[] } | { ok: false; error: string; steps: CleanupStepResult[] }> {
+  const steps: CleanupStepResult[] = []
+
+  const isMissingSchemaObject = (error: { code?: string; message?: string }) => {
+    const code = String(error.code ?? '')
+    const message = String(error.message ?? '').toLowerCase()
+    return (
+      code === '42P01' ||
+      code === '42703' ||
+      message.includes('does not exist') ||
+      message.includes('relation')
+    )
+  }
+
+  const runDeleteStep = async (step: string, table: string, column: string) => {
+    const deleted = await admin
+      .from(table)
+      .delete()
+      .eq(column, userId)
+      .select('id', { count: 'exact' })
+
+    if (deleted.error) {
+      if (isMissingSchemaObject(deleted.error)) {
+        steps.push({ step, ok: true, count: 0, error: `skipped: ${deleted.error.message}` })
+        return true
+      }
+
+      steps.push({ step, ok: false, error: deleted.error.message })
+      return false
+    }
+
+    steps.push({ step, ok: true, count: deleted.count ?? 0 })
+    return true
+  }
+
+  const runUpdateStep = async (step: string, table: string, payload: Record<string, unknown>, column: string) => {
+    const updated = await admin
+      .from(table)
+      .update(payload)
+      .eq(column, userId)
+      .select('id', { count: 'exact' })
+
+    if (updated.error) {
+      if (isMissingSchemaObject(updated.error)) {
+        steps.push({ step, ok: true, count: 0, error: `skipped: ${updated.error.message}` })
+        return true
+      }
+
+      steps.push({ step, ok: false, error: updated.error.message })
+      return false
+    }
+
+    steps.push({ step, ok: true, count: updated.count ?? 0 })
+    return true
+  }
+
+  // Must be deleted first because it references profiles(id) with ON DELETE RESTRICT.
+  if (!(await runDeleteStep('delete_partner_point_transfers', 'partner_point_transfers', 'loyalup_user_id'))) {
+    return { ok: false, error: 'Failed to cleanup partner transfer history before delete', steps }
+  }
+
+  await runDeleteStep('delete_partner_user_links', 'partner_user_links', 'loyalup_user_id')
+  await runDeleteStep('delete_partner_points_wallets', 'partner_points_wallets', 'loyalup_user_id')
+  await runDeleteStep('delete_client_rewards', 'client_rewards', 'client_id')
+  await runDeleteStep('delete_client_points', 'client_points', 'client_id')
+  await runUpdateStep('anonymize_transactions', 'transactions', { client_id: null }, 'client_id')
+  await runUpdateStep('anonymize_user_events', 'user_events', { user_id: null, properties: { anonymized: true } }, 'user_id')
+  await runDeleteStep('delete_push_subscriptions', 'push_subscriptions', 'user_id')
+  await runDeleteStep('delete_notifications', 'notifications', 'user_id')
+  await runDeleteStep('delete_user_consents', 'user_consents', 'user_id')
+  await runDeleteStep('delete_deletion_requests', 'deletion_requests', 'user_id')
+
+  return { ok: true, steps }
 }
 
 async function applyRoleUpdate(
