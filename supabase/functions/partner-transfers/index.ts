@@ -94,6 +94,11 @@ Deno.serve(async (req) => {
       return json({ error: 'Invalid partner key' }, 401)
     }
 
+    const partnerProviderLinks = await getPartnerProviderLinks(admin, credential.partner_id)
+    if (!partnerProviderLinks.ok) {
+      return json({ error: partnerProviderLinks.error }, 409)
+    }
+
     if (credential.partners.status === 'suspended' || credential.partners.status === 'draft') {
       return json({ error: 'Partner is not active' }, 403)
     }
@@ -108,14 +113,19 @@ Deno.serve(async (req) => {
       externalUserId,
       email,
       displayName: body.display_name,
-      createIfMissing: body.create_user_if_missing !== false,
+      createIfMissing: body.create_user_if_missing === true,
     })
 
     if (!linkedUserId) {
-      return json({ error: 'User is not linked and auto-provisioning is disabled' }, 404)
+      return json({ error: 'Partner user is not linked to a LoyalUp account. Complete account onboarding first.' }, 404)
     }
 
-    const enrollment = await ensurePartnerClientEnrollment(admin, credential.partner_id, linkedUserId)
+    const enrollment = await ensurePartnerClientEnrollment(
+      admin,
+      credential.partner_id,
+      linkedUserId,
+      partnerProviderLinks.fournisseurIds,
+    )
     if (!enrollment.ok) {
       return json({ error: enrollment.error }, 409)
     }
@@ -369,19 +379,11 @@ async function ensurePartnerClientEnrollment(
   admin: ReturnType<typeof createClient>,
   partnerId: string,
   loyalupUserId: string,
+  providerIdsInput?: string[],
 ): Promise<{ ok: true; fournisseurIds: string[] } | { ok: false; error: string }> {
-  const { data: links, error: linksError } = await admin
-    .from('partner_provider_links')
-    .select('fournisseur_id')
-    .eq('partner_id', partnerId)
-
-  if (linksError) {
-    return { ok: false, error: linksError.message }
-  }
-
-  const fournisseurIds = ((links ?? []) as Array<{ fournisseur_id: string }>)
-    .map((row) => row.fournisseur_id)
-    .filter(Boolean)
+  const fournisseurIds = providerIdsInput?.length
+    ? providerIdsInput
+    : []
 
   if (fournisseurIds.length === 0) {
     return { ok: false, error: 'Partner is not linked to any provider' }
@@ -401,6 +403,30 @@ async function ensurePartnerClientEnrollment(
 
   if (upsert.error) {
     return { ok: false, error: upsert.error.message }
+  }
+
+  return { ok: true, fournisseurIds }
+}
+
+async function getPartnerProviderLinks(
+  admin: ReturnType<typeof createClient>,
+  partnerId: string,
+): Promise<{ ok: true; fournisseurIds: string[] } | { ok: false; error: string }> {
+  const { data: links, error: linksError } = await admin
+    .from('partner_provider_links')
+    .select('fournisseur_id')
+    .eq('partner_id', partnerId)
+
+  if (linksError) {
+    return { ok: false, error: linksError.message }
+  }
+
+  const fournisseurIds = ((links ?? []) as Array<{ fournisseur_id: string }>)
+    .map((row) => row.fournisseur_id)
+    .filter(Boolean)
+
+  if (fournisseurIds.length === 0) {
+    return { ok: false, error: 'Partner provider account is not configured in LoyalUp' }
   }
 
   return { ok: true, fournisseurIds }
