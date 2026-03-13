@@ -37,6 +37,8 @@ const webhookEvents = [
 const secondaryButtonClass =
   'rounded-xl border border-zinc-700/80 bg-zinc-900/70 px-2.5 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60'
 
+type OnboardingStepState = 'done' | 'active' | 'todo'
+
 export function DeveloperPortal() {
   const [activeTab, setActiveTab] = useState<'partner' | 'provider' | 'webhooks'>('partner')
   const [loading, setLoading] = useState(true)
@@ -65,6 +67,36 @@ export function DeveloperPortal() {
 
   const hasWebhooks = webhooks.length > 0
   const hasApiKeys = apiKeys.length > 0
+  const hasSandboxPartnerKey = partnerKeys.some((key) => key.environment === 'sandbox' && key.is_active)
+  const hasPendingProductionRequest = partnerRequests.some((request) => request.status === 'pending')
+  const hasOnboardingProfile = Boolean(partnerProfile?.code && partnerProfile?.name)
+
+  const onboardingSteps: Array<{ key: string; label: string; hint: string; state: OnboardingStepState }> = [
+    {
+      key: 'profile',
+      label: '1. Configurer le profil partenaire',
+      hint: 'Definir code et nom partenaire.',
+      state: hasOnboardingProfile ? 'done' : 'active',
+    },
+    {
+      key: 'sandbox',
+      label: '2. Generer une cle sandbox',
+      hint: 'Creer au moins une cle active pour les tests.',
+      state: hasSandboxPartnerKey ? 'done' : hasOnboardingProfile ? 'active' : 'todo',
+    },
+    {
+      key: 'production',
+      label: '3. Demander l acces production',
+      hint: 'Envoyer la demande puis attendre validation admin.',
+      state: partnerCanUseProduction
+        ? 'done'
+        : hasPendingProductionRequest
+          ? 'active'
+          : hasSandboxPartnerKey
+            ? 'active'
+            : 'todo',
+    },
+  ]
 
   const docsBaseUrl = useMemo(() => '/docs/sdk.md', [])
   const openApiUrl = useMemo(
@@ -298,6 +330,29 @@ export function DeveloperPortal() {
               ? `Partner: ${partnerProfile.code} • status: ${partnerProfile.status}`
               : 'Profil partenaire indisponible'}
           </p>
+
+          <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
+            <p className="text-xs font-semibold text-zinc-300">Parcours self onboarding</p>
+            <div className="grid gap-2 md:grid-cols-3">
+              {onboardingSteps.map((step) => (
+                <article key={step.key} className="rounded-md border border-zinc-800 bg-zinc-900/60 p-2">
+                  <p
+                    className={`text-xs font-semibold ${
+                      step.state === 'done'
+                        ? 'text-emerald-300'
+                        : step.state === 'active'
+                          ? 'text-amber-300'
+                          : 'text-zinc-400'
+                    }`}
+                  >
+                    {step.state === 'done' ? '✓ ' : step.state === 'active' ? '• ' : '○ '}
+                    {step.label}
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500">{step.hint}</p>
+                </article>
+              ))}
+            </div>
+          </div>
 
           <div className="space-y-2 rounded-md border border-zinc-800 bg-zinc-950/60 p-2">
             <p className="text-xs font-semibold text-zinc-300">Self onboarding partenaire</p>
