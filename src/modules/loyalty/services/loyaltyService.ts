@@ -58,6 +58,10 @@ export type UseRewardResponse = {
 
 export type PartnerBalanceResponse = {
   partner_balance: number
+  partner_balances_by_provider?: Array<{
+    fournisseur_id: string
+    balance: number
+  }>
   updated_at: string | null
 }
 
@@ -299,6 +303,7 @@ export async function getClientPartnerBalance(client_id: string): Promise<Partne
     const { data, error } = await supabase.functions.invoke<{
       success: boolean
       partner_balance: number
+      partner_balances_by_provider?: Array<{ fournisseur_id: string; balance: number }>
       updated_at: string | null
       error?: string
     }>('get-client-partner-balance', {
@@ -316,6 +321,10 @@ export async function getClientPartnerBalance(client_id: string): Promise<Partne
 
     return {
       partner_balance: Number(data.partner_balance ?? 0),
+      partner_balances_by_provider: (data.partner_balances_by_provider ?? []).map((row) => ({
+        fournisseur_id: String(row.fournisseur_id),
+        balance: Number(row.balance ?? 0),
+      })),
       updated_at: data.updated_at ?? null,
     }
   })

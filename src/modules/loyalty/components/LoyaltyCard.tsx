@@ -15,7 +15,7 @@ type LoyaltyCardProps = {
 function LoyaltyCardComponent({ card, index }: LoyaltyCardProps) {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [previousPoints, setPreviousPoints] = useState(card.solde)
+  const [previousPoints, setPreviousPoints] = useState(card.displaySolde)
   const [networkBadges, setNetworkBadges] = useState<Array<{ id: string; name: string; emoji: string; bonusPct: number }>>([])
 
   const { solde: liveSolde } = usePointsRealtime({
@@ -23,7 +23,7 @@ function LoyaltyCardComponent({ card, index }: LoyaltyCardProps) {
     fournisseur_id: card.fournisseur.id,
   })
 
-  const effectiveSolde = user?.id ? liveSolde : card.solde
+  const effectiveSolde = user?.id ? Math.max(liveSolde, card.displaySolde) : card.displaySolde
 
   useEffect(() => {
     if (effectiveSolde !== previousPoints) {
@@ -140,5 +140,5 @@ function LoyaltyCardComponent({ card, index }: LoyaltyCardProps) {
 }
 
 export const LoyaltyCard = memo(LoyaltyCardComponent, (prev, next) => {
-  return prev.card.solde === next.card.solde && prev.card.fournisseur.id === next.card.fournisseur.id
+  return prev.card.displaySolde === next.card.displaySolde && prev.card.fournisseur.id === next.card.fournisseur.id
 })

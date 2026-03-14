@@ -12,6 +12,7 @@ import {
 import { QUERY_STALE } from '../../../shared/lib/queryClient'
 
 export type LoyaltyCard = LoyaltyCardBase & {
+  displaySolde: number
   nextReward: RewardRule | null
   progressPercent: number
   pointsNeeded: number
@@ -52,6 +53,7 @@ export function useLoyalty(): UseLoyaltyResult {
 
         return {
           ...card,
+          displaySolde: card.solde,
           nextReward,
           progressPercent,
           pointsNeeded,
@@ -83,6 +85,27 @@ export function useLoyalty(): UseLoyaltyResult {
         try {
           const partnerWallet = await getClientPartnerBalance(user.id)
           partnerPoints = Number(partnerWallet.partner_balance ?? 0)
+          const providerBalanceMap = new Map(
+            (partnerWallet.partner_balances_by_provider ?? []).map((row) => [row.fournisseur_id, Number(row.balance ?? 0)]),
+          )
+
+          for (const card of nextCards) {
+            const providerPartnerBalance = providerBalanceMap.get(card.fournisseur.id)
+            if (providerPartnerBalance === undefined) {
+              continue
+            }
+
+            card.displaySolde = providerPartnerBalance
+            card.nextReward = (await getRewardRules(card.fournisseur.id)).find(
+              (rule) => rule.points_required > card.displaySolde,
+            ) ?? null
+            card.progressPercent = card.nextReward
+              ? Math.min(100, Math.round((card.displaySolde / card.nextReward.points_required) * 100))
+              : 100
+            card.pointsNeeded = card.nextReward
+              ? Math.max(0, card.nextReward.points_required - card.displaySolde)
+              : 0
+          }
         } catch (error) {
           partnerPoints = 0
           partnerWarning = error instanceof Error

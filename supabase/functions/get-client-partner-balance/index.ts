@@ -44,7 +44,7 @@ Deno.serve(async (req) => {
 
   const { data: transfers, error: transfersError } = await admin
     .from('partner_point_transfers')
-    .select('points_delta, processed_at')
+    .select('partner_id, points_delta, processed_at')
     .eq('loyalup_user_id', userId)
     .eq('status', 'accepted')
 
@@ -64,10 +64,54 @@ Deno.serve(async (req) => {
   const partnerBalance = acceptedTransfers.length > 0 ? ledgerBalance : walletBalance
   const updatedAt = latestProcessedAt ?? wallet?.updated_at ?? null
 
+  const acceptedTransfersWithPartner = ((transfers ?? []) as Array<{ points_delta: number; processed_at: string | null; partner_id?: string }>)
+  const partnerIds = Array.from(
+    new Set(
+      acceptedTransfersWithPartner
+        .map((row) => row.partner_id)
+        .filter((value): value is string => typeof value === 'string' && value.length > 0),
+    ),
+  )
+
+  const { data: providerLinks } = partnerIds.length > 0
+    ? await admin
+        .from('partner_provider_links')
+        .select('partner_id, fournisseur_id')
+        .in('partner_id', partnerIds)
+    : { data: [] as Array<{ partner_id: string; fournisseur_id: string }> }
+
+  const providerIdByPartnerId = new Map(
+    ((providerLinks ?? []) as Array<{ partner_id: string; fournisseur_id: string }>).map((row) => [row.partner_id, row.fournisseur_id]),
+  )
+
+  const providerBalanceMap = new Map<string, number>()
+  for (const row of acceptedTransfersWithPartner) {
+    const partnerId = row.partner_id
+    if (!partnerId) {
+      continue
+    }
+
+    const fournisseurId = providerIdByPartnerId.get(partnerId)
+    if (!fournisseurId) {
+      continue
+    }
+
+    providerBalanceMap.set(
+      fournisseurId,
+      Number(providerBalanceMap.get(fournisseurId) ?? 0) + Number(row.points_delta ?? 0),
+    )
+  }
+
+  const partnerBalancesByProvider = Array.from(providerBalanceMap.entries()).map(([fournisseur_id, balance]) => ({
+    fournisseur_id,
+    balance,
+  }))
+
   return json({
     success: true,
     loyalup_user_id: userId,
     partner_balance: partnerBalance,
+    partner_balances_by_provider: partnerBalancesByProvider,
     updated_at: updatedAt,
   })
 })
