@@ -28,6 +28,7 @@ describe('LoyaltyCard', () => {
       adresse: 'Paris',
     },
     solde: 200,
+    displaySolde: 200,
     total_visites: 10,
     updated_at: new Date().toISOString(),
     nextReward: {
@@ -57,8 +58,8 @@ describe('LoyaltyCard', () => {
   })
 
   it('animates points counter when points prop changes', () => {
-    const { rerender } = render(<LoyaltyCard card={{ ...card, solde: 200 }} index={0} />)
-    rerender(<LoyaltyCard card={{ ...card, solde: 260 }} index={0} />)
+    const { rerender } = render(<LoyaltyCard card={{ ...card, solde: 200, displaySolde: 200 }} index={0} />)
+    rerender(<LoyaltyCard card={{ ...card, solde: 260, displaySolde: 260 }} index={0} />)
 
     expect(screen.getByText(/250|260/)).toBeInTheDocument()
   })
