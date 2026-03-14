@@ -21,7 +21,9 @@ type AdminAction =
   | 'LIST_PARTNERS'
   | 'UPSERT_PARTNER'
   | 'DELETE_PARTNER'
+  | 'LINK_PARTNER_PROVIDER'
   | 'GENERATE_PARTNER_KEY'
+  | 'LIST_PARTNER_TRANSFERS'
   | 'LIST_PARTNER_ACCESS_REQUESTS'
   | 'REVIEW_PARTNER_ACCESS_REQUEST'
   | 'LIST_SCAN_ADS'
@@ -1214,6 +1216,119 @@ Deno.serve(async (req) => {
     return json({ success: true, deleted: true, id: partnerId, code: partner.code })
   }
 
+  if (action === 'LINK_PARTNER_PROVIDER') {
+    const partnerId = body.partner_id ? String(body.partner_id).trim() : ''
+    const partnerCode = body.partner_code ? String(body.partner_code).trim().toUpperCase() : ''
+    const providerId = body.fournisseur_id ? String(body.fournisseur_id).trim() : ''
+    const providerUserId = body.provider_user_id ? String(body.provider_user_id).trim() : ''
+    const role = body.role ? String(body.role).trim() : 'owner'
+
+    if (!partnerId && !partnerCode) {
+      return json({ error: 'Missing partner_id or partner_code' }, 400)
+    }
+
+    if (!providerId && !providerUserId) {
+      return json({ error: 'Missing fournisseur_id or provider_user_id' }, 400)
+    }
+
+    if (!['owner', 'developer', 'ops'].includes(role)) {
+      return json({ error: 'Invalid role' }, 400)
+    }
+
+    const partnerLookup = partnerId
+      ? await admin
+          .from('partners')
+          .select('id, code, name, status')
+          .eq('id', partnerId)
+          .maybeSingle<{ id: string; code: string; name: string; status: string }>()
+      : await admin
+          .from('partners')
+          .select('id, code, name, status')
+          .eq('code', partnerCode)
+          .maybeSingle<{ id: string; code: string; name: string; status: string }>()
+
+    if (partnerLookup.error || !partnerLookup.data?.id) {
+      return json({ error: partnerLookup.error?.message ?? 'Partner not found' }, 404)
+    }
+
+    const providerLookup = providerId
+      ? await admin
+          .from('fournisseurs')
+          .select('id, user_id, nom_commerce, tier')
+          .eq('id', providerId)
+          .maybeSingle<{ id: string; user_id: string; nom_commerce: string | null; tier: string | null }>()
+      : await admin
+          .from('fournisseurs')
+          .select('id, user_id, nom_commerce, tier')
+          .eq('user_id', providerUserId)
+          .maybeSingle<{ id: string; user_id: string; nom_commerce: string | null; tier: string | null }>()
+
+    if (providerLookup.error || !providerLookup.data?.id) {
+      return json({ error: providerLookup.error?.message ?? 'Provider not found' }, 404)
+    }
+
+    const { error: linkError } = await admin
+      .from('partner_provider_links')
+      .upsert(
+        {
+          partner_id: partnerLookup.data.id,
+          fournisseur_id: providerLookup.data.id,
+          role,
+          created_by_user_id: adminUserId,
+        },
+        { onConflict: 'fournisseur_id' },
+      )
+
+    if (linkError) {
+      await writeAuditLog(admin, {
+        adminUserId,
+        action: 'LINK_PARTNER_PROVIDER',
+        success: false,
+        metadata: {
+          partner_id: partnerLookup.data.id,
+          partner_code: partnerLookup.data.code,
+          fournisseur_id: providerLookup.data.id,
+          provider_user_id: providerLookup.data.user_id,
+          error: linkError.message,
+        },
+      })
+
+      return json({ error: linkError.message }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'LINK_PARTNER_PROVIDER',
+      success: true,
+      metadata: {
+        partner_id: partnerLookup.data.id,
+        partner_code: partnerLookup.data.code,
+        fournisseur_id: providerLookup.data.id,
+        provider_user_id: providerLookup.data.user_id,
+        role,
+      },
+    })
+
+    return json({
+      success: true,
+      link: {
+        partner: {
+          id: partnerLookup.data.id,
+          code: partnerLookup.data.code,
+          name: partnerLookup.data.name,
+          status: partnerLookup.data.status,
+        },
+        provider: {
+          id: providerLookup.data.id,
+          user_id: providerLookup.data.user_id,
+          nom_commerce: providerLookup.data.nom_commerce,
+          tier: providerLookup.data.tier,
+        },
+        role,
+      },
+    })
+  }
+
   if (action === 'GENERATE_PARTNER_KEY') {
     const partnerId = String(body.partner_id ?? '').trim()
     const environment = String(body.environment ?? 'sandbox').trim()
@@ -1285,6 +1400,37 @@ Deno.serve(async (req) => {
       key: rawKey,
       key_once: true,
       credential: data?.[0] ?? null,
+    })
+  }
+
+  if (action === 'LIST_PARTNER_TRANSFERS') {
+    const limit = Math.min(500, Math.max(1, Number(body.limit ?? 100)))
+    const externalUserId = body.external_user_id ? String(body.external_user_id).trim() : ''
+    const partnerId = body.partner_id ? String(body.partner_id).trim() : ''
+
+    let query = admin
+      .from('partner_point_transfers')
+      .select('id, partner_id, credential_id, loyalup_user_id, external_user_id, transaction_ref, idempotency_key, direction, points_delta, status, error_code, resulting_balance, metadata, created_at, processed_at')
+      .order('created_at', { ascending: false })
+      .limit(limit)
+
+    if (externalUserId) {
+      query = query.eq('external_user_id', externalUserId)
+    }
+
+    if (partnerId) {
+      query = query.eq('partner_id', partnerId)
+    }
+
+    const { data, error } = await query
+    if (error) {
+      return json({ error: error.message }, 500)
+    }
+
+    return json({
+      success: true,
+      transfers: data ?? [],
+      count: (data ?? []).length,
     })
   }
 

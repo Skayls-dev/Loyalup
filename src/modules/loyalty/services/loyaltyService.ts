@@ -294,8 +294,8 @@ export async function getClientPointsBalance(client_id: string, fournisseur_id: 
   })
 }
 
-export async function getClientPartnerBalance(): Promise<PartnerBalanceResponse> {
-  return withCachedRead('loyalty:partner-wallet:me', async () => {
+export async function getClientPartnerBalance(client_id: string): Promise<PartnerBalanceResponse> {
+  return withCachedRead(`loyalty:partner-wallet:${client_id}`, async () => {
     const { data, error } = await supabase.functions.invoke<{
       success: boolean
       partner_balance: number

@@ -113,7 +113,8 @@ Deno.serve(async (req) => {
       externalUserId,
       email,
       displayName: body.display_name,
-      createIfMissing: body.create_user_if_missing === true,
+      createIfMissing: body.create_user_if_missing === true || credential.environment === 'sandbox',
+      autoActivate: credential.environment === 'sandbox',
     })
 
     if (!linkedUserId) {
@@ -247,9 +248,10 @@ async function resolveOrCreateLinkedUser(
     email?: string | null
     displayName?: string
     createIfMissing: boolean
+    autoActivate: boolean
   },
 ): Promise<string | null> {
-  const { partnerId, partnerCode, externalUserId, email, displayName, createIfMissing } = params
+  const { partnerId, partnerCode, externalUserId, email, displayName, createIfMissing, autoActivate } = params
 
   const existing = await admin
     .from('partner_user_links')
@@ -274,12 +276,12 @@ async function resolveOrCreateLinkedUser(
   const created = await admin.auth.admin.createUser({
     email: generatedEmail,
     password: generatedPassword,
-    email_confirm: email ? false : true,
+    email_confirm: autoActivate ? true : email ? false : true,
     user_metadata: {
       role: 'client',
       source_partner: partnerCode,
       external_user_id: externalUserId,
-      activation_required: !email,
+      activation_required: autoActivate ? false : !email,
     },
   })
 

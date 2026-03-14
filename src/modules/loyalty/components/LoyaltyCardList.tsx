@@ -5,7 +5,7 @@ import { LoyaltyCard } from './LoyaltyCard'
 import { EmptyState, PrimaryButton, Skeleton, StatCard } from '../../../shared/components/client-ui'
 
 export function LoyaltyCardList() {
-  const { cards, loading, error, totalPoints, loyaltyPoints, partnerPoints, refetch, offline } = useLoyalty()
+  const { cards, loading, error, partnerWarning, totalPoints, loyaltyPoints, partnerPoints, refetch, offline } = useLoyalty()
   const touchStartY = useRef<number | null>(null)
 
   const onTouchStart: TouchEventHandler<HTMLDivElement> = (event) => {
@@ -76,6 +76,7 @@ export function LoyaltyCardList() {
       </div>
 
       {error ? <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p> : null}
+      {partnerWarning ? <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{partnerWarning}</p> : null}
 
       <div className="space-y-3">
         {cards.map((card, index) => (

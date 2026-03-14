@@ -21,6 +21,7 @@ type UseLoyaltyResult = {
   cards: LoyaltyCard[]
   loading: boolean
   error: string | null
+  partnerWarning: string | null
   loyaltyPoints: number
   partnerPoints: number
   totalPoints: number
@@ -70,23 +71,34 @@ export function useLoyalty(): UseLoyaltyResult {
         return {
           cards: [] as LoyaltyCard[],
           partnerPoints: 0,
+          partnerWarning: null,
         }
       }
 
       try {
-        const [nextCards, partnerWallet] = await Promise.all([
-          hydrateCards(user.id),
-          getClientPartnerBalance().catch(() => ({ partner_balance: 0, updated_at: null })),
-        ])
+        const nextCards = await hydrateCards(user.id)
+        let partnerPoints = 0
+        let partnerWarning: string | null = null
+
+        try {
+          const partnerWallet = await getClientPartnerBalance(user.id)
+          partnerPoints = Number(partnerWallet.partner_balance ?? 0)
+        } catch (error) {
+          partnerPoints = 0
+          partnerWarning = error instanceof Error
+            ? `Solde partner indisponible: ${error.message}`
+            : 'Solde partner indisponible'
+        }
 
         localStorage.setItem(
           cacheKeyFor(user.id),
-          JSON.stringify({ cards: nextCards, partnerPoints: Number(partnerWallet.partner_balance ?? 0) }),
+          JSON.stringify({ cards: nextCards, partnerPoints }),
         )
         setOffline(false)
         return {
           cards: nextCards,
-          partnerPoints: Number(partnerWallet.partner_balance ?? 0),
+          partnerPoints,
+          partnerWarning,
         }
       } catch {
         const cached = localStorage.getItem(cacheKeyFor(user.id))
@@ -98,12 +110,14 @@ export function useLoyalty(): UseLoyaltyResult {
             return {
               cards: parsed,
               partnerPoints: 0,
+              partnerWarning: null,
             }
           }
 
           return {
             cards: parsed.cards ?? [],
             partnerPoints: Number(parsed.partnerPoints ?? 0),
+            partnerWarning: null,
           }
         }
 
@@ -114,6 +128,7 @@ export function useLoyalty(): UseLoyaltyResult {
 
   const cards = liveCards ?? (query.data?.cards ?? [])
   const partnerPoints = Number(query.data?.partnerPoints ?? 0)
+  const partnerWarning = query.data?.partnerWarning ?? null
 
   const refetch = useCallback(async () => {
     const { data } = await query.refetch()
@@ -174,6 +189,7 @@ export function useLoyalty(): UseLoyaltyResult {
     cards,
     loading: query.isLoading || query.isFetching,
     error: query.error instanceof Error ? query.error.message : null,
+    partnerWarning,
     loyaltyPoints,
     partnerPoints,
     totalPoints,

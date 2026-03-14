@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: LoyalUp Public API
-  version: 1.1.0
-  description: Provider API plus Partner Transfer, Partner Account Claim, and Partner Activate endpoints.
+  version: 1.3.0
+  description: Provider API plus Partner Transfer, Partner Account Claim, Partner Activate, and Partner Self-Service endpoints.
 servers:
   - url: https://yyftqivizzgvveeczbpv.supabase.co/functions/v1
 security:
@@ -17,6 +17,10 @@ components:
       type: apiKey
       in: header
       name: X-Partner-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     ProviderApiSuccess:
       type: object
@@ -156,13 +160,15 @@ components:
             email:
               type: string
               format: email
+            activated:
+              type: boolean
             action_link:
-              type: string
+              type: [string, 'null']
               format: uri
             email_otp:
-              type: string
+              type: [string, 'null']
             hashed_token:
-              type: string
+              type: [string, 'null']
             redirect_to:
               type: string
               format: uri
@@ -187,13 +193,15 @@ components:
             email:
               type: string
               format: email
+            activated:
+              type: boolean
             action_link:
-              type: string
+              type: [string, 'null']
               format: uri
             email_otp:
-              type: string
+              type: [string, 'null']
             hashed_token:
-              type: string
+              type: [string, 'null']
             redirect_to:
               type: string
               format: uri
@@ -201,6 +209,7 @@ paths:
   /partner-transfers:
     post:
       summary: Credit/debit points to a LoyalUp linked user using partner credentials
+      description: Requires partner-provider configuration and a linked LoyalUp user. In sandbox, missing users are auto-created/linked by default; in production, set `create_user_if_missing=true` to allow auto-create.
       security:
         - PartnerApiKey: []
       parameters:
@@ -234,6 +243,8 @@ paths:
                   type: string
                 create_user_if_missing:
                   type: boolean
+                  default: false
+                  description: If true, auto-creates and links a LoyalUp user when missing. In sandbox this behavior is enabled by default.
                 metadata:
                   type: object
       responses:
@@ -284,8 +295,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PartnerApiError'
+        '404':
+          description: Partner user not linked and auto-link disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
         '409':
-          description: Transfer rejected (e.g. insufficient_balance)
+          description: Transfer rejected (e.g. insufficient_balance or partner/provider setup issue)
           content:
             application/json:
               schema:
@@ -294,6 +311,7 @@ paths:
   /partner-account-claim:
     post:
       summary: Get activation status or start claim flow for a linked partner user
+      description: In sandbox, START_CLAIM can auto-create and auto-activate a missing linked user for test emails.
       security:
         - PartnerApiKey: []
       requestBody:
@@ -355,6 +373,18 @@ paths:
                       action_link: https://yyftqivizzgvveeczbpv.supabase.co/auth/v1/verify
                       email_otp: '123456'
                       hashed_token: token_hash
+                      redirect_to: https://loyalup-pink.vercel.app/auth/callback
+                start_claim_sandbox_auto:
+                  value:
+                    success: true
+                    claim:
+                      external_user_id: sandbox-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      email: noreal@example.test
+                      activated: true
+                      action_link: null
+                      email_otp: null
+                      hashed_token: null
                       redirect_to: https://loyalup-pink.vercel.app/auth/callback
         '400':
           description: Invalid action or payload
@@ -390,6 +420,7 @@ paths:
   /loyalup-account-claim:
     post:
       summary: Compatibility alias of /partner-account-claim
+      description: Compatibility alias with the same sandbox auto-create/auto-activate behavior as /partner-account-claim.
       security:
         - PartnerApiKey: []
       requestBody:
@@ -452,6 +483,18 @@ paths:
                       email_otp: '123456'
                       hashed_token: token_hash
                       redirect_to: https://loyalup-pink.vercel.app/auth/callback
+                start_claim_sandbox_auto:
+                  value:
+                    success: true
+                    claim:
+                      external_user_id: sandbox-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      email: noreal@example.test
+                      activated: true
+                      action_link: null
+                      email_otp: null
+                      hashed_token: null
+                      redirect_to: https://loyalup-pink.vercel.app/auth/callback
         '400':
           description: Invalid action or payload
           content:
@@ -486,6 +529,7 @@ paths:
   /partner-activate:
     post:
       summary: One-call partner activation (auto-link if needed, then generate action_link)
+      description: In sandbox, missing users are auto-created and auto-activated without requiring a real email confirmation flow.
       security:
         - PartnerApiKey: []
       requestBody:
@@ -508,6 +552,7 @@ paths:
                   format: uri
                 create_user_if_missing:
                   type: boolean
+                  default: true
       responses:
         '200':
           description: Activation payload with action_link
@@ -528,6 +573,20 @@ paths:
                       action_link: https://yyftqivizzgvveeczbpv.supabase.co/auth/v1/verify
                       email_otp: '123456'
                       hashed_token: token_hash
+                      redirect_to: https://loyalup-pink.vercel.app/auth/callback
+                activated_sandbox_auto:
+                  value:
+                    success: true
+                    activation:
+                      partner_code: PROVIDER_3
+                      external_user_id: sandbox-user-123
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      linked_user_created: true
+                      email: noreal@example.test
+                      activated: true
+                      action_link: null
+                      email_otp: null
+                      hashed_token: null
                       redirect_to: https://loyalup-pink.vercel.app/auth/callback
         '400':
           description: Invalid payload
@@ -555,6 +614,144 @@ paths:
                 $ref: '#/components/schemas/PartnerApiError'
         '409':
           description: Activation conflict (e.g. email collision)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+
+  /partner-self-service:
+    post:
+      summary: Partner onboarding and key management for authenticated providers
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [action]
+                  properties:
+                    action:
+                      type: string
+                      enum: [GET_PROFILE]
+                - type: object
+                  required: [action, code, name]
+                  properties:
+                    action:
+                      type: string
+                      enum: [UPSERT_PROFILE]
+                    code:
+                      type: string
+                      pattern: '^[A-Z0-9_\\-]{2,40}$'
+                    name:
+                      type: string
+                - type: object
+                  required: [action]
+                  properties:
+                    action:
+                      type: string
+                      enum: [LIST_KEYS]
+                - type: object
+                  required: [action]
+                  properties:
+                    action:
+                      type: string
+                      enum: [CREATE_KEY]
+                    environment:
+                      type: string
+                      enum: [sandbox, production]
+                    scopes:
+                      type: array
+                      items:
+                        type: string
+                        enum: [transfers:write, transfers:read]
+                    expires_at:
+                      type: [string, 'null']
+                      format: date-time
+                - type: object
+                  required: [action]
+                  properties:
+                    action:
+                      type: string
+                      enum: [REQUEST_PRODUCTION_ACCESS]
+                    notes:
+                      type: string
+                      maxLength: 500
+                - type: object
+                  required: [action]
+                  properties:
+                    action:
+                      type: string
+                      enum: [LIST_REQUESTS]
+      responses:
+        '200':
+          description: Action result
+          content:
+            application/json:
+              schema:
+                type: object
+              examples:
+                get_profile:
+                  value:
+                    success: true
+                    partner:
+                      id: 7b8c4d4b-cc4e-4d55-9b6e-6b7db8e0f5e2
+                      code: KUVAAGO-PRNC
+                      name: Kuvaago
+                      status: sandbox_active
+                    can_use_production: false
+                upsert_profile:
+                  value:
+                    success: true
+                    partner:
+                      id: 7b8c4d4b-cc4e-4d55-9b6e-6b7db8e0f5e2
+                      code: KUVAAGO-PRNC
+                      name: Kuvaago Principal
+                      status: sandbox_active
+                create_key:
+                  value:
+                    success: true
+                    key: lu_pk_sandbox_xxxxxxxxxxxxxxxxxxxxxxxxx
+                    key_once: true
+                    credential:
+                      id: d21a7679-1c1c-4b32-bd3b-e4fb67ac1bf1
+                      environment: sandbox
+                      scopes: [transfers:write]
+                      is_active: true
+                request_production:
+                  value:
+                    success: true
+                    request:
+                      id: 1e96a74f-5a23-4f20-b3f8-cf28dece02b8
+                      status: pending
+        '400':
+          description: Invalid action or payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '403':
+          description: Forbidden (e.g. production key requested without approval)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '404':
+          description: Provider profile not found for authenticated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '409':
+          description: Conflict (e.g. duplicate partner code or existing pending request)
           content:
             application/json:
               schema:

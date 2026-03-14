@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   getAvailableRewards,
   getClientCards,
+  getClientPartnerBalance,
   getTransactionHistory,
   subscribeToPoints,
   useReward,
@@ -101,5 +102,20 @@ describe('loyaltyService', () => {
 
     expect(callback).toHaveBeenCalledWith(450)
     expect(typeof unsubscribe).toBe('function')
+  })
+
+  it('getClientPartnerBalance: returns partner wallet for current client', async () => {
+    setFunctionResult('get-client-partner-balance', {
+      success: true,
+      partner_balance: 275,
+      updated_at: '2026-03-13T10:00:00.000Z',
+    })
+
+    const result = await getClientPartnerBalance('client-1')
+
+    expect(result).toEqual({
+      partner_balance: 275,
+      updated_at: '2026-03-13T10:00:00.000Z',
+    })
   })
 })

@@ -80,7 +80,28 @@ Deno.serve(async (req) => {
       return json({ error: 'Partner is not active' }, 403)
     }
 
-    const link = await findPartnerLink(admin, credential.partner_id, externalUserId)
+    let link = await findPartnerLink(admin, credential.partner_id, externalUserId)
+    if (!link && body.action === 'START_CLAIM' && credential.environment === 'sandbox') {
+      const sandboxEmail = normalizeEmail(body.email)
+      if (!sandboxEmail) {
+        return json({ error: 'A valid email is required' }, 400)
+      }
+
+      const loyalupUserId = await createLinkedUser(admin, {
+        partnerId: credential.partner_id,
+        partnerCode: credential.partners.code,
+        externalUserId,
+        email: sandboxEmail,
+        displayName: externalUserId,
+        autoActivate: true,
+      })
+
+      link = await findPartnerLink(admin, credential.partner_id, externalUserId)
+      if (!link || link.loyalup_user_id !== loyalupUserId) {
+        return json({ error: 'Unable to create partner user link' }, 500)
+      }
+    }
+
     if (!link) {
       return json({ error: 'User link not found' }, 404)
     }
@@ -118,6 +139,58 @@ Deno.serve(async (req) => {
     const normalizedEmail = normalizeEmail(body.email)
     if (!normalizedEmail) {
       return json({ error: 'A valid email is required' }, 400)
+    }
+
+    if (credential.environment === 'sandbox') {
+      const sandboxUpdate = await admin.auth.admin.updateUserById(link.loyalup_user_id, {
+        email: normalizedEmail,
+        email_confirm: true,
+        user_metadata: {
+          ...(authUser.user_metadata ?? {}),
+          activation_required: false,
+          email_verified: true,
+        },
+      })
+
+      if (sandboxUpdate.error) {
+        return json({ error: sandboxUpdate.error.message }, 409)
+      }
+
+      const sandboxProfileUpdate = await admin
+        .from('profiles')
+        .update({ email: normalizedEmail })
+        .eq('id', link.loyalup_user_id)
+
+      if (sandboxProfileUpdate.error) {
+        return json({ error: sandboxProfileUpdate.error.message }, 500)
+      }
+
+      const redirectTo = resolveSafeRedirectTo(body.redirect_to)
+      const existingMetadata = (link.metadata ?? {}) as Record<string, unknown>
+
+      await admin
+        .from('partner_user_links')
+        .update({
+          metadata: {
+            ...existingMetadata,
+            activation_email: normalizedEmail,
+            activation_requested_at: new Date().toISOString(),
+            activation_method: 'sandbox_auto',
+          },
+        })
+        .eq('id', link.id)
+
+      return json({
+        success: true,
+        claim: {
+          external_user_id: externalUserId,
+          loyalup_user_id: link.loyalup_user_id,
+          email: normalizedEmail,
+          activated: true,
+          action_link: null,
+          redirect_to: redirectTo,
+        },
+      })
     }
 
     if (authEmail !== normalizedEmail) {
@@ -238,6 +311,75 @@ async function findPartnerLink(
   }
 
   return data
+}
+
+async function createLinkedUser(
+  admin: ReturnType<typeof createClient>,
+  params: {
+    partnerId: string
+    partnerCode: string
+    externalUserId: string
+    email: string
+    displayName?: string
+    autoActivate: boolean
+  },
+): Promise<string> {
+  const created = await admin.auth.admin.createUser({
+    email: params.email,
+    password: `P-${crypto.randomUUID()}-A1!`,
+    email_confirm: params.autoActivate,
+    user_metadata: {
+      role: 'client',
+      source_partner: params.partnerCode,
+      external_user_id: params.externalUserId,
+      activation_required: !params.autoActivate,
+    },
+  })
+
+  if (created.error || !created.data.user?.id) {
+    throw created.error ?? new Error('Unable to create linked LoyalUp user')
+  }
+
+  const loyalupUserId = created.data.user.id
+  const resolvedName = params.displayName?.trim() || params.externalUserId
+
+  const profileUpsert = await admin.from('profiles').upsert({
+    id: loyalupUserId,
+    email: params.email,
+    role: 'client',
+    nom: resolvedName,
+  })
+
+  if (profileUpsert.error) {
+    throw profileUpsert.error
+  }
+
+  const linkInsert = await admin.from('partner_user_links').insert({
+    partner_id: params.partnerId,
+    external_user_id: params.externalUserId,
+    loyalup_user_id: loyalupUserId,
+    metadata: {
+      auto_linked_by: 'partner-account-claim',
+      linked_at: new Date().toISOString(),
+    },
+  })
+
+  if (linkInsert.error) {
+    const reloaded = await admin
+      .from('partner_user_links')
+      .select('loyalup_user_id')
+      .eq('partner_id', params.partnerId)
+      .eq('external_user_id', params.externalUserId)
+      .maybeSingle<{ loyalup_user_id: string }>()
+
+    if (reloaded.data?.loyalup_user_id) {
+      return reloaded.data.loyalup_user_id
+    }
+
+    throw linkInsert.error
+  }
+
+  return loyalupUserId
 }
 
 async function sha256Hex(value: string): Promise<string> {

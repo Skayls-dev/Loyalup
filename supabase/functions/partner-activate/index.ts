@@ -84,6 +84,8 @@ Deno.serve(async (req) => {
       return json({ error: 'Partner is not active' }, 403)
     }
 
+    const isSandbox = credential.environment === 'sandbox'
+
     let link = await findPartnerLink(admin, credential.partner_id, externalUserId)
     let linkedUserCreated = false
 
@@ -99,6 +101,7 @@ Deno.serve(async (req) => {
         externalUserId,
         email: normalizedEmail,
         displayName: body.display_name,
+        autoActivate: isSandbox,
       })
 
       link = await findPartnerLink(admin, credential.partner_id, externalUserId)
@@ -120,10 +123,11 @@ Deno.serve(async (req) => {
     if (authEmail !== normalizedEmail) {
       const updateResult = await admin.auth.admin.updateUserById(link.loyalup_user_id, {
         email: normalizedEmail,
-        email_confirm: false,
+        email_confirm: isSandbox,
         user_metadata: {
           ...(authUser.user_metadata ?? {}),
-          activation_required: true,
+          activation_required: !isSandbox,
+          email_verified: isSandbox || Boolean(authUser.user_metadata?.email_verified),
         },
       })
 
@@ -142,6 +146,39 @@ Deno.serve(async (req) => {
     }
 
     const redirectTo = resolveSafeRedirectTo(body.redirect_to)
+
+    if (isSandbox) {
+      const existingMetadata = (link.metadata ?? {}) as Record<string, unknown>
+
+      await admin
+        .from('partner_user_links')
+        .update({
+          metadata: {
+            ...existingMetadata,
+            activation_email: normalizedEmail,
+            activation_requested_at: new Date().toISOString(),
+            activation_method: 'sandbox_auto',
+            activation_source: 'partner-activate',
+          },
+        })
+        .eq('id', link.id)
+
+      return json({
+        success: true,
+        activation: {
+          partner_code: credential.partners.code,
+          external_user_id: externalUserId,
+          loyalup_user_id: link.loyalup_user_id,
+          linked_user_created: linkedUserCreated,
+          email: normalizedEmail,
+          activated: true,
+          action_link: null,
+          email_otp: null,
+          hashed_token: null,
+          redirect_to: redirectTo,
+        },
+      })
+    }
 
     const magicLink = await admin.auth.admin.generateLink({
       type: 'magiclink',
@@ -248,17 +285,19 @@ async function createLinkedUser(
     externalUserId: string
     email: string
     displayName?: string
+    autoActivate: boolean
   },
 ): Promise<string> {
   const created = await admin.auth.admin.createUser({
     email: params.email,
     password: `P-${crypto.randomUUID()}-A1!`,
-    email_confirm: false,
+    email_confirm: params.autoActivate,
     user_metadata: {
       role: 'client',
       source_partner: params.partnerCode,
       external_user_id: params.externalUserId,
-      activation_required: true,
+      activation_required: !params.autoActivate,
+      email_verified: params.autoActivate,
     },
   })
 
