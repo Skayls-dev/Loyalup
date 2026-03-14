@@ -15,10 +15,9 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+  if (!supabaseUrl || !serviceRoleKey) {
     return json({ error: 'Missing env vars' }, 500)
   }
 
@@ -28,15 +27,14 @@ Deno.serve(async (req) => {
   }
 
   const token = authHeader.replace('Bearer ', '').trim()
-  const authClient = createClient(supabaseUrl, anonKey)
   const admin = createClient(supabaseUrl, serviceRoleKey)
 
-  const { data: userResult, error: userError } = await authClient.auth.getUser(token)
-  if (userError || !userResult.user?.id) {
+  const authUser = await resolveAuthenticatedUser(supabaseUrl, serviceRoleKey, token)
+  if (!authUser?.id) {
     return json({ error: 'Unauthorized' }, 401)
   }
 
-  const userId = userResult.user.id
+  const userId = authUser.id
 
   const { data: wallet, error: walletError } = await admin
     .from('partner_points_wallets')
@@ -82,4 +80,25 @@ function json(payload: Record<string, unknown>, status = 200) {
       'Content-Type': 'application/json',
     },
   })
+}
+
+async function resolveAuthenticatedUser(supabaseUrl: string, serviceRoleKey: string, token: string) {
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      method: 'GET',
+      headers: {
+        apikey: serviceRoleKey,
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!response.ok) {
+      return null
+    }
+
+    const payload = (await response.json()) as { id?: unknown }
+    return typeof payload.id === 'string' && payload.id.length > 0 ? payload : null
+  } catch {
+    return null
+  }
 }
