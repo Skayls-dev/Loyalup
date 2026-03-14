@@ -618,6 +618,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                     <div>
                     <p className="font-medium text-[#323130]">{user.nom || user.email}</p>
                     <p className="text-xs text-[#605E5C]">{user.email}</p>
+                    <p className="text-xs text-[#8a8886]">ID: {user.id}</p>
                     {user.provider_tier ? <p className="text-xs text-[#605E5C]">tier: {user.provider_tier}</p> : null}
                     </div>
                   </div>
