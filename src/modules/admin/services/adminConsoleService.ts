@@ -32,6 +32,24 @@ export type ApiUsageRow = {
   created_at: string
 }
 
+export type PartnerTransferRow = {
+  id: string
+  partner_id: string
+  credential_id: string | null
+  loyalup_user_id: string | null
+  external_user_id: string
+  transaction_ref: string
+  idempotency_key: string | null
+  direction: 'credit' | 'debit'
+  points_delta: number
+  status: string
+  error_code: string | null
+  resulting_balance: number | null
+  metadata: Record<string, unknown> | null
+  created_at: string
+  processed_at: string | null
+}
+
 export type WebhookFailureRow = {
   id: string
   webhook_id: string
@@ -258,6 +276,21 @@ export async function impersonateAdminUser(userId: string) {
 export async function getAdminApiUsage(limit = 200) {
   const data = await invoke<{ usage: ApiUsageRow[] }>({ action: 'GET_API_USAGE', limit })
   return data.usage ?? []
+}
+
+export async function listPartnerTransfers(params?: {
+  limit?: number
+  external_user_id?: string
+  partner_id?: string
+}) {
+  const data = await invoke<{ transfers: PartnerTransferRow[] }>({
+    action: 'LIST_PARTNER_TRANSFERS',
+    limit: params?.limit ?? 500,
+    external_user_id: params?.external_user_id ?? '',
+    partner_id: params?.partner_id ?? '',
+  })
+
+  return data.transfers ?? []
 }
 
 export async function getAdminWebhookFailures(limit = 100) {

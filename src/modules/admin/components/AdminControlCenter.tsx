@@ -10,6 +10,7 @@ import {
   getAdminWebhookFailures,
   generatePartnerKey,
   impersonateAdminUser,
+  listPartnerTransfers,
   listPartnerAccessRequests,
   listPartners,
   listScanAds,
@@ -29,6 +30,7 @@ import {
   type AdminUserProviderRelations,
   type AdminUserRow,
   type ApiUsageRow,
+  type PartnerTransferRow,
   type PartnerRow,
   type PartnerAccessRequestRow,
   type ScanAdRow,
@@ -72,6 +74,9 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [overview, setOverview] = useState<AdminOverview | null>(null)
   const [users, setUsers] = useState<AdminUserRow[]>([])
   const [apiUsage, setApiUsage] = useState<ApiUsageRow[]>([])
+  const [partnerTransfers, setPartnerTransfers] = useState<PartnerTransferRow[]>([])
+  const [transferSearch, setTransferSearch] = useState('')
+  const [transferStatusFilter, setTransferStatusFilter] = useState<'all' | 'accepted' | 'rejected' | 'pending'>('all')
   const [webhookFailures, setWebhookFailures] = useState<WebhookFailureRow[]>([])
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogRow[]>([])
   const [partners, setPartners] = useState<PartnerRow[]>([])
@@ -168,15 +173,45 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
     return (errors / apiUsage.length) * 100
   }, [apiUsage])
 
+  const transferApiCalls = useMemo(
+    () => apiUsage.filter((row) => /transfer/i.test(row.endpoint)),
+    [apiUsage],
+  )
+
+  const filteredPartnerTransfers = useMemo(() => {
+    const keyword = transferSearch.trim().toLowerCase()
+
+    return partnerTransfers.filter((row) => {
+      if (transferStatusFilter !== 'all' && row.status !== transferStatusFilter) {
+        return false
+      }
+
+      if (!keyword) {
+        return true
+      }
+
+      return [
+        row.external_user_id,
+        row.transaction_ref,
+        row.partner_id,
+        row.loyalup_user_id,
+        row.error_code,
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(keyword))
+    })
+  }, [partnerTransfers, transferSearch, transferStatusFilter])
+
   const loadAll = async () => {
     setLoading(true)
     setStatus('')
 
     try {
-      const [nextOverview, nextUsers, nextUsage, nextFailures, nextAuditLogs] = await Promise.all([
+      const [nextOverview, nextUsers, nextUsage, nextTransfers, nextFailures, nextAuditLogs] = await Promise.all([
         getAdminOverview(),
         listAdminUsers({ page: 1, limit: 50, search }),
-        getAdminApiUsage(200),
+        getAdminApiUsage(500),
+        listPartnerTransfers({ limit: 500 }),
         getAdminWebhookFailures(150),
         getAdminAuditLogs(150),
       ])
@@ -185,6 +220,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setUsers(nextUsers)
       setSelectedUserIds([])
       setApiUsage(nextUsage)
+      setPartnerTransfers(nextTransfers)
       setWebhookFailures(nextFailures)
       setAuditLogs(nextAuditLogs)
 
@@ -1011,13 +1047,117 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs text-[#605E5C]">Error rate: {apiErrorRate.toFixed(1)}%</p>
-            <button
-              type="button"
-              onClick={() => exportCsv(apiUsage as unknown as Record<string, unknown>[], 'admin-api-usage.csv')}
-              className={secondaryButtonClass}
-            >
-              Export CSV
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() =>
+                  exportCsv(transferApiCalls as unknown as Record<string, unknown>[], 'admin-transfer-api-usage.csv')
+                }
+                className={secondaryButtonClass}
+              >
+                Export transfer calls
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  exportCsv(partnerTransfers as unknown as Record<string, unknown>[], 'admin-partner-transfers.csv')
+                }
+                className={secondaryButtonClass}
+              >
+                Export transfers
+              </button>
+              <button
+                type="button"
+                onClick={() => exportCsv(apiUsage as unknown as Record<string, unknown>[], 'admin-api-usage.csv')}
+                className={secondaryButtonClass}
+              >
+                Export all API ops
+              </button>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <Card label="Transfer API calls" value={String(transferApiCalls.length)} />
+            <Card label="Partner transfers" value={String(partnerTransfers.length)} />
+            <Card
+              label="Failed partner transfers"
+              value={String(partnerTransfers.filter((row) => row.status !== 'accepted').length)}
+            />
+          </div>
+
+          <div className={panelClass}>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#605E5C]">Partner transfer history</p>
+            <div className="mb-2 grid gap-2 md:grid-cols-3">
+              <input
+                value={transferSearch}
+                onChange={(event) => setTransferSearch(event.target.value)}
+                placeholder="Search by external user, tx ref, partner, loyalup user"
+                className={inputClass}
+              />
+              <select
+                value={transferStatusFilter}
+                onChange={(event) =>
+                  setTransferStatusFilter(event.target.value as 'all' | 'accepted' | 'rejected' | 'pending')
+                }
+                className={inputClass}
+              >
+                <option value="all">all statuses</option>
+                <option value="accepted">accepted</option>
+                <option value="rejected">rejected</option>
+                <option value="pending">pending</option>
+              </select>
+              <div className="rounded border border-[#edebe9] bg-[#faf9f8] px-2 py-1.5 text-xs text-[#605E5C]">
+                Displaying {filteredPartnerTransfers.length} / {partnerTransfers.length}
+              </div>
+            </div>
+
+            <div className="max-h-[420px] space-y-2 overflow-auto">
+              {filteredPartnerTransfers.length === 0 ? (
+                <p className="text-xs text-[#605E5C]">No transfer history found for this filter.</p>
+              ) : (
+                filteredPartnerTransfers.map((row) => (
+                  <article key={row.id} className={rowClass}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[#323130]">
+                        {row.direction} {row.points_delta} pts • {row.transaction_ref}
+                      </p>
+                      <p className={row.status === 'accepted' ? 'text-[#0078D4]' : 'text-[#a4262c]'}>{row.status}</p>
+                    </div>
+                    <p className="text-[#605E5C]">
+                      ext: {row.external_user_id} • loyalup: {row.loyalup_user_id ?? '-'} • partner: {row.partner_id}
+                    </p>
+                    <p className="text-[#605E5C]">
+                      balance: {row.resulting_balance ?? '-'} • {new Date(row.created_at).toLocaleString('fr-FR')}
+                      {row.error_code ? ` • error: ${row.error_code}` : ''}
+                    </p>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className={panelClass}>
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#605E5C]">Transfer API call history</p>
+
+            <div className="max-h-[360px] space-y-2 overflow-auto">
+              {transferApiCalls.length === 0 ? (
+                <p className="text-xs text-[#605E5C]">No transfer API calls recorded.</p>
+              ) : (
+                transferApiCalls.map((row) => (
+                  <article key={row.id} className={rowClass}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-[#323130]">{row.method} {row.endpoint}</p>
+                      <p className={(row.status_code ?? 200) >= 400 ? 'text-[#a4262c]' : 'text-[#0078D4]'}>
+                        {row.status_code ?? '-'}
+                      </p>
+                    </div>
+                    <p className="text-[#605E5C]">
+                      {new Date(row.created_at).toLocaleString('fr-FR')} • {row.response_time_ms ?? 0} ms • {row.ip_address ?? '-'}
+                    </p>
+                  </article>
+                ))
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-[2fr_1fr_3fr] gap-2 rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-[#605E5C]">
