@@ -192,6 +192,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
 
       return [
         row.external_user_id,
+        row.loyalup_user_email,
         row.transaction_ref,
         row.partner_id,
         row.loyalup_user_id,
@@ -1124,7 +1125,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                       <p className={row.status === 'accepted' ? 'text-[#0078D4]' : 'text-[#a4262c]'}>{row.status}</p>
                     </div>
                     <p className="text-[#605E5C]">
-                      ext: {row.external_user_id} • loyalup: {row.loyalup_user_id ?? '-'} • partner: {row.partner_id}
+                      ext: {row.external_user_id} • loyalup: {row.loyalup_user_id ?? '-'} • email: {row.loyalup_user_email ?? '-'} • partner: {row.partner_id}
                     </p>
                     <p className="text-[#605E5C]">
                       balance: {row.resulting_balance ?? '-'} • {new Date(row.created_at).toLocaleString('fr-FR')}

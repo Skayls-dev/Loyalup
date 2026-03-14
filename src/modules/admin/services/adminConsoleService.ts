@@ -37,6 +37,7 @@ export type PartnerTransferRow = {
   partner_id: string
   credential_id: string | null
   loyalup_user_id: string | null
+  loyalup_user_email: string | null
   external_user_id: string
   transaction_ref: string
   idempotency_key: string | null

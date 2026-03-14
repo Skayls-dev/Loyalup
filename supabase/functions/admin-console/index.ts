@@ -1427,10 +1427,53 @@ Deno.serve(async (req) => {
       return json({ error: error.message }, 500)
     }
 
+    const transferRows = (data ?? []) as Array<{
+      id: string
+      partner_id: string
+      credential_id: string | null
+      loyalup_user_id: string | null
+      external_user_id: string
+      transaction_ref: string
+      idempotency_key: string | null
+      direction: string
+      points_delta: number
+      status: string
+      error_code: string | null
+      resulting_balance: number | null
+      metadata: Record<string, unknown> | null
+      created_at: string
+      processed_at: string | null
+    }>
+
+    const loyalupUserIds = Array.from(
+      new Set(transferRows.map((row) => row.loyalup_user_id).filter((value): value is string => Boolean(value))),
+    )
+
+    const loyalupEmailByUserId = new Map<string, string>()
+    if (loyalupUserIds.length > 0) {
+      const { data: profileRows, error: profileError } = await admin
+        .from('profiles')
+        .select('id, email')
+        .in('id', loyalupUserIds)
+
+      if (!profileError) {
+        for (const row of (profileRows ?? []) as Array<{ id: string; email: string | null }>) {
+          if (row.id && row.email) {
+            loyalupEmailByUserId.set(row.id, row.email)
+          }
+        }
+      }
+    }
+
+    const transfersWithEmail = transferRows.map((row) => ({
+      ...row,
+      loyalup_user_email: row.loyalup_user_id ? loyalupEmailByUserId.get(row.loyalup_user_id) ?? null : null,
+    }))
+
     return json({
       success: true,
-      transfers: data ?? [],
-      count: (data ?? []).length,
+      transfers: transfersWithEmail,
+      count: transfersWithEmail.length,
     })
   }
 
