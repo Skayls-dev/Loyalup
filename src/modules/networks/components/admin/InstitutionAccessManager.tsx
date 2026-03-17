@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from '../../../shared/lib/supabaseClient'
-import type { Network } from '../types/networkTypes'
+import { supabase } from '../../../../shared/lib/supabaseClient'
+import type { Network } from '../../types/networkTypes'
 
 type InstitutionProfile = {
   id: string
@@ -21,6 +21,21 @@ type InstitutionAccess = {
     slug: string
     name: Record<string, string> | null
   }
+}
+
+type InstitutionAccessQueryRow = {
+  id: string
+  profile_id: string
+  network_id: string
+  granted_at: string
+  profiles: Array<{
+    nom: string
+    email: string
+  }>
+  networks: Array<{
+    slug: string
+    name: Record<string, string> | null
+  }>
 }
 
 type InstitutionAccessManagerProps = {
@@ -71,15 +86,17 @@ export function InstitutionAccessManager({ networks }: InstitutionAccessManagerP
         throw accessError
       }
 
+      const accessRows = (access ?? []) as unknown as InstitutionAccessQueryRow[]
+
       setInstitutionAccess(
-        (access ?? []).map((row) => ({
+        accessRows.map((row) => ({
           id: row.id,
           profile_id: row.profile_id,
           network_id: row.network_id,
           granted_at: row.granted_at,
-          profile: row.profiles,
-          network: row.networks,
-        } as InstitutionAccess)),
+          profile: row.profiles?.[0],
+          network: row.networks?.[0],
+        })),
       )
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement')

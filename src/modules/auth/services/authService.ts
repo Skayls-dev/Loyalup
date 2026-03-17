@@ -1,9 +1,9 @@
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase } from '../../../shared/lib/supabaseClient'
 
-export type UserRole = 'client' | 'fournisseur' | 'admin'
+export type UserRole = 'client' | 'fournisseur' | 'admin' | 'institution'
 export type SocialProvider = 'google' | 'apple'
-export type SocialRole = Exclude<UserRole, 'admin'>
+export type SocialRole = Exclude<UserRole, 'admin' | 'institution'>
 
 const ALLOWED_ROLES: UserRole[] = ['client', 'fournisseur']
 
@@ -18,7 +18,7 @@ type AuthLikeError = Error & { status?: number; code?: string }
 function resolveRoleFromMetadata(user: User | null): UserRole | null {
   const rawRole = user?.user_metadata?.role ?? user?.app_metadata?.role
 
-  if (rawRole === 'client' || rawRole === 'fournisseur' || rawRole === 'admin') {
+  if (rawRole === 'client' || rawRole === 'fournisseur' || rawRole === 'admin' || rawRole === 'institution') {
     return rawRole
   }
 
@@ -45,7 +45,7 @@ async function resolveUserRole(user: User | null): Promise<UserRole | null> {
     return null
   }
 
-  if (data.role === 'client' || data.role === 'fournisseur' || data.role === 'admin') {
+  if (data.role === 'client' || data.role === 'fournisseur' || data.role === 'admin' || data.role === 'institution') {
     return data.role
   }
 

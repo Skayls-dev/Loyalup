@@ -9,7 +9,6 @@ type InstitutionKpiCardProps = {
 
 export function InstitutionKpiCard({ label, value, delta, deltaLabel }: InstitutionKpiCardProps) {
   const hasPositiveDelta = delta && delta > 0
-  const hasNegativeDelta = delta && delta < 0
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
