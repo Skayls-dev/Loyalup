@@ -54,7 +54,7 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
     : null
 
   return (
-    <article className={`overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060d1a] text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${className}`}>
+    <article className={`overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-[0_18px_40px_rgba(15,23,42,0.10)] ${className}`}>
       {resolvedAd.mediaUrl ? (
         <div className="relative w-full">
           {resolvedAd.mediaType === 'video' ? (
@@ -74,35 +74,37 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
               className="aspect-[16/9] w-full object-cover"
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#060d1a]/80 via-transparent to-transparent" />
-          <p className="absolute left-4 top-3 text-[10px] uppercase tracking-[0.22em] text-white/50">{resolvedAd.badge}</p>
+          <div className="absolute inset-0 bg-gradient-to-t from-white/35 via-transparent to-transparent" />
+          <p className="absolute left-4 top-3 rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-700 shadow-sm">
+            {resolvedAd.badge}
+          </p>
         </div>
       ) : (
-        <p className="px-6 pt-5 text-[10px] uppercase tracking-[0.22em] text-white/40">{resolvedAd.badge}</p>
+        <p className="px-6 pt-5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{resolvedAd.badge}</p>
       )}
 
       <div className="p-6 pt-4">
-        <h2 className="bg-gradient-to-r from-white via-white to-[#3eb8f0] bg-clip-text text-2xl font-bold leading-tight text-transparent">
+        <h2 className="bg-gradient-to-r from-slate-900 via-slate-800 to-sky-600 bg-clip-text text-2xl font-bold leading-tight text-transparent">
           {resolvedAd.title}
         </h2>
-        <p className="mt-2 text-sm leading-relaxed text-white/55">{resolvedAd.description}</p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">{resolvedAd.description}</p>
       </div>
 
       <div className="px-6 pb-6">
         {normalizedCtaUrl ? (
-          <div className="inline-flex items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] p-3">
+          <div className="inline-flex items-center gap-3 rounded-xl border border-slate-200 bg-sky-50/70 p-3">
             <div className="rounded-lg bg-white p-2">
               <QRCodeSVG value={normalizedCtaUrl} size={78} includeMargin level="M" />
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Scannez pour</p>
-              <p className="mt-1 text-sm font-semibold text-white">{resolvedAd.ctaLabel}</p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-slate-500">Scannez pour</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">{resolvedAd.ctaLabel}</p>
             </div>
           </div>
         ) : (
           <button
             type="button"
-            className="rounded-xl bg-gradient-to-r from-[#3eb8f0] to-[#5b9ef7] px-5 py-2.5 text-sm font-bold text-[#040d1a] transition hover:shadow-[0_8px_28px_rgba(62,184,240,0.35)]"
+            className="rounded-xl bg-gradient-to-r from-sky-500 to-blue-500 px-5 py-2.5 text-sm font-bold text-white transition hover:shadow-[0_8px_28px_rgba(14,165,233,0.30)]"
             onClick={() => {
               console.log('AdBanner CTA clicked')
             }}
@@ -110,19 +112,14 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
             {resolvedAd.ctaLabel}
           </button>
         )}
-        <p className="mt-2 text-xs text-white/45">{resolvedAd.ctaNote}</p>
+        <p className="mt-2 text-xs text-slate-500">{resolvedAd.ctaNote}</p>
       </div>
 
-      <div className="mt-5 flex items-center gap-2">
-        <div className="mt-4 flex items-center gap-2">
+      <div className="px-6 pb-6">
+        <div className="mt-1 flex items-center gap-2">
           {Array.from({ length: Math.max(1, pagination?.total ?? 3) }).map((_, index) => {
             const isActive = index === (pagination?.activeIndex ?? 0)
-            return (
-              <span
-                key={index}
-                className={isActive ? 'h-1.5 w-5 rounded-full bg-[#3eb8f0]' : 'h-1.5 w-1.5 rounded-full bg-white/25'}
-              />
-            )
+            return <span key={index} className={isActive ? 'h-1.5 w-5 rounded-full bg-sky-500' : 'h-1.5 w-1.5 rounded-full bg-slate-300'} />
           })}
         </div>
       </div>
