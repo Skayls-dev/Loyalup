@@ -19,6 +19,7 @@ import { ProviderNetworkHub } from '../../networks/components/provider'
 
 type ProviderScanAd = {
   id: string
+  advertiser_name: string | null
   title: string
   body: string
   cta_label: string | null
@@ -60,7 +61,7 @@ const fallbackAds: AdConfig[] = [
 
 function mapScanAdToBannerConfig(ad: ProviderScanAd): AdConfig {
   return {
-    badge: 'Publicite',
+    badge: ad.advertiser_name ?? 'Publicite',
     title: ad.title,
     description: ad.body,
     ctaLabel: ad.cta_label?.trim() || 'En savoir plus',

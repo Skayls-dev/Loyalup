@@ -12,6 +12,7 @@ type ScanAdsManagerProps = {
 }
 
 type AdTemplate = {
+  advertiser_name: string
   title: string
   body: string
   cta_label: string
@@ -29,6 +30,7 @@ const templateCardClass =
 
 const templates: AdTemplate[] = [
   {
+    advertiser_name: 'LoyalUp',
     title: 'Boostez vos visites avec LoyalUp Premium',
     body: 'Activez des campagnes intelligentes et transformez chaque passage en retour client mesurable.',
     cta_label: 'Activer Premium',
@@ -37,6 +39,7 @@ const templates: AdTemplate[] = [
     media_url: '/ads/premium-boost.svg',
   },
   {
+    advertiser_name: 'LoyalUp',
     title: 'Activez vos campagnes flash du week-end',
     body: 'Diffusez une offre limitee, captez les retours rapides et suivez les performances en direct sur votre QR.',
     cta_label: 'Creer une campagne',
@@ -45,6 +48,7 @@ const templates: AdTemplate[] = [
     media_url: '/ads/flash-campaign.svg',
   },
   {
+    advertiser_name: 'LoyalUp Réseau',
     title: 'Fidelisez mieux avec vos reseaux partenaires',
     body: 'Mettez en avant vos avantages coalition et augmentez les visites croisees entre commerces membres.',
     cta_label: 'Voir les reseaux',
@@ -53,6 +57,7 @@ const templates: AdTemplate[] = [
     media_url: '/ads/coalition-network.svg',
   },
   {
+    advertiser_name: 'LoyalUp Demo',
     title: 'Demo video - Parcours client en 15 secondes',
     body: 'Montrez concretement votre experience fidelite avec une video courte directement sur l\'ecran QR.',
     cta_label: 'Voir la demo',
@@ -62,8 +67,9 @@ const templates: AdTemplate[] = [
     poster_url: '/ads/premium-boost.svg',
   },
   {
-    title: 'Epicerie fraiche - Produits locaux livrés chaque matin',
-    body: 'Fruits, légumes, fromages et charcuterie sélectionnés chaque matin chez nos producteurs partenaires. -15% avec 250 pts LoyalUp.',
+    advertiser_name: 'Épicerie Fraîche',
+    title: 'Produits locaux livrés chaque matin',
+    body: 'Fruits, légumes, fromages et charcuterie sélectionnés chaque matin chez nos producteurs partenaires. -15% avec 250 pts.',
     cta_label: 'Commander maintenant',
     cta_url: 'https://loyalup-pink.vercel.app/client',
     media_type: 'image',
@@ -72,6 +78,7 @@ const templates: AdTemplate[] = [
 ]
 
 function toAdPreviewConfig(ad: {
+  advertiser_name?: string | null
   title: string
   body: string
   cta_label?: string | null
@@ -81,7 +88,7 @@ function toAdPreviewConfig(ad: {
   poster_url?: string | null
 }): AdConfig {
   return {
-    badge: 'Publicite provider',
+    badge: ad.advertiser_name?.trim() || 'Annonceur',
     title: ad.title,
     description: ad.body,
     ctaLabel: ad.cta_label?.trim() || 'En savoir plus',
@@ -98,6 +105,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [editingAdId, setEditingAdId] = useState<string | null>(null)
+  const [advertiserName, setAdvertiserName] = useState('')
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
   const [ctaLabel, setCtaLabel] = useState('')
@@ -129,6 +137,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
 
   const resetForm = () => {
     setEditingAdId(null)
+    setAdvertiserName('')
     setTitle('')
     setBody('')
     setCtaLabel('')
@@ -145,6 +154,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
   const previewConfig = useMemo(
     () =>
       toAdPreviewConfig({
+        advertiser_name: advertiserName.trim() || null,
         title: title.trim() || 'Votre prochaine campagne QR',
         body: body.trim() || 'Ajoutez ici un message clair et vendeur pour vos commerçants.',
         cta_label: ctaLabel.trim() || 'Decouvrir',
@@ -153,10 +163,11 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
         media_url: mediaUrl.trim() || null,
         poster_url: posterUrl.trim() || null,
       }),
-    [body, ctaLabel, ctaUrl, mediaType, mediaUrl, posterUrl, title],
+    [advertiserName, body, ctaLabel, ctaUrl, mediaType, mediaUrl, posterUrl, title],
   )
 
   const handleTemplateApply = (template: AdTemplate, index: number) => {
+    setAdvertiserName(template.advertiser_name)
     setTitle(template.title)
     setBody(template.body)
     setCtaLabel(template.cta_label)
@@ -178,6 +189,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
     setSaving(true)
     try {
       await upsertScanAd({
+        advertiser_name: videoTemplate.advertiser_name,
         title: videoTemplate.title,
         body: videoTemplate.body,
         cta_label: videoTemplate.cta_label,
@@ -204,6 +216,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
       for (let index = 0; index < templates.length; index += 1) {
         const template = templates[index]
         await upsertScanAd({
+          advertiser_name: template.advertiser_name,
           title: template.title,
           body: template.body,
           cta_label: template.cta_label,
@@ -229,6 +242,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
     try {
       await upsertScanAd({
         id: editingAdId ?? undefined,
+        advertiser_name: advertiserName.trim() || null,
         title,
         body,
         cta_label: ctaLabel || null,
@@ -253,6 +267,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
 
   const handleEdit = (ad: ScanAdRow) => {
     setEditingAdId(ad.id)
+    setAdvertiserName(ad.advertiser_name ?? '')
     setTitle(ad.title)
     setBody(ad.body)
     setCtaLabel(ad.cta_label ?? '')
@@ -283,6 +298,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
     try {
       await upsertScanAd({
         id: ad.id,
+        advertiser_name: ad.advertiser_name,
         title: ad.title,
         body: ad.body,
         cta_label: ad.cta_label,
@@ -364,10 +380,11 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
                 onClick={() => handleTemplateApply(template, index)}
                 className={templateCardClass}
               >
-                <p className="text-sm font-semibold text-slate-900">{template.title}</p>
-                <p className="mt-1 text-xs leading-relaxed text-slate-500">{template.body}</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-600">{template.advertiser_name}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{template.title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500 line-clamp-2">{template.body}</p>
                 <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-sky-700">
-                  {template.media_type === 'video' ? 'Template video' : 'Template image'}
+                  {template.media_type === 'video' ? '▶ Template video' : '🖼 Template image'}
                 </p>
               </button>
             ))}
@@ -378,6 +395,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
           </p>
 
           <div className="grid gap-3 md:grid-cols-2">
+            <input value={advertiserName} onChange={(event) => setAdvertiserName(event.target.value)} placeholder="Nom de l'annonceur (ex: Épicerie Fraîche, LoyalUp…)" className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
             <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Titre" className={inputClass} />
             <input value={ctaLabel} onChange={(event) => setCtaLabel(event.target.value)} placeholder="CTA" className={inputClass} />
             <textarea
@@ -450,6 +468,9 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="text-sm font-semibold text-slate-900">{ad.title}</p>
+                        {ad.advertiser_name ? (
+                          <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-semibold text-violet-700">{ad.advertiser_name}</span>
+                        ) : null}
                         <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${ad.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
                           {ad.active ? 'active' : 'inactive'}
                         </span>

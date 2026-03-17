@@ -1602,7 +1602,7 @@ Deno.serve(async (req) => {
   if (action === 'LIST_SCAN_ADS') {
     const { data, error } = await admin
       .from('scan_screen_ads')
-      .select('id, title, body, cta_label, cta_url, media_type, media_url, poster_url, active, display_order, starts_at, ends_at, created_at, updated_at')
+      .select('id, advertiser_name, title, body, cta_label, cta_url, media_type, media_url, poster_url, active, display_order, starts_at, ends_at, created_at, updated_at')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false })
 
@@ -1615,6 +1615,7 @@ Deno.serve(async (req) => {
 
   if (action === 'UPSERT_SCAN_AD') {
     const adId = body.id ? String(body.id) : null
+    const advertiserName = body.advertiser_name ? String(body.advertiser_name).trim() : null
     const title = String(body.title ?? '').trim()
     const adBody = String(body.body ?? '').trim()
     const ctaLabel = body.cta_label ? String(body.cta_label).trim() : null
@@ -1649,6 +1650,7 @@ Deno.serve(async (req) => {
 
     const payload = {
       id: adId ?? undefined,
+      advertiser_name: advertiserName,
       title,
       body: adBody,
       cta_label: ctaLabel,
@@ -1665,7 +1667,7 @@ Deno.serve(async (req) => {
     const { data, error } = await admin
       .from('scan_screen_ads')
       .upsert(payload)
-      .select('id, title, body, cta_label, cta_url, media_type, media_url, poster_url, active, display_order, starts_at, ends_at, created_at, updated_at')
+      .select('id, advertiser_name, title, body, cta_label, cta_url, media_type, media_url, poster_url, active, display_order, starts_at, ends_at, created_at, updated_at')
       .limit(1)
 
     if (error) {

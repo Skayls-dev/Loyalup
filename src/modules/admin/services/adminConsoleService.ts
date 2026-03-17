@@ -76,6 +76,7 @@ export type AdminAuditLogRow = {
 
 export type ScanAdRow = {
   id: string
+  advertiser_name: string | null
   title: string
   body: string
   cta_label: string | null
@@ -318,6 +319,7 @@ export async function listScanAds() {
 
 export async function upsertScanAd(payload: {
   id?: string
+  advertiser_name?: string | null
   title: string
   body: string
   cta_label?: string | null
