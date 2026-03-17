@@ -6,6 +6,7 @@ import {
   upsertScanAd,
   type ScanAdRow,
 } from '../services/adminConsoleService'
+import { supabase } from '../../../shared/lib/supabaseClient'
 
 type ScanAdsManagerProps = {
   onStatusChange?: (message: string) => void
@@ -27,6 +28,7 @@ const inputClass =
 const panelClass = 'rounded-3xl border border-slate-200 bg-white p-5 shadow-sm'
 const templateCardClass =
   'rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left transition hover:border-sky-200 hover:bg-sky-50/60'
+const ADS_MEDIA_BUCKET = 'ads-media'
 
 const templates: AdTemplate[] = [
   {
@@ -117,6 +119,25 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
   const [active, setActive] = useState(true)
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
+  const [uploadingMedia, setUploadingMedia] = useState(false)
+  const [uploadingPoster, setUploadingPoster] = useState(false)
+
+  const uploadAsset = async (file: File, folder: 'images' | 'videos' | 'posters') => {
+    const sanitized = file.name.toLowerCase().replace(/[^a-z0-9._-]+/g, '-')
+    const path = `scan-ads/${folder}/${Date.now()}-${sanitized}`
+    const { error } = await supabase.storage.from(ADS_MEDIA_BUCKET).upload(path, file, {
+      cacheControl: '3600',
+      upsert: false,
+      contentType: file.type || undefined,
+    })
+
+    if (error) {
+      throw error
+    }
+
+    const { data } = supabase.storage.from(ADS_MEDIA_BUCKET).getPublicUrl(path)
+    return data.publicUrl
+  }
 
   const loadAds = async () => {
     setLoading(true)
@@ -318,6 +339,44 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
     }
   }
 
+  const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    setUploadingMedia(true)
+    try {
+      const url = await uploadAsset(file, mediaType === 'video' ? 'videos' : 'images')
+      setMediaUrl(url)
+      onStatusChange?.('Visuel uploadé vers Supabase Storage')
+    } catch (error) {
+      onStatusChange?.(error instanceof Error ? error.message : 'Upload media impossible')
+    } finally {
+      setUploadingMedia(false)
+      event.target.value = ''
+    }
+  }
+
+  const handlePosterUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) {
+      return
+    }
+
+    setUploadingPoster(true)
+    try {
+      const url = await uploadAsset(file, 'posters')
+      setPosterUrl(url)
+      onStatusChange?.('Poster uploadé vers Supabase Storage')
+    } catch (error) {
+      onStatusChange?.(error instanceof Error ? error.message : 'Upload poster impossible')
+    } finally {
+      setUploadingPoster(false)
+      event.target.value = ''
+    }
+  }
+
   return (
     <div className="space-y-5">
       <section className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950 p-6 text-white shadow-sm">
@@ -410,8 +469,24 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
               <option value="video">Visuel video</option>
             </select>
             <input value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} placeholder={mediaType === 'video' ? 'URL video (/ads/demo.mp4 ou https://...)' : 'URL image (/ads/visuel.svg ou https://...)'} className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
+            <div className="md:col-span-2 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-600">
+              <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-100">
+                {uploadingMedia ? 'Upload...' : mediaType === 'video' ? 'Uploader la video' : 'Uploader l\'image'}
+                <input type="file" accept={mediaType === 'video' ? 'video/mp4,video/webm' : 'image/*'} onChange={(event) => { void handleMediaUpload(event) }} className="hidden" disabled={uploadingMedia} />
+              </label>
+              <span>Le fichier est stocké dans Supabase Storage puis son URL publique est injectée.</span>
+            </div>
             {mediaType === 'video' ? (
-              <input value={posterUrl} onChange={(event) => setPosterUrl(event.target.value)} placeholder="Poster video optionnel (/ads/poster.jpg ou https://...)" className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
+              <>
+                <input value={posterUrl} onChange={(event) => setPosterUrl(event.target.value)} placeholder="Poster video optionnel (/ads/poster.jpg ou https://...)" className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
+                <div className="md:col-span-2 flex flex-wrap items-center gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-3 text-xs text-slate-600">
+                  <label className="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-100">
+                    {uploadingPoster ? 'Upload...' : 'Uploader le poster'}
+                    <input type="file" accept="image/*" onChange={(event) => { void handlePosterUpload(event) }} className="hidden" disabled={uploadingPoster} />
+                  </label>
+                  <span>Optionnel: utile pour l\'aperçu avant lecture de la vidéo.</span>
+                </div>
+              </>
             ) : null}
             <input type="number" value={displayOrder} onChange={(event) => setDisplayOrder(Number(event.target.value))} placeholder="Ordre" className={inputClass} />
             <input type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className={inputClass} />

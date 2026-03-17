@@ -1,3 +1,5 @@
+import { QRCodeSVG } from 'qrcode.react'
+
 export type AdConfig = {
   badge?: string
   title: string
@@ -45,6 +47,11 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
     mediaUrl: ad?.mediaUrl ?? defaultAd.mediaUrl,
     posterUrl: ad?.posterUrl ?? defaultAd.posterUrl,
   }
+  const normalizedCtaUrl = resolvedAd.ctaUrl
+    ? /^(https?:)?\/\//i.test(resolvedAd.ctaUrl)
+      ? resolvedAd.ctaUrl
+      : `https://${resolvedAd.ctaUrl}`
+    : null
 
   return (
     <article className={`overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060d1a] text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${className}`}>
@@ -82,15 +89,16 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
       </div>
 
       <div className="px-6 pb-6">
-        {resolvedAd.ctaUrl ? (
-          <a
-            href={resolvedAd.ctaUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex rounded-xl bg-gradient-to-r from-[#3eb8f0] to-[#5b9ef7] px-5 py-2.5 text-sm font-bold text-[#040d1a] transition hover:shadow-[0_8px_28px_rgba(62,184,240,0.35)]"
-          >
-            {resolvedAd.ctaLabel}
-          </a>
+        {normalizedCtaUrl ? (
+          <div className="inline-flex items-center gap-3 rounded-xl border border-white/[0.12] bg-white/[0.03] p-3">
+            <div className="rounded-lg bg-white p-2">
+              <QRCodeSVG value={normalizedCtaUrl} size={78} includeMargin level="M" />
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Scannez pour</p>
+              <p className="mt-1 text-sm font-semibold text-white">{resolvedAd.ctaLabel}</p>
+            </div>
+          </div>
         ) : (
           <button
             type="button"
