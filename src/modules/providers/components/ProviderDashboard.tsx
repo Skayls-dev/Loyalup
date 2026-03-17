@@ -47,7 +47,7 @@ export function ProviderDashboard() {
   const dashboardContent = useMemo(() => {
     if (activeTab === 'qr') {
       return (
-        <div className="flex items-start gap-4">
+        <div className="flex w-full items-start gap-4">
           <div className="flex w-[280px] shrink-0 flex-col gap-3">
             <QRDisplay />
             <StatsGrid stats={stats} loading={loading} compact />
@@ -73,7 +73,9 @@ export function ProviderDashboard() {
             </div>
           </div>
 
-          <AdBanner className="flex-1" />
+          <div className="min-w-0 flex-1">
+            <AdBanner />
+          </div>
         </div>
       )
     }

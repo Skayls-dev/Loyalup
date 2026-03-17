@@ -216,7 +216,7 @@ export function ProviderLayout() {
         </nav>
       </div>
 
-      <main className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-7xl items-center justify-center p-4 md:p-6">
+      <main className="min-h-screen w-full overflow-x-hidden px-4 py-4 md:px-6 md:py-5">
         <Outlet />
       </main>
 
