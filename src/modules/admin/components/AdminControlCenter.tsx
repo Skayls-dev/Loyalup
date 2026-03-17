@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type ChangeEventHandler } from 'react'
 import { InstitutionAccessManager } from './InstitutionAccessManager'
+import { ScanAdsManager } from './ScanAdsManager'
 import {
   bulkImportAdminUsers,
   bulkUpdateAdminUsers,
-  deleteScanAd,
   deleteAdminUser,
   getAdminAuditLogs,
   getAdminApiUsage,
@@ -14,7 +14,6 @@ import {
   listPartnerTransfers,
   listPartnerAccessRequests,
   listPartners,
-  listScanAds,
   listAdminUsers,
   getUserProviderRelations,
   retryAdminWebhookDelivery,
@@ -22,7 +21,6 @@ import {
   setAdminUserTemporaryPassword,
   reviewPartnerAccessRequest,
   upsertPartner,
-  upsertScanAd,
   toggleAdminUserBlock,
   updateAdminProviderTier,
   updateAdminUserRole,
@@ -34,7 +32,6 @@ import {
   type PartnerTransferRow,
   type PartnerRow,
   type PartnerAccessRequestRow,
-  type ScanAdRow,
   type WebhookFailureRow,
 } from '../services/adminConsoleService'
 
@@ -83,14 +80,6 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
   const [auditLogs, setAuditLogs] = useState<AdminAuditLogRow[]>([])
   const [partners, setPartners] = useState<PartnerRow[]>([])
   const [partnerAccessRequests, setPartnerAccessRequests] = useState<PartnerAccessRequestRow[]>([])
-  const [scanAds, setScanAds] = useState<ScanAdRow[]>([])
-  const [editingAdId, setEditingAdId] = useState<string | null>(null)
-  const [adTitle, setAdTitle] = useState('')
-  const [adBody, setAdBody] = useState('')
-  const [adCtaLabel, setAdCtaLabel] = useState('')
-  const [adCtaUrl, setAdCtaUrl] = useState('')
-  const [adDisplayOrder, setAdDisplayOrder] = useState(0)
-  const [adActive, setAdActive] = useState(true)
   const [partnerCode, setPartnerCode] = useState('')
   const [partnerName, setPartnerName] = useState('')
   const [partnerStatus, setPartnerStatus] = useState<'draft' | 'sandbox_active' | 'production_active' | 'suspended'>('draft')
@@ -228,17 +217,10 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setAuditLogs(nextAuditLogs)
 
       // Optional modules should not block core admin/user management flows.
-      const [adsResult, partnersResult, partnerRequestsResult] = await Promise.allSettled([
-        listScanAds(),
+      const [partnersResult, partnerRequestsResult] = await Promise.allSettled([
         listPartners(),
         listPartnerAccessRequests('pending'),
       ])
-
-      if (adsResult.status === 'fulfilled') {
-        setScanAds(adsResult.value)
-      } else {
-        setScanAds([])
-      }
 
       if (partnersResult.status === 'fulfilled') {
         setPartners(partnersResult.value)
@@ -357,16 +339,6 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       setActiveTab(props.initialTab)
     }
   }, [activeTab, props.initialTab])
-
-  const resetAdForm = () => {
-    setEditingAdId(null)
-    setAdTitle('')
-    setAdBody('')
-    setAdCtaLabel('')
-    setAdCtaUrl('')
-    setAdDisplayOrder(0)
-    setAdActive(true)
-  }
 
   return (
     <div className="space-y-4 rounded-md border border-[#edebe9] bg-white p-5 text-sm text-[#323130] shadow-sm">
@@ -1258,160 +1230,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
       ) : null}
 
       {activeTab === 'ads' ? (
-        <div className="space-y-3">
-          <div className={panelClass}>
-            <p className="mb-2 text-xs text-[#605E5C]">{editingAdId ? 'Modifier une pub' : 'Nouvelle pub écran scan'}</p>
-
-            <div className="grid gap-2 md:grid-cols-2">
-              <input
-                value={adTitle}
-                onChange={(event) => setAdTitle(event.target.value)}
-                placeholder="Titre"
-                className={inputClass}
-              />
-              <input
-                value={adCtaLabel}
-                onChange={(event) => setAdCtaLabel(event.target.value)}
-                placeholder="CTA (optionnel)"
-                className={inputClass}
-              />
-              <input
-                value={adBody}
-                onChange={(event) => setAdBody(event.target.value)}
-                placeholder="Message"
-                className={`${inputClass} md:col-span-2`}
-              />
-              <input
-                value={adCtaUrl}
-                onChange={(event) => setAdCtaUrl(event.target.value)}
-                placeholder="URL CTA (https://...)"
-                className={inputClass}
-              />
-              <input
-                type="number"
-                value={adDisplayOrder}
-                onChange={(event) => setAdDisplayOrder(Number(event.target.value))}
-                placeholder="Ordre"
-                className={inputClass}
-              />
-            </div>
-
-            <label className="mt-2 flex items-center gap-2 text-xs text-[#605E5C]">
-              <input
-                type="checkbox"
-                checked={adActive}
-                onChange={(event) => setAdActive(event.target.checked)}
-                className="h-4 w-4 rounded border-[#c8c6c4]"
-              />
-              Active
-            </label>
-
-            <div className="mt-3 flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  void upsertScanAd({
-                    id: editingAdId ?? undefined,
-                    title: adTitle,
-                    body: adBody,
-                    cta_label: adCtaLabel || null,
-                    cta_url: adCtaUrl || null,
-                    active: adActive,
-                    display_order: adDisplayOrder,
-                  })
-                    .then(() => {
-                      setStatus(editingAdId ? 'Pub mise à jour' : 'Pub créée')
-                      resetAdForm()
-                      return loadAll()
-                    })
-                    .catch((error) => setStatus(error instanceof Error ? error.message : 'Ad save failed'))
-                }}
-                className={primaryButtonClass}
-              >
-                {editingAdId ? 'Mettre à jour' : 'Créer'}
-              </button>
-
-              {editingAdId ? (
-                <button type="button" onClick={resetAdForm} className={secondaryButtonClass}>
-                  Annuler
-                </button>
-              ) : null}
-            </div>
-          </div>
-
-          {scanAds.map((ad) => (
-            <article key={ad.id} className={rowClass}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <p className="font-semibold text-[#323130]">{ad.title}</p>
-                  <p className="text-[#605E5C]">{ad.body}</p>
-                  <p className="mt-1 text-[#605E5C]">ordre: {ad.display_order} • {ad.active ? 'active' : 'inactive'}</p>
-                </div>
-
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingAdId(ad.id)
-                      setAdTitle(ad.title)
-                      setAdBody(ad.body)
-                      setAdCtaLabel(ad.cta_label ?? '')
-                      setAdCtaUrl(ad.cta_url ?? '')
-                      setAdDisplayOrder(ad.display_order)
-                      setAdActive(ad.active)
-                    }}
-                    className={secondaryButtonClass}
-                  >
-                    Edit
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void upsertScanAd({
-                        id: ad.id,
-                        title: ad.title,
-                        body: ad.body,
-                        cta_label: ad.cta_label,
-                        cta_url: ad.cta_url,
-                        active: !ad.active,
-                        display_order: ad.display_order,
-                        starts_at: ad.starts_at,
-                        ends_at: ad.ends_at,
-                      })
-                        .then(() => {
-                          setStatus(ad.active ? 'Pub désactivée' : 'Pub activée')
-                          return loadAll()
-                        })
-                        .catch((error) => setStatus(error instanceof Error ? error.message : 'Ad toggle failed'))
-                    }}
-                    className={secondaryButtonClass}
-                  >
-                    {ad.active ? 'Disable' : 'Enable'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void deleteScanAd(ad.id)
-                        .then(() => {
-                          setStatus('Pub supprimée')
-                          if (editingAdId === ad.id) {
-                            resetAdForm()
-                          }
-                          return loadAll()
-                        })
-                        .catch((error) => setStatus(error instanceof Error ? error.message : 'Ad delete failed'))
-                    }}
-                    className={secondaryButtonClass}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
+        <ScanAdsManager onStatusChange={setStatus} />
       ) : null}
 
       {activeTab === 'institutions' ? (

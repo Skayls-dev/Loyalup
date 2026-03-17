@@ -22,6 +22,10 @@ export type AdConfig = {
 type AdBannerProps = {
   className?: string
   ad?: AdConfig
+  pagination?: {
+    activeIndex: number
+    total: number
+  }
 }
 
 const defaultAd: Required<AdConfig> = {
@@ -43,7 +47,7 @@ const defaultAd: Required<AdConfig> = {
   ],
 }
 
-export function AdBanner({ className = '', ad }: AdBannerProps) {
+export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
   const resolvedAd: Required<AdConfig> = {
     ...defaultAd,
     ...ad,
@@ -98,9 +102,15 @@ export function AdBanner({ className = '', ad }: AdBannerProps) {
       </div>
 
       <div className="mt-5 flex items-center gap-2">
-        <span className="h-1.5 w-5 rounded-full bg-[#3eb8f0]" />
-        <span className="h-1.5 w-1.5 rounded-full bg-white/35" />
-        <span className="h-1.5 w-1.5 rounded-full bg-white/20" />
+        {Array.from({ length: Math.max(1, pagination?.total ?? 3) }).map((_, index) => {
+          const isActive = index === (pagination?.activeIndex ?? 0)
+          return (
+            <span
+              key={index}
+              className={isActive ? 'h-1.5 w-5 rounded-full bg-[#3eb8f0]' : 'h-1.5 w-1.5 rounded-full bg-white/25'}
+            />
+          )
+        })}
       </div>
     </article>
   )
