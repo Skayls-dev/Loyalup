@@ -16,6 +16,9 @@ type AdTemplate = {
   body: string
   cta_label: string
   cta_url: string
+  media_type: 'image' | 'video'
+  media_url: string
+  poster_url?: string
 }
 
 const inputClass =
@@ -30,18 +33,41 @@ const templates: AdTemplate[] = [
     body: 'Activez des campagnes intelligentes et transformez chaque passage en retour client mesurable.',
     cta_label: 'Activer Premium',
     cta_url: 'https://loyalup-pink.vercel.app/provider?tab=developers',
+    media_type: 'image',
+    media_url: '/ads/premium-boost.svg',
   },
   {
     title: 'Activez vos campagnes flash du week-end',
     body: 'Diffusez une offre limitee, captez les retours rapides et suivez les performances en direct sur votre QR.',
     cta_label: 'Creer une campagne',
     cta_url: 'https://loyalup-pink.vercel.app/provider?tab=promotions',
+    media_type: 'image',
+    media_url: '/ads/flash-campaign.svg',
   },
   {
     title: 'Fidelisez mieux avec vos reseaux partenaires',
     body: 'Mettez en avant vos avantages coalition et augmentez les visites croisees entre commerces membres.',
     cta_label: 'Voir les reseaux',
     cta_url: 'https://loyalup-pink.vercel.app/provider/network',
+    media_type: 'image',
+    media_url: '/ads/coalition-network.svg',
+  },
+  {
+    title: 'Demo video - Parcours client en 15 secondes',
+    body: 'Montrez concretement votre experience fidelite avec une video courte directement sur l\'ecran QR.',
+    cta_label: 'Voir la demo',
+    cta_url: 'https://loyalup-pink.vercel.app/provider?tab=dashboard',
+    media_type: 'video',
+    media_url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
+    poster_url: '/ads/premium-boost.svg',
+  },
+  {
+    title: 'Epicerie fraiche - Produits locaux livrés chaque matin',
+    body: 'Fruits, légumes, fromages et charcuterie sélectionnés chaque matin chez nos producteurs partenaires. -15% avec 250 pts LoyalUp.',
+    cta_label: 'Commander maintenant',
+    cta_url: 'https://loyalup-pink.vercel.app/client',
+    media_type: 'image',
+    media_url: '/ads/epicerie-fraiche.svg',
   },
 ]
 
@@ -49,13 +75,21 @@ function toAdPreviewConfig(ad: {
   title: string
   body: string
   cta_label?: string | null
+  cta_url?: string | null
+  media_type?: 'image' | 'video' | null
+  media_url?: string | null
+  poster_url?: string | null
 }): AdConfig {
   return {
     badge: 'Publicite provider',
     title: ad.title,
     description: ad.body,
     ctaLabel: ad.cta_label?.trim() || 'En savoir plus',
+    ctaUrl: ad.cta_url?.trim() || undefined,
     ctaNote: 'Diffusion QR · Rotation automatique',
+    mediaType: ad.media_type ?? undefined,
+    mediaUrl: ad.media_url?.trim() || undefined,
+    posterUrl: ad.poster_url?.trim() || undefined,
   }
 }
 
@@ -68,6 +102,9 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
   const [body, setBody] = useState('')
   const [ctaLabel, setCtaLabel] = useState('')
   const [ctaUrl, setCtaUrl] = useState('')
+  const [mediaType, setMediaType] = useState<'image' | 'video'>('image')
+  const [mediaUrl, setMediaUrl] = useState('')
+  const [posterUrl, setPosterUrl] = useState('')
   const [displayOrder, setDisplayOrder] = useState(0)
   const [active, setActive] = useState(true)
   const [startsAt, setStartsAt] = useState('')
@@ -96,6 +133,9 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
     setBody('')
     setCtaLabel('')
     setCtaUrl('')
+    setMediaType('image')
+    setMediaUrl('')
+    setPosterUrl('')
     setDisplayOrder(0)
     setActive(true)
     setStartsAt('')
@@ -108,8 +148,12 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
         title: title.trim() || 'Votre prochaine campagne QR',
         body: body.trim() || 'Ajoutez ici un message clair et vendeur pour vos commerçants.',
         cta_label: ctaLabel.trim() || 'Decouvrir',
+        cta_url: ctaUrl.trim() || null,
+        media_type: mediaUrl.trim() ? mediaType : null,
+        media_url: mediaUrl.trim() || null,
+        poster_url: posterUrl.trim() || null,
       }),
-    [body, ctaLabel, title],
+    [body, ctaLabel, ctaUrl, mediaType, mediaUrl, posterUrl, title],
   )
 
   const handleTemplateApply = (template: AdTemplate, index: number) => {
@@ -117,8 +161,41 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
     setBody(template.body)
     setCtaLabel(template.cta_label)
     setCtaUrl(template.cta_url)
+    setMediaType(template.media_type)
+    setMediaUrl(template.media_url)
+    setPosterUrl(template.poster_url ?? '')
     setDisplayOrder(index + 1)
     setActive(true)
+  }
+
+  const handleActivateVideoTemplate = async () => {
+    const videoTemplate = templates.find((template) => template.media_type === 'video')
+    if (!videoTemplate) {
+      onStatusChange?.('Aucun template video disponible')
+      return
+    }
+
+    setSaving(true)
+    try {
+      await upsertScanAd({
+        title: videoTemplate.title,
+        body: videoTemplate.body,
+        cta_label: videoTemplate.cta_label,
+        cta_url: videoTemplate.cta_url,
+        media_type: videoTemplate.media_type,
+        media_url: videoTemplate.media_url,
+        poster_url: videoTemplate.poster_url ?? null,
+        active: true,
+        display_order: 1,
+      })
+
+      onStatusChange?.('Template video active sur la rotation QR')
+      await loadAds()
+    } catch (error) {
+      onStatusChange?.(error instanceof Error ? error.message : 'Impossible d\'activer le template video')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSeedTemplates = async () => {
@@ -131,11 +208,14 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
           body: template.body,
           cta_label: template.cta_label,
           cta_url: template.cta_url,
+          media_type: template.media_type,
+          media_url: template.media_url,
+          poster_url: template.poster_url ?? null,
           active: true,
           display_order: index + 1,
         })
       }
-      onStatusChange?.('3 publicites test ont ete ajoutees')
+      onStatusChange?.(`${templates.length} publicites test ont ete ajoutees`)
       await loadAds()
     } catch (error) {
       onStatusChange?.(error instanceof Error ? error.message : 'Impossible de creer les publicites test')
@@ -153,6 +233,9 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
         body,
         cta_label: ctaLabel || null,
         cta_url: ctaUrl || null,
+        media_type: mediaUrl.trim() ? mediaType : null,
+        media_url: mediaUrl.trim() || null,
+        poster_url: posterUrl.trim() || null,
         active,
         display_order: displayOrder,
         starts_at: startsAt ? new Date(startsAt).toISOString() : null,
@@ -174,6 +257,9 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
     setBody(ad.body)
     setCtaLabel(ad.cta_label ?? '')
     setCtaUrl(ad.cta_url ?? '')
+    setMediaType(ad.media_type ?? 'image')
+    setMediaUrl(ad.media_url ?? '')
+    setPosterUrl(ad.poster_url ?? '')
     setDisplayOrder(ad.display_order)
     setActive(ad.active)
     setStartsAt(ad.starts_at ? ad.starts_at.slice(0, 16) : '')
@@ -201,6 +287,9 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
         body: ad.body,
         cta_label: ad.cta_label,
         cta_url: ad.cta_url,
+        media_type: ad.media_type,
+        media_url: ad.media_url,
+        poster_url: ad.poster_url,
         active: !ad.active,
         display_order: ad.display_order,
         starts_at: ad.starts_at,
@@ -221,7 +310,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
             <p className="text-[11px] uppercase tracking-[0.24em] text-white/45">Regie QR</p>
             <h3 className="mt-2 text-3xl font-semibold">Pilotez les publicites affichees sur l'ecran QR provider</h3>
             <p className="mt-2 text-sm leading-relaxed text-white/65">
-              Creez vos messages, previsualisez leur rendu et alimentez la rotation avec quelques campagnes test en un clic.
+              Creez vos messages, ajoutez un visuel image ou video, previsualisez leur rendu et alimentez la rotation avec quelques campagnes test en un clic.
             </p>
           </div>
 
@@ -232,7 +321,15 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
               disabled={saving}
               className="rounded-xl border border-white/10 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/15 disabled:opacity-60"
             >
-              Ajouter 3 pubs test
+              Ajouter {templates.length} pubs test
+            </button>
+            <button
+              type="button"
+              onClick={() => { void handleActivateVideoTemplate() }}
+              disabled={saving}
+              className="rounded-xl border border-cyan-300/30 bg-cyan-300/20 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:bg-cyan-300/30 disabled:opacity-60"
+            >
+              Activer template video
             </button>
             <button
               type="button"
@@ -269,9 +366,16 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
               >
                 <p className="text-sm font-semibold text-slate-900">{template.title}</p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500">{template.body}</p>
+                <p className="mt-2 text-[11px] font-medium uppercase tracking-[0.16em] text-sky-700">
+                  {template.media_type === 'video' ? 'Template video' : 'Template image'}
+                </p>
               </button>
             ))}
           </div>
+
+          <p className="text-xs text-slate-500">
+            Pour activer un template: cliquez une carte ci-dessus, puis cliquez sur Publier.
+          </p>
 
           <div className="grid gap-3 md:grid-cols-2">
             <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Titre" className={inputClass} />
@@ -283,9 +387,21 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
               className="min-h-[120px] rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100 md:col-span-2"
             />
             <input value={ctaUrl} onChange={(event) => setCtaUrl(event.target.value)} placeholder="URL CTA (https://...)" className={inputClass} />
+            <select value={mediaType} onChange={(event) => setMediaType(event.target.value as 'image' | 'video')} className={inputClass}>
+              <option value="image">Visuel image</option>
+              <option value="video">Visuel video</option>
+            </select>
+            <input value={mediaUrl} onChange={(event) => setMediaUrl(event.target.value)} placeholder={mediaType === 'video' ? 'URL video (/ads/demo.mp4 ou https://...)' : 'URL image (/ads/visuel.svg ou https://...)'} className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
+            {mediaType === 'video' ? (
+              <input value={posterUrl} onChange={(event) => setPosterUrl(event.target.value)} placeholder="Poster video optionnel (/ads/poster.jpg ou https://...)" className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
+            ) : null}
             <input type="number" value={displayOrder} onChange={(event) => setDisplayOrder(Number(event.target.value))} placeholder="Ordre" className={inputClass} />
             <input type="datetime-local" value={startsAt} onChange={(event) => setStartsAt(event.target.value)} className={inputClass} />
             <input type="datetime-local" value={endsAt} onChange={(event) => setEndsAt(event.target.value)} className={inputClass} />
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
+            Utilisez une URL absolue ou un chemin public commençant par /. Pour une video, renseignez une video lisible par le navigateur et, si besoin, une image de poster.
           </div>
 
           <label className="inline-flex items-center gap-2 text-sm text-slate-600">
@@ -342,6 +458,8 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
                       <p className="mt-2 text-xs leading-relaxed text-slate-500">{ad.body}</p>
                       <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
                         {ad.cta_label ? <span className="rounded-full bg-white px-2 py-1">CTA: {ad.cta_label}</span> : null}
+                        {ad.media_type ? <span className="rounded-full bg-white px-2 py-1">media: {ad.media_type}</span> : null}
+                        {ad.media_url ? <span className="rounded-full bg-white px-2 py-1">visuel configure</span> : null}
                         {ad.starts_at ? <span className="rounded-full bg-white px-2 py-1">debut {new Date(ad.starts_at).toLocaleDateString('fr-FR')}</span> : null}
                         {ad.ends_at ? <span className="rounded-full bg-white px-2 py-1">fin {new Date(ad.ends_at).toLocaleDateString('fr-FR')}</span> : null}
                       </div>

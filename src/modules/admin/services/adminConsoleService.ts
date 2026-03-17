@@ -80,6 +80,9 @@ export type ScanAdRow = {
   body: string
   cta_label: string | null
   cta_url: string | null
+  media_type: 'image' | 'video' | null
+  media_url: string | null
+  poster_url: string | null
   active: boolean
   display_order: number
   starts_at: string | null
@@ -319,6 +322,9 @@ export async function upsertScanAd(payload: {
   body: string
   cta_label?: string | null
   cta_url?: string | null
+  media_type?: 'image' | 'video' | null
+  media_url?: string | null
+  poster_url?: string | null
   active: boolean
   display_order: number
   starts_at?: string | null

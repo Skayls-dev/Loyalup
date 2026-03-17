@@ -1,0 +1,28 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="36" fill="#06111D"/>
+  <rect x="30" y="30" width="1140" height="660" rx="30" fill="url(#bg)"/>
+  <text x="88" y="140" fill="#8AAAD0" font-size="24" font-family="Arial, Helvetica, sans-serif" letter-spacing="3">COALITION RESEAUX</text>
+  <text x="88" y="238" fill="#FFFFFF" font-size="70" font-weight="700" font-family="Arial, Helvetica, sans-serif">Faites rayonner votre</text>
+  <text x="88" y="320" fill="#FFFFFF" font-size="70" font-weight="700" font-family="Arial, Helvetica, sans-serif">commerce en coalition</text>
+  <text x="88" y="390" fill="#A2B4C5" font-size="28" font-family="Arial, Helvetica, sans-serif">Mettez vos avantages reseaux en avant et creez</text>
+  <text x="88" y="428" fill="#A2B4C5" font-size="28" font-family="Arial, Helvetica, sans-serif">un parcours fluide entre partenaires de confiance.</text>
+  <circle cx="890" cy="238" r="72" fill="#3EB8F0" fill-opacity="0.22"/>
+  <circle cx="1030" cy="302" r="72" fill="#00E5A0" fill-opacity="0.18"/>
+  <circle cx="960" cy="424" r="72" fill="#F5C842" fill-opacity="0.18"/>
+  <path d="M890 238L1030 302L960 424L890 238Z" stroke="#88B8DA" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="88" y="512" width="220" height="94" rx="24" fill="#0D1D2E" stroke="#264B6A"/>
+  <text x="118" y="558" fill="#00E5A0" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">3x</text>
+  <text x="118" y="590" fill="#8CA4BC" font-size="22" font-family="Arial, Helvetica, sans-serif">plus de synergies</text>
+  <rect x="334" y="512" width="220" height="94" rx="24" fill="#0D1D2E" stroke="#264B6A"/>
+  <text x="364" y="558" fill="#3EB8F0" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">+19%</text>
+  <text x="364" y="590" fill="#8CA4BC" font-size="22" font-family="Arial, Helvetica, sans-serif">visites croisees</text>
+  <rect x="580" y="512" width="220" height="94" rx="24" fill="#0D1D2E" stroke="#264B6A"/>
+  <text x="610" y="558" fill="#F5C842" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">24/7</text>
+  <text x="610" y="590" fill="#8CA4BC" font-size="22" font-family="Arial, Helvetica, sans-serif">visibilite reseau</text>
+  <defs>
+    <linearGradient id="bg" x1="92" y1="58" x2="1088" y2="664" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#091521"/>
+      <stop offset="1" stop-color="#0A2135"/>
+    </linearGradient>
+  </defs>
+</svg>

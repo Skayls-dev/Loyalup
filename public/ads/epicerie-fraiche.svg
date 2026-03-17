@@ -1,0 +1,58 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="36" fill="#07140C"/>
+  <rect x="38" y="38" width="1124" height="644" rx="28" fill="url(#bg)"/>
+  <!-- Glow circles -->
+  <circle cx="960" cy="160" r="140" fill="#4ADE80" fill-opacity="0.15"/>
+  <circle cx="1060" cy="560" r="190" fill="#FACC15" fill-opacity="0.09"/>
+  <circle cx="200" cy="600" r="120" fill="#34D399" fill-opacity="0.08"/>
+  <!-- Badge -->
+  <rect x="88" y="100" width="240" height="36" rx="18" fill="#0D2A18"/>
+  <text x="128" y="124" fill="#4ADE80" font-size="22" font-family="Arial, Helvetica, sans-serif" letter-spacing="3">ÉPICERIE FRAÎCHE</text>
+  <!-- Headline -->
+  <text x="88" y="238" fill="#FFFFFF" font-size="70" font-weight="700" font-family="Arial, Helvetica, sans-serif">Produits frais livrés</text>
+  <text x="88" y="318" fill="#FFFFFF" font-size="70" font-weight="700" font-family="Arial, Helvetica, sans-serif">dans votre quartier</text>
+  <!-- Subtext -->
+  <text x="88" y="390" fill="#95B8A0" font-size="28" font-family="Arial, Helvetica, sans-serif">Fruits, légumes, fromages et charcuterie sélectionnés</text>
+  <text x="88" y="428" fill="#95B8A0" font-size="28" font-family="Arial, Helvetica, sans-serif">chaque matin chez nos producteurs partenaires.</text>
+  <!-- Stat cards -->
+  <rect x="88" y="504" width="200" height="90" rx="22" fill="#0A1F11" stroke="#1A4528"/>
+  <text x="118" y="548" fill="#4ADE80" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">-15%</text>
+  <text x="118" y="580" fill="#7AAD8A" font-size="20" font-family="Arial, Helvetica, sans-serif">avec 250 pts LoyalUp</text>
+  <rect x="314" y="504" width="200" height="90" rx="22" fill="#0A1F11" stroke="#1A4528"/>
+  <text x="344" y="548" fill="#FACC15" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">32+</text>
+  <text x="344" y="580" fill="#7AAD8A" font-size="20" font-family="Arial, Helvetica, sans-serif">producteurs locaux</text>
+  <rect x="540" y="504" width="200" height="90" rx="22" fill="#0A1F11" stroke="#1A4528"/>
+  <text x="570" y="548" fill="#34D399" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">J+0</text>
+  <text x="570" y="580" fill="#7AAD8A" font-size="20" font-family="Arial, Helvetica, sans-serif">récolte du matin</text>
+  <!-- Visual panel -->
+  <rect x="820" y="150" width="320" height="380" rx="32" fill="#081A0E" stroke="#1D4530"/>
+  <!-- Basket icon big -->
+  <circle cx="980" cy="300" r="100" fill="#0E2C18" stroke="#27614A" stroke-width="2"/>
+  <!-- Simple grocery basket SVG path -->
+  <path d="M940 280 Q980 240 1020 280" stroke="#4ADE80" stroke-width="14" stroke-linecap="round" fill="none"/>
+  <rect x="936" y="278" width="88" height="64" rx="10" fill="none" stroke="#4ADE80" stroke-width="10"/>
+  <!-- Apple -->
+  <ellipse cx="965" cy="268" rx="10" ry="12" fill="#F87171"/>
+  <line x1="965" y1="256" x2="968" y2="248" stroke="#4ADE80" stroke-width="4" stroke-linecap="round"/>
+  <!-- Carrot -->
+  <ellipse cx="995" cy="266" rx="8" ry="12" fill="#FB923C"/>
+  <line x1="995" y1="254" x2="996" y2="246" stroke="#4ADE80" stroke-width="4" stroke-linecap="round"/>
+  <!-- Leaf deco -->
+  <path d="M940 238 Q930 210 950 200 Q945 220 960 230" fill="#22C55E" fill-opacity="0.6"/>
+  <!-- Label -->
+  <text x="936" y="396" fill="#FFFFFF" font-size="26" font-weight="700" font-family="Arial, Helvetica, sans-serif">Panier du jour</text>
+  <text x="936" y="422" fill="#4ADE80" font-size="22" font-family="Arial, Helvetica, sans-serif">Scannez &amp; gagnez</text>
+  <!-- CTA pill -->
+  <rect x="880" y="460" width="200" height="50" rx="25" fill="url(#cta)"/>
+  <text x="925" y="492" fill="#07140C" font-size="22" font-weight="700" font-family="Arial, Helvetica, sans-serif">Commander</text>
+  <defs>
+    <linearGradient id="bg" x1="80" y1="60" x2="1120" y2="660" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#081410"/>
+      <stop offset="1" stop-color="#0B2018"/>
+    </linearGradient>
+    <linearGradient id="cta" x1="880" y1="460" x2="1080" y2="510" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#4ADE80"/>
+      <stop offset="1" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+</svg>

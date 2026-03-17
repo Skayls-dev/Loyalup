@@ -1,0 +1,23 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="36" fill="#09111B"/>
+  <rect x="32" y="32" width="1136" height="656" rx="28" fill="url(#bg)"/>
+  <path d="M910 82C1014 82 1098 166 1098 270C1098 374 1014 458 910 458C806 458 722 374 722 270C722 166 806 82 910 82Z" fill="#17324A"/>
+  <path d="M914 120L958 255H1026L970 338L1004 470L914 397L824 470L858 338L802 255H870L914 120Z" fill="#F5C842"/>
+  <text x="92" y="146" fill="#84A4C7" font-size="24" font-family="Arial, Helvetica, sans-serif" letter-spacing="3">CAMPAGNE FLASH</text>
+  <text x="92" y="238" fill="#FFFFFF" font-size="70" font-weight="700" font-family="Arial, Helvetica, sans-serif">Animez vos heures creuses</text>
+  <text x="92" y="320" fill="#FFFFFF" font-size="70" font-weight="700" font-family="Arial, Helvetica, sans-serif">avec une offre eclair</text>
+  <text x="92" y="390" fill="#A0B4C6" font-size="28" font-family="Arial, Helvetica, sans-serif">Créez un push local, affichez un bonus temporaire et</text>
+  <text x="92" y="428" fill="#A0B4C6" font-size="28" font-family="Arial, Helvetica, sans-serif">faites revenir vos clients au bon moment.</text>
+  <rect x="92" y="500" width="300" height="110" rx="28" fill="#102131" stroke="#254D72"/>
+  <text x="126" y="555" fill="#FFFFFF" font-size="36" font-weight="700" font-family="Arial, Helvetica, sans-serif">48h</text>
+  <text x="126" y="590" fill="#8FA5BA" font-size="24" font-family="Arial, Helvetica, sans-serif">d'activation express</text>
+  <rect x="424" y="500" width="300" height="110" rx="28" fill="#102131" stroke="#254D72"/>
+  <text x="458" y="555" fill="#3EB8F0" font-size="36" font-weight="700" font-family="Arial, Helvetica, sans-serif">+27%</text>
+  <text x="458" y="590" fill="#8FA5BA" font-size="24" font-family="Arial, Helvetica, sans-serif">scans supplementaires</text>
+  <defs>
+    <linearGradient id="bg" x1="90" y1="54" x2="1080" y2="670" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1521"/>
+      <stop offset="1" stop-color="#0B2235"/>
+    </linearGradient>
+  </defs>
+</svg>

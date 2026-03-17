@@ -23,6 +23,9 @@ type ProviderScanAd = {
   body: string
   cta_label: string | null
   cta_url: string | null
+  media_type: 'image' | 'video' | null
+  media_url: string | null
+  poster_url: string | null
 }
 
 const fallbackAds: AdConfig[] = [
@@ -32,6 +35,8 @@ const fallbackAds: AdConfig[] = [
     description: 'Activez des campagnes intelligentes et transformez chaque passage en retour client mesurable.',
     ctaLabel: 'Activer Premium',
     ctaNote: 'Sans engagement · Essai 14 jours gratuit',
+    mediaType: 'image',
+    mediaUrl: '/ads/premium-boost.svg',
   },
   {
     badge: 'Campagne flash',
@@ -39,6 +44,8 @@ const fallbackAds: AdConfig[] = [
     description: 'Diffusez une offre limitee et poussez plus de scans sur les creneaux calmes.',
     ctaLabel: 'Creer une campagne',
     ctaNote: 'Rotation QR · Ciblage local intelligent',
+    mediaType: 'image',
+    mediaUrl: '/ads/flash-campaign.svg',
   },
   {
     badge: 'Coalition',
@@ -46,6 +53,8 @@ const fallbackAds: AdConfig[] = [
     description: 'Mettez en avant vos avantages coalition et augmentez les visites croisees entre commerces membres.',
     ctaLabel: 'Voir les reseaux',
     ctaNote: 'Activation immediate · Statistiques live',
+    mediaType: 'image',
+    mediaUrl: '/ads/coalition-network.svg',
   },
 ]
 
@@ -55,7 +64,11 @@ function mapScanAdToBannerConfig(ad: ProviderScanAd): AdConfig {
     title: ad.title,
     description: ad.body,
     ctaLabel: ad.cta_label?.trim() || 'En savoir plus',
+    ctaUrl: ad.cta_url ?? undefined,
     ctaNote: ad.cta_url ? 'Redirection disponible · Rotation QR' : 'Rotation QR active',
+    mediaType: ad.media_type ?? undefined,
+    mediaUrl: ad.media_url ?? undefined,
+    posterUrl: ad.poster_url ?? undefined,
   }
 }
 
@@ -94,7 +107,7 @@ export function ProviderDashboard() {
       const now = new Date().toISOString()
       const { data, error } = await supabase
         .from('scan_screen_ads')
-        .select('id, title, body, cta_label, cta_url')
+        .select('id, title, body, cta_label, cta_url, media_type, media_url, poster_url')
         .eq('active', true)
         .or(`starts_at.is.null,starts_at.lte.${now}`)
         .or(`ends_at.is.null,ends_at.gte.${now}`)

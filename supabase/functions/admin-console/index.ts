@@ -1602,7 +1602,7 @@ Deno.serve(async (req) => {
   if (action === 'LIST_SCAN_ADS') {
     const { data, error } = await admin
       .from('scan_screen_ads')
-      .select('id, title, body, cta_label, cta_url, active, display_order, starts_at, ends_at, created_at, updated_at')
+      .select('id, title, body, cta_label, cta_url, media_type, media_url, poster_url, active, display_order, starts_at, ends_at, created_at, updated_at')
       .order('display_order', { ascending: true })
       .order('created_at', { ascending: false })
 
@@ -1619,6 +1619,9 @@ Deno.serve(async (req) => {
     const adBody = String(body.body ?? '').trim()
     const ctaLabel = body.cta_label ? String(body.cta_label).trim() : null
     const ctaUrl = body.cta_url ? String(body.cta_url).trim() : null
+    const mediaType = body.media_type ? String(body.media_type).trim() : null
+    const mediaUrl = body.media_url ? String(body.media_url).trim() : null
+    const posterUrl = body.poster_url ? String(body.poster_url).trim() : null
     const active = typeof body.active === 'boolean' ? body.active : true
     const displayOrder = Number.isFinite(Number(body.display_order)) ? Number(body.display_order) : 0
     const startsAt = body.starts_at ? String(body.starts_at) : null
@@ -1632,12 +1635,27 @@ Deno.serve(async (req) => {
       return json({ error: 'cta_url must start with http:// or https://' }, 400)
     }
 
+    if (mediaType && mediaType !== 'image' && mediaType !== 'video') {
+      return json({ error: 'media_type must be image or video' }, 400)
+    }
+
+    if (mediaUrl && !/^(https?:\/\/|\/)/i.test(mediaUrl)) {
+      return json({ error: 'media_url must be absolute http(s) or root-relative /path' }, 400)
+    }
+
+    if (posterUrl && !/^(https?:\/\/|\/)/i.test(posterUrl)) {
+      return json({ error: 'poster_url must be absolute http(s) or root-relative /path' }, 400)
+    }
+
     const payload = {
       id: adId ?? undefined,
       title,
       body: adBody,
       cta_label: ctaLabel,
       cta_url: ctaUrl,
+      media_type: mediaType,
+      media_url: mediaUrl,
+      poster_url: posterUrl,
       active,
       display_order: displayOrder,
       starts_at: startsAt,
@@ -1647,7 +1665,7 @@ Deno.serve(async (req) => {
     const { data, error } = await admin
       .from('scan_screen_ads')
       .upsert(payload)
-      .select('id, title, body, cta_label, cta_url, active, display_order, starts_at, ends_at, created_at, updated_at')
+      .select('id, title, body, cta_label, cta_url, media_type, media_url, poster_url, active, display_order, starts_at, ends_at, created_at, updated_at')
       .limit(1)
 
     if (error) {

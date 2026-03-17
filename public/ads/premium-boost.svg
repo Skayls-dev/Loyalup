@@ -1,0 +1,33 @@
+<svg width="1200" height="720" viewBox="0 0 1200 720" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="720" rx="36" fill="#07111F"/>
+  <rect x="38" y="38" width="1124" height="644" rx="28" fill="url(#bg)"/>
+  <circle cx="947" cy="167" r="137" fill="#3EB8F0" fill-opacity="0.22"/>
+  <circle cx="1037" cy="531" r="176" fill="#00E5A0" fill-opacity="0.12"/>
+  <rect x="88" y="104" width="226" height="36" rx="18" fill="#0F2238"/>
+  <text x="128" y="128" fill="#8FB5D7" font-size="24" font-family="Arial, Helvetica, sans-serif" letter-spacing="3">LOYALUP PREMIUM</text>
+  <text x="88" y="238" fill="#FFFFFF" font-size="72" font-weight="700" font-family="Arial, Helvetica, sans-serif">Augmentez vos</text>
+  <text x="88" y="320" fill="#FFFFFF" font-size="72" font-weight="700" font-family="Arial, Helvetica, sans-serif">retours clients</text>
+  <text x="88" y="392" fill="#9FB3C8" font-size="28" font-family="Arial, Helvetica, sans-serif">Campagnes intelligentes, segmentation locale et relances</text>
+  <text x="88" y="430" fill="#9FB3C8" font-size="28" font-family="Arial, Helvetica, sans-serif">pour transformer chaque scan en nouvelle visite.</text>
+  <rect x="88" y="506" width="218" height="92" rx="24" fill="#0C1A2B" stroke="#214363"/>
+  <text x="118" y="550" fill="#3EB8F0" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">+34%</text>
+  <text x="118" y="582" fill="#94A9BE" font-size="22" font-family="Arial, Helvetica, sans-serif">retours supplementaires</text>
+  <rect x="336" y="506" width="218" height="92" rx="24" fill="#0C1A2B" stroke="#214363"/>
+  <text x="366" y="550" fill="#00E5A0" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">12 480</text>
+  <text x="366" y="582" fill="#94A9BE" font-size="22" font-family="Arial, Helvetica, sans-serif">points engages</text>
+  <rect x="584" y="506" width="218" height="92" rx="24" fill="#0C1A2B" stroke="#214363"/>
+  <text x="614" y="550" fill="#F5C842" font-size="34" font-weight="700" font-family="Arial, Helvetica, sans-serif">78%</text>
+  <text x="614" y="582" fill="#94A9BE" font-size="22" font-family="Arial, Helvetica, sans-serif">taux de fidelite</text>
+  <rect x="840" y="219" width="210" height="250" rx="28" fill="#091829" stroke="#29527A"/>
+  <rect x="877" y="260" width="136" height="136" rx="24" fill="#10243B"/>
+  <path d="M910 328H980" stroke="#3EB8F0" stroke-width="20" stroke-linecap="round"/>
+  <path d="M945 293V363" stroke="#3EB8F0" stroke-width="20" stroke-linecap="round"/>
+  <text x="876" y="438" fill="#FFFFFF" font-size="28" font-weight="700" font-family="Arial, Helvetica, sans-serif">Scanner</text>
+  <text x="876" y="470" fill="#8CA3BC" font-size="22" font-family="Arial, Helvetica, sans-serif">Convertir</text>
+  <defs>
+    <linearGradient id="bg" x1="98" y1="72" x2="1074" y2="636" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0A1628"/>
+      <stop offset="1" stop-color="#0A2138"/>
+    </linearGradient>
+  </defs>
+</svg>
