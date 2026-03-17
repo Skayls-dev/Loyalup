@@ -35,6 +35,10 @@ export function ProtectedRoute({ allowedRole, unauthenticatedRedirectTo = '/auth
       return <Navigate to="/admin" replace />
     }
 
+    if (role === 'institution') {
+      return <Navigate to="/institution" replace />
+    }
+
     return <Navigate to="/auth" replace />
   }
 

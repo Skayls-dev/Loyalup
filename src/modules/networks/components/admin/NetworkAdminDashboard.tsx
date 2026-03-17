@@ -14,6 +14,7 @@ import { useNetworkStats } from '../../hooks/useNetworkStats'
 import type { Network } from '../../types/networkTypes'
 import { NetworkBuilder } from './NetworkBuilder'
 import { AnnouncementManager } from './AnnouncementManager'
+import { InstitutionAccessManager } from './InstitutionAccessManager'
 
 const primaryButtonClass =
   'h-8 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe] disabled:opacity-60'
@@ -400,6 +401,8 @@ export function NetworkAdminDashboard() {
           {sponsorshipRows.length === 0 ? <p className="text-[#605E5C]">Aucun sponsoring actif.</p> : null}
         </div>
       </section>
+
+      <InstitutionAccessManager networks={rows} />
     </section>
   )
 }

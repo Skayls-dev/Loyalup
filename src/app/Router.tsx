@@ -49,6 +49,9 @@ const AdminNetwork = lazy(() =>
 const AdminLayout = lazy(() =>
   import('../views/admin/AdminLayout').then((module) => ({ default: module.AdminLayout })),
 )
+const InstitutionDashboard = lazy(() =>
+  import('../modules/institutions/components/InstitutionDashboard').then((module) => ({ default: module.InstitutionDashboard })),
+)
 
 function RouteFallback() {
   return (
@@ -98,6 +101,10 @@ function AuthRoute() {
 
   if (user && role === 'admin') {
     return <Navigate to="/admin/auth" replace />
+  }
+
+  if (user && role === 'institution') {
+    return <Navigate to="/institution" replace />
   }
 
   if (user && !role) {
@@ -291,6 +298,10 @@ function AdminAuthRoute() {
     return <Navigate to="/provider" replace />
   }
 
+  if (user && role === 'institution') {
+    return <Navigate to="/institution" replace />
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
       <div className="w-full max-w-md space-y-4">
@@ -340,6 +351,10 @@ export function Router() {
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/network" element={<AdminNetwork />} />
           </Route>
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRole="institution" />}>
+          <Route path="/institution" element={<InstitutionDashboard />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/auth" replace />} />
