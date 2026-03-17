@@ -5,9 +5,43 @@ import { StatCard } from './StatCard'
 type StatsGridProps = {
   stats: ProviderStats | null
   loading: boolean
+  compact?: boolean
 }
 
-export function StatsGrid({ stats, loading }: StatsGridProps) {
+export function StatsGrid({ stats, loading, compact = false }: StatsGridProps) {
+  if (compact) {
+    if (loading || !stats) {
+      return (
+        <div className="grid grid-cols-2 gap-2">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-20 animate-pulse rounded-xl border border-white/[0.07] bg-white/[0.035]" />
+          ))}
+        </div>
+      )
+    }
+
+    const compactItems = [
+      { label: 'STATUT QR', value: 'Actif', color: 'text-white' },
+      { label: 'TEMPS RESTANT', value: '02:15', color: 'text-[#00e5a0]' },
+      { label: 'POINTS CLIENT', value: `${stats.total_points_distributed.toLocaleString()} pts`, color: 'text-[#f5c842]' },
+      { label: 'SCANS AUJOURD\'HUI', value: stats.transactions_today.toLocaleString(), color: 'text-[#3eb8f0]' },
+    ]
+
+    return (
+      <div className="grid grid-cols-2 gap-2">
+        {compactItems.map((item) => (
+          <div
+            key={item.label}
+            className="rounded-xl border border-white/[0.07] bg-white/[0.035] p-3 transition-colors hover:bg-white/[0.055]"
+          >
+            <p className="text-[9px] uppercase tracking-[0.16em] text-white/50">{item.label}</p>
+            <p className={`mt-1 text-lg font-semibold ${item.color}`}>{item.value}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   if (loading || !stats) {
     return (
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

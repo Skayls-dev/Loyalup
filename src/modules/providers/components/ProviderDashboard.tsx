@@ -13,6 +13,7 @@ import { ServiceManager } from './ServiceManager'
 import { StatsGrid } from './StatsGrid'
 import { WhiteLabelConfig } from './WhiteLabelConfig'
 import { DeveloperPortal } from './DeveloperPortal'
+import { AdBanner } from './AdBanner'
 import { ProviderNetworkHub } from '../../networks/components/provider'
 
 type DashboardTab =
@@ -45,7 +46,36 @@ export function ProviderDashboard() {
 
   const dashboardContent = useMemo(() => {
     if (activeTab === 'qr') {
-      return <QRDisplay />
+      return (
+        <div className="flex items-start gap-4">
+          <div className="flex w-[280px] shrink-0 flex-col gap-3">
+            <QRDisplay />
+            <StatsGrid stats={stats} loading={loading} compact />
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/[0.08]"
+                onClick={() => {
+                  console.log('Refresh QR requested')
+                }}
+              >
+                🔄 Actualiser QR
+              </button>
+              <button
+                type="button"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-semibold text-white/80 transition hover:bg-white/[0.08]"
+                onClick={() => {
+                  console.log('QR history requested')
+                }}
+              >
+                📋 Historique
+              </button>
+            </div>
+          </div>
+
+          <AdBanner className="flex-1" />
+        </div>
+      )
     }
 
     if (activeTab === 'dashboard') {

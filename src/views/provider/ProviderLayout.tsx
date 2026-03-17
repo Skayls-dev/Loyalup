@@ -155,29 +155,29 @@ export function ProviderLayout() {
 
   return (
     <div className="app-shell">
-      <header className="glass-panel sticky top-0 z-20 border-x-0 border-t-0">
+      <header className="sticky top-0 z-20 border-b border-white/[0.07] bg-[#060d1a]">
         <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 md:px-6">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-md bg-gradient-to-br from-indigo-500 to-sky-500 text-center text-sm font-bold leading-8 text-white shadow-sm">
+            <div className="h-8 w-8 rounded-md bg-gradient-to-br from-[#3eb8f0] to-[#00e5a0] text-center text-sm font-bold leading-8 text-[#040d1a] shadow-sm">
               L
             </div>
 
             <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-slate-200">
+              <p className="text-sm font-semibold text-white/90">
                 {profile?.nom || 'Nom commerce'}
               </p>
-              <span className="inline-flex h-2.5 w-2.5 rounded-full bg-emerald-400" aria-label="Online" />
+              <span className="inline-flex h-2.5 w-2.5 animate-pulse rounded-full bg-[#00e5a0]" aria-label="Online" />
             </div>
 
-            <nav className="glass-panel ml-4 hidden items-center gap-1 rounded-2xl p-1.5 md:flex">
+            <nav className="ml-4 hidden items-center gap-1 rounded-2xl border border-white/[0.07] bg-white/[0.02] p-1.5 md:flex">
               {providerMenu.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}
-                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70 ${
+                  className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3eb8f0]/60 ${
                     isMenuItemActive(item.to)
-                      ? 'bg-indigo-500/30 text-indigo-100 shadow-sm'
-                      : 'text-slate-200 hover:bg-indigo-500/15 hover:text-indigo-100'
+                      ? 'bg-[#3eb8f0]/[0.08] text-[#3eb8f0]'
+                      : 'text-white/55 hover:bg-white/[0.06] hover:text-white'
                   }`}
                 >
                   {item.label}
@@ -190,7 +190,7 @@ export function ProviderLayout() {
             type="button"
             onClick={handleLogout}
             disabled={loading}
-            className="btn-primary disabled:cursor-not-allowed disabled:opacity-70"
+            className="rounded-xl border border-white/[0.07] bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-white/85 transition hover:bg-white/[0.12] disabled:cursor-not-allowed disabled:opacity-70"
           >
             {loading ? 'Déconnexion...' : 'Logout'}
           </button>
@@ -198,16 +198,16 @@ export function ProviderLayout() {
         </div>
       </header>
 
-      <div className="glass-panel border-x-0 px-4 py-2 md:hidden">
-        <nav className="glass-panel flex gap-1 overflow-x-auto rounded-2xl p-1.5 [scrollbar-width:none]">
+      <div className="border-b border-white/[0.07] bg-[#060d1a] px-4 py-2 md:hidden">
+        <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-white/[0.07] bg-white/[0.02] p-1.5 [scrollbar-width:none]">
           {providerMenu.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-300/70 ${
+              className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3eb8f0]/60 ${
                 isMenuItemActive(item.to)
-                  ? 'bg-indigo-500/30 text-indigo-100 shadow-sm'
-                  : 'text-slate-200 hover:bg-indigo-500/15 hover:text-indigo-100'
+                  ? 'bg-[#3eb8f0]/[0.08] text-[#3eb8f0]'
+                  : 'text-white/55 hover:bg-white/[0.06] hover:text-white'
               }`}
             >
               {item.label}
