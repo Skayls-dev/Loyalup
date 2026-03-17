@@ -1,14 +1,3 @@
-type Feature = {
-  emoji: string
-  title: string
-  description: string
-}
-
-type Metric = {
-  value: string
-  label: string
-}
-
 export type AdConfig = {
   badge?: string
   title: string
@@ -19,8 +8,6 @@ export type AdConfig = {
   mediaType?: 'image' | 'video'
   mediaUrl?: string
   posterUrl?: string
-  metrics?: Metric[]
-  features?: Feature[]
 }
 
 type AdBannerProps = {
@@ -35,8 +22,6 @@ type AdBannerProps = {
 type ResolvedAdConfig = AdConfig & {
   badge: string
   ctaNote: string
-  metrics: Metric[]
-  features: Feature[]
 }
 
 const defaultAd: ResolvedAdConfig = {
@@ -47,17 +32,6 @@ const defaultAd: ResolvedAdConfig = {
   ctaNote: 'Sans engagement · Essai 14 jours gratuit',
   mediaType: 'image',
   mediaUrl: '/ads/premium-boost.svg',
-  metrics: [
-    { value: '+34%', label: 'retours' },
-    { value: '12 480 pts', label: 'cumules' },
-    { value: '78%', label: 'fidelite' },
-  ],
-  features: [
-    { emoji: '🎯', title: 'Ciblage local', description: 'Segmentez vos clients selon les habitudes de visite.' },
-    { emoji: '⚡', title: 'Activation rapide', description: 'Lancez une offre en moins de deux minutes.' },
-    { emoji: '📈', title: 'Analyse en direct', description: 'Visualisez les performances pendant la campagne.' },
-    { emoji: '🤝', title: 'Fidelisation', description: 'Recompensez les retours avec des incentives progressifs.' },
-  ],
 }
 
 export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
@@ -70,70 +44,44 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
     mediaType: ad?.mediaType ?? defaultAd.mediaType,
     mediaUrl: ad?.mediaUrl ?? defaultAd.mediaUrl,
     posterUrl: ad?.posterUrl ?? defaultAd.posterUrl,
-    metrics: ad?.metrics ?? defaultAd.metrics,
-    features: ad?.features ?? defaultAd.features,
   }
 
   return (
-    <article className={`rounded-2xl border border-white/[0.08] bg-[#060d1a] p-6 text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${className}`}>
-      <p className="text-[10px] uppercase tracking-[0.22em] text-white/40">{resolvedAd.badge}</p>
-
-      <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,0.9fr)] lg:items-start">
-        <div>
-          <h2 className="bg-gradient-to-r from-white via-white to-[#3eb8f0] bg-clip-text text-3xl font-bold leading-tight text-transparent">
-            {resolvedAd.title}
-          </h2>
-
-          <p className="mt-3 max-w-3xl text-sm leading-relaxed text-white/55">{resolvedAd.description}</p>
+    <article className={`overflow-hidden rounded-2xl border border-white/[0.08] bg-[#060d1a] text-white shadow-[0_20px_60px_rgba(0,0,0,0.35)] ${className}`}>
+      {resolvedAd.mediaUrl ? (
+        <div className="relative w-full">
+          {resolvedAd.mediaType === 'video' ? (
+            <video
+              src={resolvedAd.mediaUrl}
+              poster={resolvedAd.posterUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="aspect-[16/9] w-full object-cover"
+            />
+          ) : (
+            <img
+              src={resolvedAd.mediaUrl}
+              alt={resolvedAd.title}
+              className="aspect-[16/9] w-full object-cover"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#060d1a]/80 via-transparent to-transparent" />
+          <p className="absolute left-4 top-3 text-[10px] uppercase tracking-[0.22em] text-white/50">{resolvedAd.badge}</p>
         </div>
+      ) : (
+        <p className="px-6 pt-5 text-[10px] uppercase tracking-[0.22em] text-white/40">{resolvedAd.badge}</p>
+      )}
 
-        {resolvedAd.mediaUrl ? (
-          <div className="overflow-hidden rounded-2xl border border-white/[0.08] bg-[#081321]">
-            {resolvedAd.mediaType === 'video' ? (
-              <video
-                src={resolvedAd.mediaUrl}
-                poster={resolvedAd.posterUrl}
-                autoPlay
-                muted
-                loop
-                playsInline
-                className="aspect-[16/10] w-full object-cover"
-              />
-            ) : (
-              <img
-                src={resolvedAd.mediaUrl}
-                alt={resolvedAd.title}
-                className="aspect-[16/10] w-full object-cover"
-              />
-            )}
-          </div>
-        ) : null}
+      <div className="p-6 pt-4">
+        <h2 className="bg-gradient-to-r from-white via-white to-[#3eb8f0] bg-clip-text text-2xl font-bold leading-tight text-transparent">
+          {resolvedAd.title}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-white/55">{resolvedAd.description}</p>
       </div>
 
-      <div className="mt-5 rounded-xl border border-[#3eb8f0]/[0.16] bg-[#3eb8f0]/[0.08] p-4">
-        <div className="grid gap-3 md:grid-cols-3">
-          {resolvedAd.metrics.map((metric) => (
-            <div key={`${metric.value}-${metric.label}`} className="rounded-lg border border-white/[0.09] bg-[#040d1a]/70 p-3">
-              <p className="text-lg font-semibold text-white">{metric.value}</p>
-              <p className="mt-1 text-[11px] uppercase tracking-wide text-white/55">{metric.label}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        {resolvedAd.features.map((feature) => (
-          <div key={feature.title} className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-3">
-            <p className="text-sm font-semibold text-white">
-              <span className="mr-2">{feature.emoji}</span>
-              {feature.title}
-            </p>
-            <p className="mt-1 text-xs leading-relaxed text-white/55">{feature.description}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-6">
+      <div className="px-6 pb-6">
         {resolvedAd.ctaUrl ? (
           <a
             href={resolvedAd.ctaUrl}
@@ -158,15 +106,17 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
       </div>
 
       <div className="mt-5 flex items-center gap-2">
-        {Array.from({ length: Math.max(1, pagination?.total ?? 3) }).map((_, index) => {
-          const isActive = index === (pagination?.activeIndex ?? 0)
-          return (
-            <span
-              key={index}
-              className={isActive ? 'h-1.5 w-5 rounded-full bg-[#3eb8f0]' : 'h-1.5 w-1.5 rounded-full bg-white/25'}
-            />
-          )
-        })}
+        <div className="mt-4 flex items-center gap-2">
+          {Array.from({ length: Math.max(1, pagination?.total ?? 3) }).map((_, index) => {
+            const isActive = index === (pagination?.activeIndex ?? 0)
+            return (
+              <span
+                key={index}
+                className={isActive ? 'h-1.5 w-5 rounded-full bg-[#3eb8f0]' : 'h-1.5 w-1.5 rounded-full bg-white/25'}
+              />
+            )
+          })}
+        </div>
       </div>
     </article>
   )
