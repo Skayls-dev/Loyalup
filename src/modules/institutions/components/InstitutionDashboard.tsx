@@ -50,7 +50,6 @@ export function InstitutionDashboard() {
           <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
             <div>
               <div className="flex items-center gap-3">
-                <span className="text-4xl">{network.emoji}</span>
                 <div>
                   <h1 className="text-3xl font-semibold text-slate-900">{networkName}</h1>
                   <p className="text-sm text-slate-500">Vue institutionnelle</p>

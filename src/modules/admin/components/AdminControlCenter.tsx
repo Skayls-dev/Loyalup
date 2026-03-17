@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEventHandler } from 'react'
+import { InstitutionAccessManager } from './InstitutionAccessManager'
 import {
   bulkImportAdminUsers,
   bulkUpdateAdminUsers,
@@ -37,7 +38,7 @@ import {
   type WebhookFailureRow,
 } from '../services/adminConsoleService'
 
-export type AdminTab = 'overview' | 'users' | 'api' | 'webhooks' | 'audit' | 'ads'
+export type AdminTab = 'overview' | 'users' | 'api' | 'webhooks' | 'audit' | 'ads' | 'institutions'
 
 const tabs: Array<{ key: AdminTab; label: string }> = [
   { key: 'overview', label: 'Overview' },
@@ -46,6 +47,7 @@ const tabs: Array<{ key: AdminTab; label: string }> = [
   { key: 'webhooks', label: 'Webhooks' },
   { key: 'audit', label: 'Audit' },
   { key: 'ads', label: 'Ads' },
+  { key: 'institutions', label: 'Institutions' },
 ]
 
 const primaryButtonClass =
@@ -1410,6 +1412,10 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
             </article>
           ))}
         </div>
+      ) : null}
+
+      {activeTab === 'institutions' ? (
+        <InstitutionAccessManager />
       ) : null}
 
       {status ? <p className="text-xs text-[#605E5C]">{status}</p> : null}

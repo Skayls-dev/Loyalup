@@ -4,8 +4,6 @@ export type InstitutionNetworkInfo = {
   id: string
   slug: string
   name: Record<string, string> | null
-  emoji: string
-  primary_color: string
   member_count: number
   client_count: number
 }

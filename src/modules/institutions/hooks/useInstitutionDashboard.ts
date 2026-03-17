@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   getClientGrowthTimeline,
   getGeographicBreakdown,
-  getInstitutionOverview,
+  getOverview,
   getMerchantLeaderboard,
 } from '../services/institutionAnalyticsService'
 import type {
@@ -30,7 +30,7 @@ export function useInstitutionDashboard(): UseInstitutionDashboardResult {
   // Fetch overview
   const overviewQuery = useQuery({
     queryKey: ['institution-overview', period],
-    queryFn: () => getInstitutionOverview(period),
+    queryFn: () => getOverview(period),
     refetchInterval: 5 * 60 * 1000,
     retry: 1,
   })

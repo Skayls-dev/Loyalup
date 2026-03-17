@@ -1,21 +1,20 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import * as jose from 'npm:jose@4.14.6'
 
 type Action = 'getOverview' | 'getClientGrowthTimeline' | 'getMerchantLeaderboard' | 'getGeographicBreakdown'
 
 type Period = '7d' | '30d' | '90d' | '365d'
 
-type Body = {
+interface Body {
   action?: Action
   period?: Period
 }
 
-type InstitutionOverview = {
+interface InstitutionOverview {
   network: {
     id: string
     slug: string
     name: Record<string, string> | null
-    emoji: string
-    primary_color: string
     member_count: number
     client_count: number
   }
@@ -31,13 +30,13 @@ type InstitutionOverview = {
   }
 }
 
-type GrowthPoint = {
+interface GrowthPoint {
   date: string
   new_clients: number
   cumulative: number
 }
 
-type MerchantLeaderboardEntry = {
+interface MerchantLeaderboardEntry {
   nom_commerce: string
   city: string | null
   country: string | null
@@ -46,7 +45,7 @@ type MerchantLeaderboardEntry = {
   transaction_count: number
 }
 
-type GeographicEntry = {
+interface GeographicEntry {
   country: string
   city: string | null
   merchant_count: number
@@ -68,52 +67,67 @@ function json(data: unknown, status = 200) {
   })
 }
 
-function periodToDays(period: Period): number {
+function periodToDays(period?: Period): number {
   if (period === '7d') return 7
   if (period === '30d') return 30
   if (period === '90d') return 90
   return 365
 }
 
-async function getContext(req: Request) {
-  const admin = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-  )
+function toDateBucket(value: string): string {
+  return new Date(value).toISOString().slice(0, 10)
+}
+
+function decodeJwt(token: string): { sub?: string; [key: string]: unknown } {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) throw new Error('Invalid token format')
+    const payload = parts[1]
+    const decoded = JSON.parse(new TextDecoder().decode(jose.base64url.decode(payload)))
+    return decoded
+  } catch {
+    throw new Error('Failed to decode JWT')
+  }
+}
+
+async function getInstitutionContext(req: Request) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+    return { error: json({ error: 'Missing env vars' }, 500), admin: null, userId: null, networkId: null }
+  }
 
   const authHeader = req.headers.get('Authorization')
   if (!authHeader?.startsWith('Bearer ')) {
-    return { error: json({ error: 'Missing Authorization header' }, 401), admin: null, userId: null, networkId: null }
-  }
-
-  const token = authHeader.slice(7)
-  const { data: userData, error: userError } = await admin.auth.getUser(token)
-
-  if (userError || !userData.user?.id) {
     return { error: json({ error: 'Unauthorized' }, 401), admin: null, userId: null, networkId: null }
   }
 
-  const userId = userData.user.id
+  const token = authHeader.replace('Bearer ', '').trim()
+  const admin = createClient(supabaseUrl, serviceRoleKey)
 
-  // Get user profile and role
+  let userId: string
+  try {
+    const payload = decodeJwt(token)
+    userId = payload.sub as string
+    if (!userId) throw new Error('No sub claim in JWT')
+  } catch {
+    return { error: json({ error: 'Unauthorized' }, 401), admin: null, userId: null, networkId: null }
+  }
+
+  // Check if user is institution or admin
   const { data: profile, error: profileError } = await admin
     .from('profiles')
     .select('role')
     .eq('id', userId)
     .maybeSingle<{ role: string }>()
 
-  if (profileError) {
-    return { error: json({ error: profileError.message }, 500), admin: null, userId: null, networkId: null }
+  if (profileError || !profile || (profile.role !== 'institution' && profile.role !== 'admin')) {
+    return { error: json({ error: 'Forbidden: only institutions can access' }, 403), admin: null, userId: null, networkId: null }
   }
 
-  const role = profile?.role
-
-  // Only 'institution' and 'admin' can access (admin for testing/managing)
-  if (role !== 'institution' && role !== 'admin') {
-    return { error: json({ error: 'Forbidden - invalid role' }, 403), admin: null, userId: null, networkId: null }
-  }
-
-  // Get the network_id from institution_network_access
+  // Get network_id from institution_network_access
   const { data: access, error: accessError } = await admin
     .from('institution_network_access')
     .select('network_id')
@@ -121,126 +135,136 @@ async function getContext(req: Request) {
     .maybeSingle<{ network_id: string }>()
 
   if (accessError || !access?.network_id) {
-    return { error: json({ error: 'No network access configured' }, 403), admin: null, userId: null, networkId: null }
+    return { error: json({ error: 'No network access found' }, 403), admin: null, userId: null, networkId: null }
   }
 
   return { error: null, admin, userId, networkId: access.network_id }
 }
 
-async function getOverview(admin: ReturnType<typeof createClient>, networkId: string, period: Period): Promise<InstitutionOverview> {
+async function getOverview(admin: ReturnType<typeof createClient>, networkId: string, period?: Period): Promise<InstitutionOverview> {
   const periodDays = periodToDays(period)
-  const periodStart = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000)
-  const previousPeriodStart = new Date(Date.now() - periodDays * 2 * 24 * 60 * 60 * 1000)
+  const periodStart = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
+  const prevStart = new Date(Date.now() - periodDays * 2 * 24 * 60 * 60 * 1000).toISOString()
+  const prevEnd = periodStart
 
-  // Fetch network details
-  const { data: network, error: networkError } = await admin
+  // Get network info
+  const { data: network } = await admin
     .from('networks')
-    .select('id, slug, name, emoji, primary_color, member_count, client_count')
+    .select('id, slug, name, member_count, client_count')
     .eq('id', networkId)
-    .maybeSingle<{
-      id: string
-      slug: string
-      name: Record<string, string> | null
-      emoji: string
-      primary_color: string
-      member_count: number
-      client_count: number
-    }>()
+    .maybeSingle<{ id: string; slug: string; name: Record<string, string> | null; member_count: number; client_count: number }>()
 
-  if (networkError || !network) {
-    throw new Error('Network not found')
+  // Get new clients in current period
+  const { data: currentClients } = await admin
+    .from('network_clients')
+    .select('joined_at', { head: true, count: 'exact' })
+    .eq('network_id', networkId)
+    .gte('joined_at', periodStart)
+
+  // Get new clients in previous period
+  const { data: prevClients } = await admin
+    .from('network_clients')
+    .select('joined_at', { head: true, count: 'exact' })
+    .eq('network_id', networkId)
+    .gte('joined_at', prevStart)
+    .lt('joined_at', prevEnd)
+
+  // Get active merchants with events in current period
+  const { data: eventsData } = await admin
+    .from('network_point_events')
+    .select('fournisseur_id, bonus_points')
+    .eq('network_id', networkId)
+    .gte('created_at', periodStart)
+
+  const activeMerchantsSet = new Set<string>()
+  let totalBonusDistributed = 0
+  for (const event of eventsData ?? []) {
+    if (event.fournisseur_id) {
+      activeMerchantsSet.add(event.fournisseur_id as string)
+    }
+    totalBonusDistributed += Number(event.bonus_points ?? 0)
   }
 
-  // Current period stats
-  const [newClientsResult, activeMerchantsResult, bonusResult, txCountResult] = await Promise.all([
-    admin
-      .from('network_clients')
-      .select('id', { head: true, count: 'exact' })
-      .eq('network_id', networkId)
-      .gte('joined_at', periodStart.toISOString()),
+  // Get active merchants in previous period for comparison
+  const { data: prevEventsData } = await admin
+    .from('network_point_events')
+    .select('fournisseur_id')
+    .eq('network_id', networkId)
+    .gte('created_at', prevStart)
+    .lt('created_at', prevEnd)
 
-    admin.from('network_point_events')
-      .select('fournisseur_id')
-      .eq('network_id', networkId)
-      .gte('created_at', periodStart.toISOString()),
+  const prevActiveMerchantsSet = new Set<string>()
+  for (const event of prevEventsData ?? []) {
+    if (event.fournisseur_id) {
+      prevActiveMerchantsSet.add(event.fournisseur_id as string)
+    }
+  }
 
-    admin
-      .from('network_point_events')
-      .select('bonus_points')
-      .eq('network_id', networkId)
-      .gte('created_at', periodStart.toISOString()),
+  const currentPeriodClients = Number(currentClients?.count ?? 0)
+  const prevPeriodClients = Number(prevClients?.count ?? 0)
+  const currentActiveMerchants = activeMerchantsSet.size
+  const prevActiveMerchants = prevActiveMerchantsSet.size
+  const transactionCount = eventsData?.length ?? 0
 
-    admin
-      .from('network_point_events')
-      .select('id', { head: true, count: 'exact' })
-      .eq('network_id', networkId)
-      .gte('created_at', periodStart.toISOString()),
-  ])
+  const clientGrowthPct =
+    prevPeriodClients > 0 ? ((currentPeriodClients - prevPeriodClients) / prevPeriodClients) * 100 : currentPeriodClients > 0 ? 100 : 0
 
-  const newClients = Number(newClientsResult.count ?? 0)
-  const activeMerchants = new Set((activeMerchantsResult.data ?? []).map((r) => r.fournisseur_id)).size
-  const totalBonusDistributed = ((bonusResult.data ?? []) as Array<{ bonus_points: number }>)
-    .reduce((sum, r) => sum + Number(r.bonus_points ?? 0), 0)
-  const txCount = Number(txCountResult.count ?? 0)
-
-  // Previous period stats for growth calculation
-  const [prevNewClientsResult, prevActiveMerchantsResult] = await Promise.all([
-    admin
-      .from('network_clients')
-      .select('id', { head: true, count: 'exact' })
-      .eq('network_id', networkId)
-      .gte('joined_at', previousPeriodStart.toISOString())
-      .lt('joined_at', periodStart.toISOString()),
-
-    admin.from('network_point_events')
-      .select('fournisseur_id')
-      .eq('network_id', networkId)
-      .gte('created_at', previousPeriodStart.toISOString())
-      .lt('created_at', periodStart.toISOString()),
-  ])
-
-  const prevNewClients = Number(prevNewClientsResult.count ?? 0)
-  const prevActiveMerchants = new Set((prevActiveMerchantsResult.data ?? []).map((r) => r.fournisseur_id)).size
-
-  const clientsPct = prevNewClients > 0 ? ((newClients - prevNewClients) / prevNewClients) * 100 : 0
-  const merchantsPct = prevActiveMerchants > 0 ? ((activeMerchants - prevActiveMerchants) / prevActiveMerchants) * 100 : 0
+  const merchantGrowthPct =
+    prevActiveMerchants > 0
+      ? ((currentActiveMerchants - prevActiveMerchants) / prevActiveMerchants) * 100
+      : currentActiveMerchants > 0
+        ? 100
+        : 0
 
   return {
-    network,
+    network: {
+      id: network?.id ?? networkId,
+      slug: network?.slug ?? '',
+      name: network?.name ?? null,
+      member_count: network?.member_count ?? 0,
+      client_count: network?.client_count ?? 0,
+    },
     period_stats: {
-      new_clients: newClients,
-      active_merchants: activeMerchants,
+      new_clients: currentPeriodClients,
+      active_merchants: currentActiveMerchants,
       total_bonus_distributed: totalBonusDistributed,
-      transaction_count: txCount,
+      transaction_count: transactionCount,
     },
     growth: {
-      clients_pct: clientsPct,
-      merchants_pct: merchantsPct,
+      clients_pct: clientGrowthPct,
+      merchants_pct: merchantGrowthPct,
     },
   }
 }
 
-async function getClientGrowthTimeline(admin: ReturnType<typeof createClient>, networkId: string, period: Period): Promise<GrowthPoint[]> {
+async function getClientGrowthTimeline(admin: ReturnType<typeof createClient>, networkId: string, period?: Period): Promise<GrowthPoint[]> {
   const periodDays = periodToDays(period)
-  const periodStart = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000)
+  const periodStart = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
 
-  const { data: dailyData } = await admin
-    .from('institution_network_summary')
-    .select('joined_day, new_clients')
+  const { data: clients } = await admin
+    .from('network_clients')
+    .select('joined_at')
     .eq('network_id', networkId)
-    .gte('joined_day', periodStart.toISOString())
-    .order('joined_day', { ascending: true })
+    .gte('joined_at', periodStart)
+    .order('joined_at', { ascending: true })
 
-  const dailyRows = (dailyData ?? []) as Array<{ joined_day: string; new_clients: number }>
+  const dailyNewClients = new Map<string, number>()
+  for (const client of clients ?? []) {
+    if (!client.joined_at) continue
+    const key = toDateBucket(String(client.joined_at))
+    dailyNewClients.set(key, (dailyNewClients.get(key) ?? 0) + 1)
+  }
 
+  // Build cumulative timeline
+  const sortedDates = Array.from(dailyNewClients.keys()).sort()
   const timeline: GrowthPoint[] = []
   let cumulative = 0
 
-  for (const row of dailyRows) {
-    cumulative += Number(row.new_clients ?? 0)
+  for (const date of sortedDates) {
+    cumulative += dailyNewClients.get(date) ?? 0
     timeline.push({
-      date: new Date(row.joined_day).toISOString().slice(0, 10),
-      new_clients: Number(row.new_clients ?? 0),
+      date,
+      new_clients: dailyNewClients.get(date) ?? 0,
       cumulative,
     })
   }
@@ -248,50 +272,98 @@ async function getClientGrowthTimeline(admin: ReturnType<typeof createClient>, n
   return timeline
 }
 
-async function getMerchantLeaderboard(
-  admin: ReturnType<typeof createClient>,
-  networkId: string,
-  _period: Period,
-): Promise<MerchantLeaderboardEntry[]> {
-  const { data: merchants } = await admin
-    .from('institution_merchant_summary')
-    .select('nom_commerce, city, country, unique_clients, total_bonus_points, transaction_count')
-    .eq('network_id', networkId)
-    .order('unique_clients', { ascending: false })
-    .limit(20)
+async function getMerchantLeaderboard(admin: ReturnType<typeof createClient>, networkId: string, period?: Period): Promise<MerchantLeaderboardEntry[]> {
+  const periodDays = periodToDays(period)
+  const periodStart = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
 
-  return (merchants ?? []) as MerchantLeaderboardEntry[]
+  // Get events in current period
+  const { data: eventsInPeriod } = await admin
+    .from('network_point_events')
+    .select('fournisseur_id, bonus_points, client_id')
+    .eq('network_id', networkId)
+    .gte('created_at', periodStart)
+
+  const merchantEventMap = new Map<string, { unique_clients: Set<string>; bonus: number; count: number }>()
+
+  if (eventsInPeriod) {
+    for (const event of eventsInPeriod) {
+      const merchantId = event.fournisseur_id as string | null
+      if (!merchantId) continue
+
+      if (!merchantEventMap.has(merchantId)) {
+        merchantEventMap.set(merchantId, {
+          unique_clients: new Set<string>(),
+          bonus: 0,
+          count: 0,
+        })
+      }
+
+      const stats = merchantEventMap.get(merchantId)!
+      stats.unique_clients.add(event.client_id as string)
+      stats.bonus += Number(event.bonus_points ?? 0)
+      stats.count += 1
+    }
+  }
+
+  // Get merchant details from summary
+  const { data: merchantsData } = await admin
+    .from('institution_merchant_summary')
+    .select('nom_commerce, city, country')
+    .eq('network_id', networkId)
+
+  const leaderboard: MerchantLeaderboardEntry[] = (merchantsData ?? [])
+    .filter((m) => merchantEventMap.has((m.nom_commerce as string) ?? ''))
+    .map((m) => {
+      const merchantName = m.nom_commerce as string
+      const stats = merchantEventMap.get(merchantName) || { unique_clients: new Set(), bonus: 0, count: 0 }
+      return {
+        nom_commerce: merchantName,
+        city: (m.city as string | null) ?? null,
+        country: (m.country as string | null) ?? null,
+        unique_clients: stats.unique_clients.size,
+        total_bonus_points: stats.bonus,
+        transaction_count: stats.count,
+      }
+    })
+    .sort((a, b) => b.unique_clients - a.unique_clients)
+    .slice(0, 20)
+
+  return leaderboard
 }
 
 async function getGeographicBreakdown(admin: ReturnType<typeof createClient>, networkId: string): Promise<GeographicEntry[]> {
-  // Get merchant distribution by country/city
-  const { data: merchantsByLocation } = await admin
+  const { data: merchantsByGeo } = await admin
     .from('institution_merchant_summary')
     .select('country, city, unique_clients')
     .eq('network_id', networkId)
 
-  const locationMap = new Map<string, { merchant_count: number; client_count: number }>()
+  if (!merchantsByGeo) return []
 
-  for (const row of merchantsByLocation ?? []) {
-    const key = `${row.country ?? 'Unknown'}|${row.city ?? 'Unknown'}`
-    const existing = locationMap.get(key) ?? { merchant_count: 0, client_count: 0 }
-    existing.merchant_count += 1
-    existing.client_count += Number(row.unique_clients ?? 0)
-    locationMap.set(key, existing)
+  const geoMap = new Map<string, { merchant_count: number; client_count: number }>()
+
+  for (const merchant of merchantsByGeo) {
+    const key = `${merchant.country ?? 'Unknown'}|${merchant.city ?? 'Unknown'}`
+
+    if (!geoMap.has(key)) {
+      geoMap.set(key, { merchant_count: 0, client_count: 0 })
+    }
+
+    const stats = geoMap.get(key)!
+    stats.merchant_count += 1
+    stats.client_count += Number(merchant.unique_clients ?? 0)
   }
 
-  const geographic: GeographicEntry[] = []
-  for (const [key, stats] of locationMap.entries()) {
+  const breakdown: GeographicEntry[] = Array.from(geoMap.entries()).map(([key, stats]) => {
     const [country, city] = key.split('|')
-    geographic.push({
-      country: country ?? 'Unknown',
+    return {
+      country,
       city: city === 'Unknown' ? null : city,
       merchant_count: stats.merchant_count,
       client_count: stats.client_count,
-    })
-  }
+    }
+  })
 
-  return geographic.sort((a, b) => b.client_count - a.client_count)
+  return breakdown.sort((a, b) => b.client_count - a.client_count)
 }
 
 Deno.serve(async (req) => {
@@ -303,7 +375,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Method not allowed' }, 405)
   }
 
-  const context = await getContext(req)
+  const context = await getInstitutionContext(req)
   if (context.error || !context.admin || !context.networkId) {
     return context.error ?? json({ error: 'Unauthorized' }, 401)
   }
@@ -322,32 +394,30 @@ Deno.serve(async (req) => {
     return json({ error: 'Missing action' }, 400)
   }
 
-  const period = (body.period ?? '30d') as Period
-
   try {
     if (action === 'getOverview') {
-      const data = await getOverview(admin, networkId, period)
-      return json(data)
+      const overview = await getOverview(admin, networkId, body.period)
+      return json({ overview })
     }
 
     if (action === 'getClientGrowthTimeline') {
-      const data = await getClientGrowthTimeline(admin, networkId, period)
-      return json(data)
+      const timeline = await getClientGrowthTimeline(admin, networkId, body.period)
+      return json({ timeline })
     }
 
     if (action === 'getMerchantLeaderboard') {
-      const data = await getMerchantLeaderboard(admin, networkId, period)
-      return json(data)
+      const leaderboard = await getMerchantLeaderboard(admin, networkId, body.period)
+      return json({ leaderboard })
     }
 
     if (action === 'getGeographicBreakdown') {
-      const data = await getGeographicBreakdown(admin, networkId)
-      return json(data)
+      const breakdown = await getGeographicBreakdown(admin, networkId)
+      return json({ breakdown })
     }
 
-    return json({ error: `Unsupported action: ${action}` }, 400)
+    return json({ error: `Unknown action: ${action}` }, 400)
   } catch (err) {
-    console.error(`Error in action ${action}:`, err)
-    return json({ error: err instanceof Error ? err.message : 'Internal server error' }, 500)
+    console.error('Error processing request:', err)
+    return json({ error: 'Internal server error' }, 500)
   }
 })
