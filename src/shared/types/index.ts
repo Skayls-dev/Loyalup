@@ -1,4 +1,4 @@
-export type Role = 'client' | 'fournisseur' | 'admin' | 'institution'
+export type Role = 'client' | 'fournisseur' | 'admin' | 'super_admin' | 'institution'
 
 export type ConsentType = 'essential' | 'analytics' | 'marketing' | 'third_party'
 

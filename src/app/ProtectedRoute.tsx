@@ -23,6 +23,10 @@ export function ProtectedRoute({ allowedRole, unauthenticatedRedirectTo = '/auth
   }
 
   if (role !== allowedRole) {
+    if (allowedRole === 'admin' && role === 'super_admin') {
+      return <Outlet />
+    }
+
     if (role === 'client') {
       return <Navigate to="/client" replace />
     }
@@ -32,6 +36,10 @@ export function ProtectedRoute({ allowedRole, unauthenticatedRedirectTo = '/auth
     }
 
     if (role === 'admin') {
+      return <Navigate to="/admin" replace />
+    }
+
+    if (role === 'super_admin') {
       return <Navigate to="/admin" replace />
     }
 

@@ -2,14 +2,16 @@ import { Menu, LayoutGrid, Network, LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
+import { useAdminGuard } from '../../hooks/useAdminGuard'
 
 const adminMainMenu: Array<{ to: string; label: string; icon: typeof LayoutGrid }> = [
   { to: '/admin', label: 'Dashboard admin', icon: LayoutGrid },
-  { to: '/admin/network', label: 'Réseaux', icon: Network },
+  { to: '/admin/networks', label: 'Réseaux', icon: Network },
 ]
 
 export function AdminLayout() {
   const { logout, loading, profile } = useAuth()
+  const { isAdmin, isLoading } = useAdminGuard()
   const location = useLocation()
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
@@ -17,6 +19,18 @@ export function AdminLayout() {
 
   const sidebarWidthClass = sidebarCollapsed ? 'w-[72px]' : 'w-[240px]'
   const mainPaddingClass = sidebarCollapsed ? 'pl-[72px]' : 'pl-[240px]'
+
+  if (loading || isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#f3f2f1] text-[#323130]">
+        <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
+      </div>
+    )
+  }
+
+  if (!isAdmin) {
+    return null
+  }
 
   return (
     <div

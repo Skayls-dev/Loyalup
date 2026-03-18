@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { LoginForm } from '../modules/auth/components/LoginForm'
 import { RegisterForm } from '../modules/auth/components/RegisterForm'
@@ -46,11 +46,29 @@ const AdminDashboard = lazy(() =>
 const AdminNetwork = lazy(() =>
   import('../views/admin/AdminNetwork').then((module) => ({ default: module.AdminNetwork })),
 )
+const NetworksListPage = lazy(() =>
+  import('../pages/admin/NetworksListPage').then((module) => ({ default: module.default })),
+)
+const NetworkCreatePage = lazy(() =>
+  import('../pages/admin/NetworkCreatePage').then((module) => ({ default: module.default })),
+)
+const NetworkConfigPage = lazy(() =>
+  import('../pages/admin/NetworkConfigPage').then((module) => ({ default: module.default })),
+)
 const AdminLayout = lazy(() =>
   import('../views/admin/AdminLayout').then((module) => ({ default: module.AdminLayout })),
 )
 const InstitutionDashboard = lazy(() =>
   import('../modules/institutions/components/InstitutionDashboard').then((module) => ({ default: module.InstitutionDashboard })),
+)
+const LandingPage = lazy(() =>
+  import('../pages/LandingPage').then((module) => ({ default: module.default })),
+)
+const UnauthorizedPage = lazy(() =>
+  import('../pages/UnauthorizedPage').then((module) => ({ default: module.default })),
+)
+const OnboardingRouter = lazy(() =>
+  import('./OnboardingRouter').then((module) => ({ default: module.default })),
 )
 
 function RouteFallback() {
@@ -62,12 +80,24 @@ function RouteFallback() {
 }
 
 function AuthRoute() {
+  const location = useLocation()
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
   const [selectedRole, setSelectedRole] = useState<UserRole>('client')
   const [socialRole, setSocialRole] = useState<SocialRole>('client')
   const [socialName, setSocialName] = useState('')
   const [socialError, setSocialError] = useState<string | null>(null)
   const { user, role, loading, completeSocialProfile } = useAuth()
+
+  useEffect(() => {
+    if (location.pathname === '/signup') {
+      setAuthMode('signup')
+      return
+    }
+
+    if (location.pathname === '/login' || location.pathname === '/auth') {
+      setAuthMode('login')
+    }
+  }, [location.pathname])
 
   const emailLocalPart = useMemo(() => {
     if (!user?.email) {
@@ -99,7 +129,7 @@ function AuthRoute() {
     return <Navigate to="/provider" replace />
   }
 
-  if (user && role === 'admin') {
+  if (user && (role === 'admin' || role === 'super_admin')) {
     return <Navigate to="/admin/auth" replace />
   }
 
@@ -286,7 +316,7 @@ function AdminAuthRoute() {
     )
   }
 
-  if (user && role === 'admin') {
+  if (user && (role === 'admin' || role === 'super_admin')) {
     return <Navigate to="/admin" replace />
   }
 
@@ -320,12 +350,17 @@ export function Router() {
   return (
     <Suspense fallback={<RouteFallback />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/auth" replace />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthRoute />} />
+        <Route path="/login" element={<AuthRoute />} />
+        <Route path="/signup" element={<AuthRoute />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/auth/callback" element={<AuthCallbackRoute />} />
         <Route path="/admin/auth" element={<AdminAuthRoute />} />
+        <Route path="/onboarding/*" element={<OnboardingRouter />} />
 
         <Route element={<ProtectedRoute allowedRole="client" />}>
+          <Route path="/dashboard" element={<Navigate to="/client" replace />} />
           <Route element={<ClientLayout />}>
             <Route path="/client" element={<ClientHome />} />
             <Route path="/client/scan" element={<ClientScan />} />
@@ -350,6 +385,9 @@ export function Router() {
           <Route element={<AdminLayout />}>
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/network" element={<AdminNetwork />} />
+            <Route path="/admin/networks" element={<NetworksListPage />} />
+            <Route path="/admin/networks/new" element={<NetworkCreatePage />} />
+            <Route path="/admin/networks/:id" element={<NetworkConfigPage />} />
           </Route>
         </Route>
 

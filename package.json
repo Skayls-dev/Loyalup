@@ -33,14 +33,18 @@
     "supabase:mode:check": "node scripts/supabase-config-mode.mjs check-prod"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@tanstack/react-query": "^5.90.21",
+    "date-fns": "^4.1.0",
     "html5-qrcode": "^2.3.8",
     "lucide-react": "^0.511.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-hook-form": "^7.71.2",
     "react-router-dom": "^6.30.1",
     "recharts": "^2.15.4",
+    "zod": "^4.3.6",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
@@ -62,6 +66,7 @@
     "jsdom": "^28.1.0",
     "msw": "^2.12.10",
     "postcss": "^8.5.6",
+    "supabase": "^2.81.2",
     "tailwindcss": "^3.4.19",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",

@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import type { SocialProvider } from '../services/authService'
 
-type LoginRole = 'client' | 'fournisseur' | 'admin'
+type LoginRole = 'client' | 'fournisseur' | 'admin' | 'super_admin'
 
 type LoginFormProps = {
   allowedRoles?: LoginRole[]
@@ -42,7 +42,7 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
       if (authPayload.role && authPayload.role !== selectedRole) {
         await logout()
 
-        if (authPayload.role === 'admin' && !allowedRoles.includes('admin')) {
+        if ((authPayload.role === 'admin' || authPayload.role === 'super_admin') && !allowedRoles.includes('admin') && !allowedRoles.includes('super_admin')) {
           setLocalError('Ce compte admin doit se connecter via /admin/auth.')
           return
         }

@@ -1,0 +1,36 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500&family=Syne:wght@700;800&display=swap');
+
+:root {
+  --color-primary: #5b4fe8;
+  --color-primary-light: #ebe9ff;
+
+  --color-accent-orange: #ff6b35;
+  --color-accent-green: #00c9a7;
+  --color-accent-yellow: #ffd23f;
+
+  --color-dark: #0a0a0f;
+  --color-gray-50: #f8f8fa;
+  --color-gray-100: #e9e9ee;
+  --color-gray-200: #d1d1db;
+  --color-gray-400: #9a9aac;
+  --color-gray-600: #5a5a6a;
+  --color-gray-800: #1b1b26;
+
+  --font-display: 'Syne', 'Segoe UI', sans-serif;
+  --font-body: 'DM Sans', 'Segoe UI', sans-serif;
+
+  --font-weight-display-700: 700;
+  --font-weight-display-800: 800;
+  --font-weight-body-300: 300;
+  --font-weight-body-400: 400;
+  --font-weight-body-500: 500;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --shadow-card: 0 20px 60px rgba(10, 10, 20, 0.08);
+  --shadow-floating: 0 8px 28px rgba(10, 10, 20, 0.1);
+  --shadow-primary-glow: 0 4px 24px rgba(91, 79, 232, 0.36);
+}

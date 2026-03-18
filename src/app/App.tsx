@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter } from 'react-router-dom'
-import { Router } from './Router'
+import { Router } from '../router'
 import { useAuth } from '../modules/auth/hooks/useAuth'
 import { useAuthStore } from '../modules/auth/store/authStore'
+import { OnboardingProvider } from '../contexts/OnboardingContext'
 import { ConsentModal } from '../shared/components/ConsentModal'
 import { OfflineBanner } from '../shared/components/OfflineBanner'
 import { InstallBanner } from '../shared/components/InstallBanner'
@@ -30,7 +31,9 @@ export function App() {
     <>
       <OfflineBanner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <Router />
+        <OnboardingProvider>
+          <Router />
+        </OnboardingProvider>
       </BrowserRouter>
       {user ? <ConsentModal locale="fr" /> : null}
       <InstallBanner />
