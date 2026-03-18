@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { LoginForm } from '../modules/auth/components/LoginForm'
 import { RegisterForm } from '../modules/auth/components/RegisterForm'
@@ -71,6 +71,26 @@ const OnboardingRouter = lazy(() =>
   import('./OnboardingRouter').then((module) => ({ default: module.default })),
 )
 
+// ── New design layouts & pages ────────────────────────────────────────────────
+const DashboardLayout = lazy(() =>
+  import('../layouts/DashboardLayout').then((module) => ({ default: module.DashboardLayout })),
+)
+const MerchantLayout = lazy(() =>
+  import('../layouts/MerchantLayout').then((module) => ({ default: module.MerchantLayout })),
+)
+const DashboardHome = lazy(() =>
+  import('../pages/dashboard/DashboardHome').then((module) => ({ default: module.DashboardHome })),
+)
+const GamificationPage = lazy(() =>
+  import('../pages/dashboard/GamificationPage').then((module) => ({ default: module.default })),
+)
+const DashboardNotificationsPage = lazy(() =>
+  import('../pages/dashboard/NotificationsPage').then((module) => ({ default: module.default })),
+)
+const MerchantHome = lazy(() =>
+  import('../pages/merchant/MerchantHome').then((module) => ({ default: module.MerchantHome })),
+)
+
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-100">
@@ -122,11 +142,11 @@ function AuthRoute() {
   }
 
   if (user && role === 'client') {
-    return <Navigate to="/client" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   if (user && role === 'fournisseur') {
-    return <Navigate to="/provider" replace />
+    return <Navigate to="/merchant" replace />
   }
 
   if (user && (role === 'admin' || role === 'super_admin')) {
@@ -321,11 +341,11 @@ function AdminAuthRoute() {
   }
 
   if (user && role === 'client') {
-    return <Navigate to="/client" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   if (user && role === 'fournisseur') {
-    return <Navigate to="/provider" replace />
+    return <Navigate to="/merchant" replace />
   }
 
   if (user && role === 'institution') {
@@ -344,6 +364,41 @@ function AdminAuthRoute() {
   )
 }
 
+// ── Outlet wrappers for children-based layouts ─────────────────────────────
+function DashboardLayoutRoute() {
+  return (
+    <DashboardLayout activePage="">
+      <Outlet />
+    </DashboardLayout>
+  )
+}
+
+function MerchantLayoutRoute() {
+  const { user, profile } = useAuth()
+  const merchantId = user?.id ?? ''
+  const storeName =
+    (profile as unknown as Record<string, string> | null)?.['nom_commerce']?.trim() ||
+    (profile as unknown as Record<string, string> | null)?.['nom']?.trim() ||
+    undefined
+
+  return (
+    <MerchantLayout activePage="">
+      <Outlet context={{ merchantId, storeName }} />
+    </MerchantLayout>
+  )
+}
+
+function MerchantHomeWrapper() {
+  const { user, profile } = useAuth()
+  const merchantId = user?.id ?? ''
+  const storeName =
+    (profile as unknown as Record<string, string> | null)?.['nom_commerce']?.trim() ||
+    (profile as unknown as Record<string, string> | null)?.['nom']?.trim() ||
+    undefined
+
+  return <MerchantHome merchantId={merchantId} storeName={storeName} />
+}
+
 export function Router() {
   useEventTracker()
 
@@ -360,7 +415,13 @@ export function Router() {
         <Route path="/onboarding/*" element={<OnboardingRouter />} />
 
         <Route element={<ProtectedRoute allowedRole="client" />}>
-          <Route path="/dashboard" element={<Navigate to="/client" replace />} />
+          {/* ── New design: /dashboard/* ── */}
+          <Route element={<DashboardLayoutRoute />}>
+            <Route path="/dashboard" element={<DashboardHome />} />
+            <Route path="/dashboard/gamification" element={<GamificationPage />} />
+            <Route path="/dashboard/notifications" element={<DashboardNotificationsPage />} />
+          </Route>
+          {/* Legacy /client/* kept for backward compat */}
           <Route element={<ClientLayout />}>
             <Route path="/client" element={<ClientHome />} />
             <Route path="/client/scan" element={<ClientScan />} />
@@ -372,6 +433,11 @@ export function Router() {
         </Route>
 
         <Route element={<ProtectedRoute allowedRole="fournisseur" />}>
+          {/* ── New design: /merchant/* ── */}
+          <Route element={<MerchantLayoutRoute />}>
+            <Route path="/merchant" element={<MerchantHomeWrapper />} />
+          </Route>
+          {/* Legacy /provider/* kept for backward compat */}
           <Route element={<ProviderLayout />}>
             <Route path="/provider" element={<ProviderDashboard />} />
             <Route path="/provider/validate" element={<ProviderValidate />} />
