@@ -1,16 +1,18 @@
 import type { ReactNode } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
   ArrowLeftRight,
   Coins,
   Gift,
   History,
   LayoutDashboard,
+  LogOut,
   Network,
   QrCode,
   Settings,
   Swords,
 } from 'lucide-react'
+import { useAuth } from '../modules/auth/hooks/useAuth'
 
 interface DashboardLayoutProps {
   children: ReactNode
@@ -74,14 +76,53 @@ function NavLinkItem({ item, isActive }: { item: NavItem; isActive: boolean }) {
   )
 }
 
+function MobileBottomNav({ currentActivePage }: { currentActivePage: string }) {
+  const mobileNav: NavItem[] = [
+    { key: 'overview', label: 'Accueil', to: '/dashboard', icon: LayoutDashboard },
+    { key: 'points', label: 'Points', to: '/points', icon: Coins },
+    { key: 'scanner', label: 'Scanner', to: '/scan', icon: QrCode },
+    { key: 'networks', label: 'Reseaux', to: '/networks', icon: Network },
+    { key: 'settings', label: 'Profil', to: '/settings', icon: Settings },
+  ]
+
+  return (
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur lg:hidden" aria-label="Navigation mobile">
+      <div className="grid grid-cols-5 px-1 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+        {mobileNav.map((item) => {
+          const Icon = item.icon
+          const isActive = currentActivePage === item.key
+
+          return (
+            <Link
+              key={item.key}
+              to={item.to}
+              className={`flex min-h-[56px] flex-col items-center justify-center gap-1 rounded-md text-[11px] font-semibold transition ${
+                isActive ? 'text-primary' : 'text-gray-500 hover:text-gray-900'
+              }`}
+              aria-current={isActive ? 'page' : undefined}
+            >
+              <Icon className={`h-4.5 w-4.5 ${isActive ? 'text-primary' : 'text-gray-500'}`} />
+              <span>{item.label}</span>
+            </Link>
+          )
+        })}
+      </div>
+    </nav>
+  )
+}
+
 export function DashboardLayout({ children, activePage }: DashboardLayoutProps) {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const { profile, user, logout, loading } = useAuth()
   const routeActive = detectActiveFromPath(pathname)
   const currentActivePage = activePage?.trim() ? activePage : routeActive
+  const displayName = [profile?.prenom?.trim(), profile?.nom?.trim()].filter(Boolean).join(' ').trim() || profile?.nom?.trim() || user?.email?.split('@')[0] || 'Membre LoyalUp'
+  const membership = profile?.role === 'client' ? 'Compte client' : 'Compte actif'
 
   return (
     <div className="h-screen overflow-hidden bg-gray-50">
-      <aside className="fixed inset-y-0 left-0 z-30 flex w-20 flex-col border-r border-gray-200 bg-white lg:w-[220px]">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-20 flex-col border-r border-gray-200 bg-white lg:flex lg:w-[220px]">
         <div className="flex h-16 items-center justify-center border-b border-gray-200 px-3 lg:justify-start lg:px-5">
           <Link to="/dashboard" className="inline-flex items-center gap-2">
             <span className="hidden font-display text-2xl font-extrabold text-dark lg:inline">LoyalUp</span>
@@ -119,19 +160,41 @@ export function DashboardLayout({ children, activePage }: DashboardLayoutProps) 
         </nav>
 
         <div className="border-t border-gray-200 px-2 py-3 lg:px-3 lg:py-4">
-          <div className="flex items-center justify-center gap-3 rounded-lg bg-gray-50 p-2 lg:justify-start lg:p-3">
+          <div className="rounded-lg bg-gray-50 p-2 lg:p-3">
+            <div className="flex items-center justify-center gap-3 lg:justify-start">
             <div className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-[#8B7FF5] font-body text-sm font-semibold text-white">
-              AM
+              {displayName.charAt(0).toUpperCase() || 'L'}
             </div>
             <div className="hidden min-w-0 lg:block">
-              <p className="truncate font-body text-sm font-medium text-gray-900">Amina M.</p>
-              <p className="text-xs font-medium text-accent-green">Gold Member</p>
+              <p className="truncate font-body text-sm font-medium text-gray-900">{displayName}</p>
+              <p className="truncate text-xs font-medium text-accent-green">{membership}</p>
+            </div>
+            </div>
+
+            <div className="mt-3 hidden gap-2 lg:flex">
+              <button
+                type="button"
+                onClick={() => navigate('/settings')}
+                className="inline-flex flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              >
+                Profil
+              </button>
+              <button
+                type="button"
+                onClick={() => void logout()}
+                disabled={loading}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+                aria-label="Se deconnecter"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
             </div>
           </div>
         </div>
       </aside>
 
-      <main className="ml-20 h-screen overflow-y-auto p-8 lg:ml-[220px]">{children}</main>
+      <main className="h-screen overflow-y-auto p-4 pb-28 lg:ml-[220px] lg:p-8 lg:pb-8">{children}</main>
+      <MobileBottomNav currentActivePage={currentActivePage} />
     </div>
   )
 }
