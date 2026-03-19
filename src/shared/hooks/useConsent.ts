@@ -21,13 +21,28 @@ export function useConsent(): UseConsentResult {
   const setAuthConsents = useAuthStore((state) => state.setUserConsents)
   const [loading, setLoading] = useState(false)
 
+  const resolveCurrentAuthUserId = useCallback(async (): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.auth.getUser()
+      if (error) {
+        return user?.id ?? null
+      }
+
+      return data.user?.id ?? user?.id ?? null
+    } catch {
+      return user?.id ?? null
+    }
+  }, [user?.id])
+
   const fetchConsents = useCallback(async () => {
     if (consentResourceUnavailable) {
       setAuthConsents([])
       return
     }
 
-    if (!user?.id) {
+    const currentUserId = await resolveCurrentAuthUserId()
+
+    if (!currentUserId) {
       setAuthConsents([])
       return
     }
@@ -38,7 +53,7 @@ export function useConsent(): UseConsentResult {
       const { data, error } = await supabase
         .from('user_consents')
         .select('id, user_id, consent_type, granted, policy_version, granted_at, revoked_at')
-        .eq('user_id', user.id)
+        .eq('user_id', currentUserId)
         .order('granted_at', { ascending: false })
 
       if (error) {
@@ -65,7 +80,7 @@ export function useConsent(): UseConsentResult {
     } finally {
       setLoading(false)
     }
-  }, [setAuthConsents, user?.id])
+  }, [resolveCurrentAuthUserId, setAuthConsents])
 
   useEffect(() => {
     fetchConsents().catch(() => {
@@ -95,28 +110,43 @@ export function useConsent(): UseConsentResult {
         return
       }
 
-      if (!user?.id) {
+      const currentUserId = await resolveCurrentAuthUserId()
+
+      if (!currentUserId) {
         return
       }
 
       const nowIso = new Date().toISOString()
 
-      const { data, error } = await supabase
-        .from('user_consents')
-        .upsert(
-          {
-            user_id: user.id,
-            consent_type: type,
-            granted,
-            policy_version: CURRENT_POLICY_VERSION,
-            granted_at: nowIso,
-            revoked_at: granted ? null : nowIso,
-            user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
-          },
-          { onConflict: 'user_id,consent_type,policy_version' },
-        )
-        .select('id, user_id, consent_type, granted, policy_version, granted_at, revoked_at')
-        .single()
+      const runUpsert = async (userId: string) =>
+        supabase
+          .from('user_consents')
+          .upsert(
+            {
+              user_id: userId,
+              consent_type: type,
+              granted,
+              policy_version: CURRENT_POLICY_VERSION,
+              granted_at: nowIso,
+              revoked_at: granted ? null : nowIso,
+              user_agent: typeof navigator !== 'undefined' ? navigator.userAgent : null,
+            },
+            { onConflict: 'user_id,consent_type,policy_version' },
+          )
+          .select('id, user_id, consent_type, granted, policy_version, granted_at, revoked_at')
+          .single()
+
+      let { data, error } = await runUpsert(currentUserId)
+
+      if (error && isRlsPolicyError(error)) {
+        await supabase.auth.getSession()
+        const refreshedUserId = await resolveCurrentAuthUserId()
+        if (refreshedUserId) {
+          const retry = await runUpsert(refreshedUserId)
+          data = retry.data
+          error = retry.error
+        }
+      }
 
       if (error) {
         if (isMissingConsentResourceError(error)) {
@@ -131,7 +161,7 @@ export function useConsent(): UseConsentResult {
       next.push(data as ConsentRecord)
       setAuthConsents(next)
     },
-    [authConsents, setAuthConsents, user?.id],
+    [authConsents, resolveCurrentAuthUserId, setAuthConsents],
   )
 
   const lastUpdatedAt = useMemo(() => {
@@ -166,4 +196,18 @@ function isMissingConsentResourceError(error: unknown): boolean {
 
   const message = `${maybeError.message ?? ''} ${maybeError.details ?? ''}`.toLowerCase()
   return message.includes('user_consents') && (message.includes('not found') || message.includes('does not exist'))
+}
+
+function isRlsPolicyError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false
+  }
+
+  const maybeError = error as { code?: string; message?: string; details?: string }
+  if (maybeError.code === '42501') {
+    return true
+  }
+
+  const message = `${maybeError.message ?? ''} ${maybeError.details ?? ''}`.toLowerCase()
+  return message.includes('row-level security') || message.includes('violates row-level security')
 }
