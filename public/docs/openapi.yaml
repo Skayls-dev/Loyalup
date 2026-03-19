@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: LoyalUp Public API
-  version: 1.3.0
-  description: Provider API plus Partner Transfer, Partner Account Claim, Partner Activate, and Partner Self-Service endpoints.
+  version: 1.4.0
+  description: Provider API plus Partner Identity Reconciliation, Partner Transfer, Partner Account Claim, Partner Activate, and Partner Self-Service endpoints.
 servers:
   - url: https://yyftqivizzgvveeczbpv.supabase.co/functions/v1
 security:
@@ -88,6 +88,85 @@ components:
           type: integer
         resulting_balance:
           type: integer
+    PartnerIdentityResolveRequest:
+      type: object
+      required: [external_user_id]
+      properties:
+        external_user_id:
+          type: string
+        email:
+          type: string
+          format: email
+        display_name:
+          type: string
+        create_user_if_missing:
+          type: boolean
+          default: false
+          description: If true, allows shadow creation/adoption when the user is not already linked. In sandbox this behavior is enabled by default.
+        source:
+          type: string
+          enum: [partner-api, admin-console, support-tool, user-self-serve]
+        metadata:
+          type: object
+    PartnerIdentityResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        case_id:
+          type: string
+          format: uuid
+        partner_id:
+          type: string
+          format: uuid
+        external_user_id:
+          type: string
+        status:
+          type: string
+          enum: [pending_verification, resolved, conflict, merged, rejected]
+        decision:
+          type: string
+          enum: [create_shadow, adopt_existing, merge_required, blocked_conflict]
+        next_action:
+          type: string
+          enum: [send_verification, complete_adoption, manual_review, merge_accounts, none]
+        loyalup_user_id:
+          type: [string, 'null']
+          format: uuid
+        requires_verification:
+          type: boolean
+        conflict_reason:
+          type: [string, 'null']
+        message:
+          type: [string, 'null']
+    PartnerIdentityResolveResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: true
+        identity:
+          $ref: '#/components/schemas/PartnerIdentityResult'
+    PartnerTransferIdentityUnresolvedError:
+      type: object
+      properties:
+        success:
+          type: boolean
+          const: false
+        status:
+          type: string
+          const: identity_unresolved
+        error:
+          type: string
+        identity:
+          $ref: '#/components/schemas/PartnerIdentityResult'
+        transaction_ref:
+          type: string
+        partner_code:
+          type: string
+        external_user_id:
+          type: string
     PartnerApiError:
       type: object
       properties:
@@ -206,10 +285,108 @@ components:
               type: string
               format: uri
 paths:
+  /partner-identity-resolve:
+    post:
+      summary: Resolve partner identity before account claim/transfer
+      description: Computes reconciliation status for a partner user (`external_user_id`) and returns the identity state machine payload required by partner UX.
+      security:
+        - PartnerApiKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerIdentityResolveRequest'
+            examples:
+              resolve_by_email:
+                value:
+                  external_user_id: partner-user-123
+                  email: client@example.com
+                  display_name: Jane Doe
+                  create_user_if_missing: false
+                  source: partner-api
+      responses:
+        '200':
+          description: Identity resolution payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerIdentityResolveResponse'
+              examples:
+                resolved:
+                  value:
+                    success: true
+                    identity:
+                      success: true
+                      case_id: 985ba4cb-a8f6-4f4e-a90b-53e95317343b
+                      partner_id: 2d58cf49-3017-434a-a2cf-ec8ff8ebec4f
+                      external_user_id: partner-user-123
+                      status: resolved
+                      decision: adopt_existing
+                      next_action: none
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      requires_verification: false
+                      conflict_reason: null
+                      message: Existing account adopted
+                pending_verification:
+                  value:
+                    success: true
+                    identity:
+                      success: true
+                      case_id: 27396e90-b5fa-4c01-bcf5-4b3d01ff56f5
+                      partner_id: 2d58cf49-3017-434a-a2cf-ec8ff8ebec4f
+                      external_user_id: partner-user-123
+                      status: pending_verification
+                      decision: adopt_existing
+                      next_action: complete_adoption
+                      loyalup_user_id: null
+                      requires_verification: true
+                      conflict_reason: null
+                      message: Partner user is not linked yet. Adoption flow is required.
+                conflict:
+                  value:
+                    success: true
+                    identity:
+                      success: true
+                      case_id: 7f4bcf8f-84e8-4818-b4e3-e5f15371f43d
+                      partner_id: 2d58cf49-3017-434a-a2cf-ec8ff8ebec4f
+                      external_user_id: partner-user-123
+                      status: conflict
+                      decision: blocked_conflict
+                      next_action: manual_review
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      requires_verification: false
+                      conflict_reason: loyalup_user_id already linked to external_user_id=legacy-user-45
+                      message: Identity conflict detected. Manual review is required.
+        '400':
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '401':
+          description: Invalid or missing partner key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '403':
+          description: Partner inactive or production access not enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+        '500':
+          description: Internal error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PartnerApiError'
+
   /partner-transfers:
     post:
       summary: Credit/debit points to a LoyalUp linked user using partner credentials
-      description: Requires partner-provider configuration and a linked LoyalUp user. In sandbox, missing users are auto-created/linked by default; in production, set `create_user_if_missing=true` to allow auto-create.
+      description: Requires partner-provider configuration and a resolved LoyalUp identity. In sandbox, missing users are auto-created/linked by default; in production, set `create_user_if_missing=true` to allow auto-create.
       security:
         - PartnerApiKey: []
       parameters:
@@ -296,17 +473,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/PartnerApiError'
         '404':
-          description: Partner user not linked and auto-link disabled
+          description: Identity unresolved (typically pending verification) or user not linked with auto-link disabled
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PartnerApiError'
+                oneOf:
+                  - $ref: '#/components/schemas/PartnerTransferIdentityUnresolvedError'
+                  - $ref: '#/components/schemas/PartnerApiError'
+              examples:
+                identity_unresolved_pending:
+                  value:
+                    success: false
+                    status: identity_unresolved
+                    error: Partner identity is not resolved
+                    identity:
+                      success: true
+                      case_id: 27396e90-b5fa-4c01-bcf5-4b3d01ff56f5
+                      partner_id: 2d58cf49-3017-434a-a2cf-ec8ff8ebec4f
+                      external_user_id: partner-user-123
+                      status: pending_verification
+                      decision: adopt_existing
+                      next_action: complete_adoption
+                      loyalup_user_id: null
+                      requires_verification: true
+                      conflict_reason: null
+                      message: Partner user is not linked yet. Adoption flow is required.
+                    transaction_ref: order-2026-03-04-0002
+                    partner_code: PROVIDER_3
+                    external_user_id: partner-user-123
         '409':
-          description: Transfer rejected (e.g. insufficient_balance or partner/provider setup issue)
+          description: Transfer rejected (e.g. insufficient_balance, partner/provider setup issue, or identity conflict)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PartnerApiError'
+                oneOf:
+                  - $ref: '#/components/schemas/PartnerTransferIdentityUnresolvedError'
+                  - $ref: '#/components/schemas/PartnerApiError'
+              examples:
+                identity_unresolved_conflict:
+                  value:
+                    success: false
+                    status: identity_unresolved
+                    error: Identity conflict detected. Manual review is required.
+                    identity:
+                      success: true
+                      case_id: 7f4bcf8f-84e8-4818-b4e3-e5f15371f43d
+                      partner_id: 2d58cf49-3017-434a-a2cf-ec8ff8ebec4f
+                      external_user_id: partner-user-123
+                      status: conflict
+                      decision: blocked_conflict
+                      next_action: manual_review
+                      loyalup_user_id: 6f6c3551-2ad4-4b9f-b9d3-5a7876450328
+                      requires_verification: false
+                      conflict_reason: loyalup_user_id already linked to external_user_id=legacy-user-45
+                      message: Identity conflict detected. Manual review is required.
+                    transaction_ref: order-2026-03-04-0003
+                    partner_code: PROVIDER_3
+                    external_user_id: partner-user-123
+                rejected_balance:
+                  value:
+                    success: false
+                    status: rejected
+                    error: insufficient_balance
+                    transaction_ref: order-2026-03-04-0004
+                    partner_code: PROVIDER_3
 
   /partner-account-claim:
     post:
