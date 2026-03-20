@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
 import { useServices } from '../hooks/useServices'
@@ -40,6 +40,13 @@ export function ValidationPanel({
     cancel,
     reset,
   } = useValidation()
+
+  // Auto-select first non-custom service when services load
+  useEffect(() => {
+    if (selectedService || servicesLoading || services.length === 0) return
+    const first = services.find((s) => s.nom !== 'Personnalisé') ?? services[0]
+    if (first) selectService(first)
+  }, [services, servicesLoading, selectedService, selectService])
 
   const [successData, setSuccessData] = useState<{
     serviceName: string

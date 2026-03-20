@@ -23,6 +23,8 @@ interface QRViewportProps {
   disabled?: boolean
 }
 
+const PENDING_TIMEOUT_S = 120
+
 interface ScanSuccessProps {
   state: 'pending' | 'validated' | 'cancelled'
   points?: number
@@ -174,15 +176,61 @@ function QRViewport({ onSuccess, onError, disabled = false }: QRViewportProps) {
   )
 }
 
+function PendingCountdown({ onTimeout }: { onTimeout: () => void }) {
+  const [secondsLeft, setSecondsLeft] = useState(PENDING_TIMEOUT_S)
+
+  useEffect(() => {
+    if (secondsLeft <= 0) {
+      onTimeout()
+      return
+    }
+    const t = window.setTimeout(() => setSecondsLeft((s) => s - 1), 1000)
+    return () => window.clearTimeout(t)
+  }, [secondsLeft, onTimeout])
+
+  const pct = Math.round((secondsLeft / PENDING_TIMEOUT_S) * 100)
+  const isUrgent = secondsLeft <= 30
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <div className="relative h-14 w-14">
+        <svg className="absolute inset-0 -rotate-90" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="20" fill="none" stroke="#e5e7eb" strokeWidth="4" />
+          <circle
+            cx="24" cy="24" r="20" fill="none"
+            stroke={isUrgent ? '#f87171' : '#f59e0b'}
+            strokeWidth="4"
+            strokeDasharray={`${2 * Math.PI * 20}`}
+            strokeDashoffset={`${2 * Math.PI * 20 * (1 - pct / 100)}`}
+            strokeLinecap="round"
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
+          />
+        </svg>
+        <span className={`absolute inset-0 flex items-center justify-center font-body text-sm font-semibold ${isUrgent ? 'text-red-500' : 'text-amber-700'}`}>
+          {secondsLeft}s
+        </span>
+      </div>
+      <p className="font-body text-xs text-amber-600 animate-pulse">En attente du commercant...</p>
+    </div>
+  )
+}
+
 function ScanSuccess({ state, points, balance, onReset }: ScanSuccessProps) {
   if (state === 'pending') {
     return (
-      <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
         <p className="font-display text-lg font-extrabold text-amber-900">QR valide !</p>
         <p className="font-body text-sm text-amber-800">
           Transaction en attente de validation par le commercant.
         </p>
-        <p className="font-body text-xs text-amber-700 animate-pulse">En attente...</p>
+        <PendingCountdown onTimeout={onReset} />
+        <button
+          type="button"
+          onClick={onReset}
+          className="w-full h-9 rounded-md border border-amber-300 bg-white px-3 font-body text-xs font-semibold text-amber-800 transition hover:bg-amber-100"
+        >
+          Annuler
+        </button>
       </div>
     )
   }
@@ -405,7 +453,7 @@ export default function QRScannerPage() {
       getPendingTransactionStatus(pendingTxId)
         .then((status) => { if (status) applyStatus(status) })
         .catch(() => null)
-    }, 3000)
+    }, 1000)
 
     return () => {
       cancelled = true
