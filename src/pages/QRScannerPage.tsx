@@ -1,21 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import { useAuth } from '../modules/auth/hooks/useAuth'
-import { validateToken } from '../modules/qr/services/qrService'
-import { creditPoints, type CreditPointsResponse } from '../modules/transactions/services/transactionService'
+import {
+  validateToken,
+  subscribeToTransactionStatus,
+  unsubscribeTransactionStatus,
+  getPendingTransactionStatus,
+} from '../modules/qr/services/qrService'
 import { supabase } from '../shared/lib/supabaseClient'
 
 export interface ScanResult {
   token: string
   pending_transaction_id: string
   fournisseur_id: string
-  montant: number
-  points_credited?: number
-  new_balance?: number
-  transaction_id?: string
 }
 
-type ScannerState = 'scanning' | 'success' | 'error'
+type ScannerState = 'scanning' | 'pending' | 'validated' | 'cancelled' | 'error'
 
 interface QRViewportProps {
   onSuccess: (result: ScanResult) => void
@@ -24,7 +24,9 @@ interface QRViewportProps {
 }
 
 interface ScanSuccessProps {
-  result: ScanResult | null
+  state: 'pending' | 'validated' | 'cancelled'
+  points?: number
+  balance?: number
   onReset: () => void
 }
 
@@ -82,7 +84,6 @@ function QRViewport({ onSuccess, onError, disabled = false }: QRViewportProps) {
           token: normalized,
           pending_transaction_id: validated.transaction_id,
           fournisseur_id: validated.fournisseur_id,
-          montant: 10,
         })
       } catch (caughtError) {
         const message = caughtError instanceof Error ? caughtError.message : 'QR invalide ou expire.'
@@ -173,17 +174,48 @@ function QRViewport({ onSuccess, onError, disabled = false }: QRViewportProps) {
   )
 }
 
-function ScanSuccess({ result, onReset }: ScanSuccessProps) {
+function ScanSuccess({ state, points, balance, onReset }: ScanSuccessProps) {
+  if (state === 'pending') {
+    return (
+      <div className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+        <p className="font-display text-lg font-extrabold text-amber-900">QR valide !</p>
+        <p className="font-body text-sm text-amber-800">
+          Transaction en attente de validation par le commercant.
+        </p>
+        <p className="font-body text-xs text-amber-700 animate-pulse">En attente...</p>
+      </div>
+    )
+  }
+
+  if (state === 'cancelled') {
+    return (
+      <div className="space-y-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+        <p className="font-display text-lg font-extrabold text-rose-900">Transaction annulee</p>
+        <p className="font-body text-sm text-rose-800">Le commercant a refuse la transaction.</p>
+        <button
+          type="button"
+          onClick={onReset}
+          className="h-10 rounded-md border border-rose-300 bg-white px-3 font-body text-sm font-semibold text-rose-800 transition hover:bg-rose-100"
+        >
+          Reessayer
+        </button>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-      <p className="font-display text-lg font-extrabold text-emerald-900">Points credites</p>
-      <p className="font-body text-sm text-emerald-800">
-        +{Number(result?.points_credited ?? 0).toLocaleString('fr-FR')} pts ajoutes a votre solde.
-      </p>
-      <p className="font-body text-xs text-emerald-700">
-        Nouveau solde: {Number(result?.new_balance ?? 0).toLocaleString('fr-FR')} pts
-      </p>
-
+      <p className="font-display text-lg font-extrabold text-emerald-900">Points credites !</p>
+      {typeof points === 'number' ? (
+        <p className="font-body text-sm text-emerald-800">
+          +{points.toLocaleString('fr-FR')} pts ajoutes a votre solde.
+        </p>
+      ) : null}
+      {typeof balance === 'number' ? (
+        <p className="font-body text-xs text-emerald-700">
+          Nouveau solde: {balance.toLocaleString('fr-FR')} pts
+        </p>
+      ) : null}
       <button
         type="button"
         onClick={onReset}
@@ -306,28 +338,14 @@ export default function QRScannerPage() {
   const userId = user?.id ?? ''
 
   const [state, setState] = useState<ScannerState>('scanning')
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null)
+  const [pendingTxId, setPendingTxId] = useState<string | null>(null)
+  const [validatedPoints, setValidatedPoints] = useState<number | undefined>(undefined)
+  const [validatedBalance, setValidatedBalance] = useState<number | undefined>(undefined)
   const [errorReason, setErrorReason] = useState('')
 
-  const handleSuccess = useCallback(async (result: ScanResult) => {
-    try {
-      const credited = (await creditPoints({
-        pending_transaction_id: result.pending_transaction_id,
-        montant: result.montant,
-      })) as CreditPointsResponse
-
-      setScanResult({
-        ...result,
-        points_credited: credited.points_credited,
-        new_balance: credited.new_balance,
-        transaction_id: credited.transaction_id,
-      })
-      setState('success')
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Impossible de crediter les points.'
-      setErrorReason(message)
-      setState('error')
-    }
+  const handleSuccess = useCallback((result: ScanResult) => {
+    setPendingTxId(result.pending_transaction_id)
+    setState('pending')
   }, [])
 
   const handleError = useCallback((reason: string) => {
@@ -336,14 +354,76 @@ export default function QRScannerPage() {
   }, [])
 
   const resetScanner = useCallback(() => {
-    setScanResult(null)
+    unsubscribeTransactionStatus()
+    setPendingTxId(null)
+    setValidatedPoints(undefined)
+    setValidatedBalance(undefined)
     setErrorReason('')
     setState('scanning')
   }, [])
 
+  // When a pending transaction exists, subscribe to status updates and poll
+  useEffect(() => {
+    if (!pendingTxId || state !== 'pending') return
+
+    let cancelled = false
+    let pollingTimer: ReturnType<typeof setInterval> | null = null
+
+    const applyValidated = async () => {
+      if (cancelled) return
+      // Fetch points from transactions table
+      const { data } = await supabase
+        .from('transactions')
+        .select('points_credited, client_points:client_points_record(solde)')
+        .eq('pending_transaction_id', pendingTxId)
+        .maybeSingle()
+      if (!cancelled) {
+        const row = data as { points_credited: number | null; client_points_record?: { solde: number } | null } | null
+        setValidatedPoints(row?.points_credited ?? undefined)
+        setState('validated')
+        if (pollingTimer) clearInterval(pollingTimer)
+        unsubscribeTransactionStatus()
+      }
+    }
+
+    const applyStatus = (status: string) => {
+      if (cancelled) return
+      if (status === 'validated') {
+        void applyValidated()
+      } else if (status === 'cancelled') {
+        setState('cancelled')
+        if (pollingTimer) clearInterval(pollingTimer)
+        unsubscribeTransactionStatus()
+      }
+    }
+
+    subscribeToTransactionStatus(pendingTxId, (payload) => {
+      applyStatus(payload.status)
+    })
+
+    pollingTimer = setInterval(() => {
+      getPendingTransactionStatus(pendingTxId)
+        .then((status) => { if (status) applyStatus(status) })
+        .catch(() => null)
+    }, 3000)
+
+    return () => {
+      cancelled = true
+      if (pollingTimer) clearInterval(pollingTimer)
+      unsubscribeTransactionStatus()
+    }
+  }, [pendingTxId, state])
+
   const stateCard = useMemo(() => {
-    if (state === 'success') {
-      return <ScanSuccess result={scanResult} onReset={resetScanner} />
+    if (state === 'pending' || state === 'validated' || state === 'cancelled') {
+      return (
+        <ScanSuccess
+          state={state}
+          points={validatedPoints}
+          balance={validatedBalance}
+          onReset={resetScanner}
+        />
+      )
     }
 
     if (state === 'error') {
@@ -351,7 +431,7 @@ export default function QRScannerPage() {
     }
 
     return <QRViewport onSuccess={handleSuccess} onError={handleError} />
-  }, [errorReason, handleError, handleSuccess, resetScanner, scanResult, state])
+  }, [errorReason, handleError, handleSuccess, resetScanner, state, validatedBalance, validatedPoints])
 
   return (
     <main className="mx-auto flex w-full max-w-[420px] flex-col gap-6 px-4 py-6">
