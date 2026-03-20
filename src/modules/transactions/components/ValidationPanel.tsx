@@ -44,6 +44,7 @@ export function ValidationPanel({
     reset,
   } = useValidation()
   const [validationMode, setValidationMode] = useState<ValidationMode>('service')
+  const [customServiceName, setCustomServiceName] = useState('')
 
   // Auto-select first non-custom service when services load
   useEffect(() => {
@@ -65,7 +66,8 @@ export function ValidationPanel({
 
   const selectedServiceName = useMemo(() => {
     if (validationMode === 'amount') {
-      return 'Achat libre'
+      const trimmed = customServiceName.trim()
+      return trimmed || 'Achat libre'
     }
 
     if (selectedService) {
@@ -73,7 +75,7 @@ export function ValidationPanel({
     }
 
     return 'Personnalisé'
-  }, [selectedService, validationMode])
+  }, [selectedService, validationMode, customServiceName])
 
   const handleModeChange = (mode: ValidationMode) => {
     setValidationMode(mode)
@@ -189,6 +191,22 @@ export function ValidationPanel({
                   onSelect={selectService}
                 />
               )}
+            </div>
+          ) : null}
+
+          {validationMode === 'amount' ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+              <label htmlFor="custom-service-name" className="mb-2 block text-sm font-medium text-zinc-300">
+                Nom du service
+              </label>
+              <input
+                id="custom-service-name"
+                type="text"
+                value={customServiceName}
+                onChange={(event) => setCustomServiceName(event.target.value)}
+                placeholder="Ex: Achat boutique"
+                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-amber-400"
+              />
             </div>
           ) : null}
 
