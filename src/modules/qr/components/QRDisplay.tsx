@@ -105,8 +105,17 @@ export function QRDisplay() {
               </h1>
             </div>
 
-            <div className="rounded-2xl bg-white p-5 shadow-lg shadow-black/40">
-              {token ? <QRCodeSVG value={token} size={210} includeMargin /> : <div className="h-[210px] w-[210px]" />}
+            <div className="rounded-3xl bg-white p-6 shadow-lg shadow-black/40">
+              {token ? (
+                <QRCodeSVG
+                  value={token}
+                  size={340}
+                  includeMargin
+                  className="h-auto w-[min(82vw,340px)]"
+                />
+              ) : (
+                <div className="h-[min(82vw,340px)] w-[min(82vw,340px)]" />
+              )}
             </div>
 
             <div className="flex flex-col items-center gap-3">
