@@ -173,7 +173,7 @@ export function QRGeneratorCard({ merchantId, networkId = null, className = '' }
             {isExpired ? <p className="font-body text-xs text-rose-600">QR expire. Regenerer pour continuer.</p> : null}
           </div>
 
-          <Button type="button" variant="ghost" size="sm" onClick={handleDownload} className="mt-3 w-full border border-gray-200 text-gray-700">
+          <Button type="button" variant="soft" size="sm" onClick={handleDownload} className="mt-3 w-full hover:bg-[#FFF4EE] hover:border-[#FF6B35]/35 hover:text-[#C84E20]">
             Telecharger PNG
           </Button>
         </div>

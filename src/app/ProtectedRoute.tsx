@@ -28,11 +28,11 @@ export function ProtectedRoute({ allowedRole, unauthenticatedRedirectTo = '/auth
     }
 
     if (role === 'client') {
-      return <Navigate to="/client" replace />
+      return <Navigate to="/dashboard" replace />
     }
 
     if (role === 'fournisseur') {
-      return <Navigate to="/provider" replace />
+      return <Navigate to="/merchant" replace />
     }
 
     if (role === 'admin') {

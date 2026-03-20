@@ -1,3 +1,10 @@
+import { useNavigate } from 'react-router-dom'
+import { MerchantNetworks } from '../../components/merchant/MerchantNetworks'
+import { MerchantOffers } from '../../components/merchant/MerchantOffers'
+import { MerchantQrShowcase } from '../../components/merchant/MerchantQrShowcase'
+import { MerchantRevenueChart } from '../../components/merchant/MerchantRevenueChart'
+import { MerchantTransactions } from '../../components/merchant/MerchantTransactions'
+import { TopCustomers } from '../../components/merchant/TopCustomers'
 import { Button } from '../../components/ui'
 import { useMerchantStats } from '../../hooks/useMerchantStats'
 
@@ -14,6 +21,7 @@ export function MerchantHome({
   city = 'Bruxelles',
   primaryNetwork = 'Africa Network',
 }: MerchantHomeProps) {
+  const navigate = useNavigate()
   const { stats, loading, error } = useMerchantStats(merchantId)
 
   const cards = [
@@ -66,12 +74,18 @@ export function MerchantHome({
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="ghost" size="md" className="border border-gray-200 text-gray-700">
+          <Button
+            variant="ghost"
+            size="md"
+            className="border border-gray-200 text-gray-700"
+            onClick={() => navigate('/merchant/performance')}
+          >
             📥 Exporter
           </Button>
           <Button
             size="md"
             className="border-[#FF6B35] bg-[#FF6B35] text-white shadow-[0_8px_26px_rgba(255,107,53,0.35)] hover:brightness-105"
+            onClick={() => navigate('/merchant/qr')}
           >
             ⊙ Générer QR code
           </Button>
@@ -93,6 +107,20 @@ export function MerchantHome({
           </article>
         ))}
       </div>
+
+      <MerchantQrShowcase />
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <MerchantRevenueChart merchantId={merchantId} className="xl:col-span-2" />
+        <TopCustomers merchantId={merchantId} className="xl:col-span-1" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <MerchantTransactions merchantId={merchantId} limit={6} />
+        <MerchantNetworks merchantId={merchantId} />
+      </div>
+
+      <MerchantOffers merchantId={merchantId} />
 
       {error ? <p className="font-body text-sm text-rose-600">{error}</p> : null}
     </section>

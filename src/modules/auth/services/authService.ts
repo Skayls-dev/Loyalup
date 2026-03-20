@@ -1,4 +1,5 @@
 import type { Session, User } from '@supabase/supabase-js'
+import type { Profile } from '../../../shared/types'
 import { supabase } from '../../../shared/lib/supabaseClient'
 
 export type UserRole = 'client' | 'fournisseur' | 'admin' | 'super_admin' | 'institution'
@@ -9,11 +10,22 @@ const ALLOWED_ROLES: UserRole[] = ['client', 'fournisseur']
 
 type AuthPayload = {
   user: User | null
+  profile: Profile | null
   role: UserRole | null
   session: Session | null
 }
 
 type AuthLikeError = Error & { status?: number; code?: string }
+
+function readUserMetaString(user: User | null, key: string): string | null {
+  const value = user?.user_metadata?.[key]
+  return typeof value === 'string' && value.trim() ? value.trim() : null
+}
+
+function readUserMetaBoolean(user: User | null, key: string): boolean | null {
+  const value = user?.user_metadata?.[key]
+  return typeof value === 'boolean' ? value : null
+}
 
 function resolveRoleFromMetadata(user: User | null): UserRole | null {
   const rawRole = user?.user_metadata?.role ?? user?.app_metadata?.role
@@ -64,6 +76,112 @@ async function resolveUserRole(user: User | null): Promise<UserRole | null> {
   return null
 }
 
+function normalizeProfileRole(rawRole: unknown, fallbackRole: UserRole | null): UserRole | null {
+  if (
+    rawRole === 'client' ||
+    rawRole === 'fournisseur' ||
+    rawRole === 'admin' ||
+    rawRole === 'super_admin' ||
+    rawRole === 'institution'
+  ) {
+    return rawRole
+  }
+
+  return fallbackRole
+}
+
+function buildFallbackProfile(user: User | null, role: UserRole | null): Profile | null {
+  if (!user || !role) {
+    return null
+  }
+
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    role,
+    nom: (user.user_metadata?.nom as string | undefined)?.trim() || '',
+    prenom: (user.user_metadata?.prenom as string | undefined)?.trim() || null,
+    nom_commerce: (user.user_metadata?.nom_commerce as string | undefined)?.trim() || null,
+    ville:
+      (user.user_metadata?.ville as string | undefined)?.trim() ||
+      (user.user_metadata?.city as string | undefined)?.trim() ||
+      null,
+    city:
+      (user.user_metadata?.city as string | undefined)?.trim() ||
+      (user.user_metadata?.ville as string | undefined)?.trim() ||
+      null,
+    telephone: (user.user_metadata?.telephone as string | undefined)?.trim() || null,
+    avatar_id: (user.user_metadata?.avatar_id as string | undefined)?.trim() || null,
+    country: (user.user_metadata?.country as string | undefined)?.trim() || null,
+    language: (user.user_metadata?.language as string | undefined)?.trim() || null,
+    onboarding_completed: null,
+    onboarding_complete: null,
+    created_at: user.created_at ?? new Date().toISOString(),
+  }
+}
+
+async function resolveUserProfile(user: User | null, role: UserRole | null): Promise<Profile | null> {
+  if (!user?.id) {
+    return null
+  }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, email, role, nom, created_at')
+    .eq('id', user.id)
+    .maybeSingle<Record<string, unknown>>()
+
+  if (error || !data) {
+    return buildFallbackProfile(user, role)
+  }
+
+  const resolvedRole = normalizeProfileRole(data.role, role)
+
+  if (!resolvedRole) {
+    return buildFallbackProfile(user, role)
+  }
+
+  return {
+    id: String(data.id ?? user.id),
+    email: String(data.email ?? user.email ?? ''),
+    role: resolvedRole,
+    nom: String(data.nom ?? user.user_metadata?.nom ?? ''),
+    prenom: readUserMetaString(user, 'prenom'),
+    nom_commerce: readUserMetaString(user, 'nom_commerce'),
+    ville: readUserMetaString(user, 'ville') ?? readUserMetaString(user, 'city'),
+    city: readUserMetaString(user, 'city') ?? readUserMetaString(user, 'ville'),
+    telephone: readUserMetaString(user, 'telephone'),
+    avatar_id: readUserMetaString(user, 'avatar_id'),
+    country: readUserMetaString(user, 'country'),
+    language: readUserMetaString(user, 'language'),
+    onboarding_completed: readUserMetaBoolean(user, 'onboarding_completed'),
+    onboarding_complete: readUserMetaBoolean(user, 'onboarding_complete'),
+    created_at: String(data.created_at ?? user.created_at ?? new Date().toISOString()),
+  }
+}
+
+async function ensureProfileRow(user: User | null, role: UserRole | null, nom?: string): Promise<void> {
+  if (!user?.id || !role) {
+    return
+  }
+
+  const normalizedName = nom?.trim() || (user.user_metadata?.nom as string | undefined)?.trim() || ''
+
+  const { error } = await supabase.from('profiles').upsert(
+    {
+      id: user.id,
+      email: user.email ?? '',
+      role,
+      nom: normalizedName,
+    },
+    { onConflict: 'id' },
+  )
+
+  if (error) {
+    throw error
+  }
+}
+
 export async function signIn(email: string, password: string): Promise<AuthPayload> {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -77,9 +195,11 @@ export async function signIn(email: string, password: string): Promise<AuthPaylo
   const user = data?.user ?? null
   const session = data?.session ?? null
   const role = await resolveUserRole(user)
+  const profile = await resolveUserProfile(user, role)
 
   return {
     user,
+    profile,
     role,
     session,
   }
@@ -89,6 +209,7 @@ export async function signUp(
   email: string,
   password: string,
   role: UserRole,
+  nom?: string,
 ): Promise<AuthPayload> {
   if (!ALLOWED_ROLES.includes(role)) {
     throw new Error("Invalid role. Expected 'client' or 'fournisseur'.")
@@ -100,6 +221,7 @@ export async function signUp(
     options: {
       data: {
         role,
+        nom: nom?.trim() || undefined,
       },
     },
   })
@@ -112,9 +234,13 @@ export async function signUp(
   const session = data?.session ?? null
   const resolvedRole = await resolveUserRole(user)
 
+  await ensureProfileRow(user, resolvedRole ?? role, nom)
+  const profile = await resolveUserProfile(user, resolvedRole ?? role)
+
   return {
     user,
-    role: resolvedRole,
+    profile,
+    role: resolvedRole ?? role,
     session,
   }
 }
@@ -140,6 +266,7 @@ export async function getCurrentUser(): Promise<AuthPayload> {
     if (!session) {
       return {
         user: null,
+        profile: null,
         role: null,
         session: null,
       }
@@ -152,9 +279,11 @@ export async function getCurrentUser(): Promise<AuthPayload> {
 
     const user = userData?.user ?? null
     const role = await resolveUserRole(user)
+    const profile = await resolveUserProfile(user, role)
 
     return {
       user,
+      profile,
       role,
       session,
     }
@@ -164,6 +293,7 @@ export async function getCurrentUser(): Promise<AuthPayload> {
 
       return {
         user: null,
+        profile: null,
         role: null,
         session: null,
       }

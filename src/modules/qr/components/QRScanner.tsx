@@ -21,7 +21,7 @@ export function QRScanner() {
     }
 
     const timer = window.setTimeout(() => {
-      navigate('/client', { replace: true })
+      navigate('/dashboard', { replace: true })
     }, 1800)
 
     return () => {

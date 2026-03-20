@@ -203,7 +203,7 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
       ? supabase.from('client_levels').select('client_id, current_level').in('client_id', userIds)
       : Promise.resolve({ data: [], error: null }),
     userIds.length
-      ? supabase.from('user_networks').select('user_id, network_id, networks:network_id(name)').in('user_id', userIds)
+      ? supabase.from('network_clients').select('client_id, network_id, networks:network_id(name)').in('client_id', userIds)
       : Promise.resolve({ data: [], error: null }),
   ])
 
@@ -222,13 +222,13 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
   }
 
   const networkMap = new Map<string, { id: string | null; name: string }>()
-  for (const row of (userNetworksRes.data ?? []) as Array<{ user_id: string; network_id: string | null; networks?: unknown }>) {
-    if (networkMap.has(row.user_id)) continue
+  for (const row of (userNetworksRes.data ?? []) as Array<{ client_id: string; network_id: string | null; networks?: unknown }>) {
+    if (networkMap.has(row.client_id)) continue
     const raw = row.networks
     const first = Array.isArray(raw) ? raw[0] : raw
     const name = first && typeof first === 'object' ? (first as { name?: unknown }).name : null
     const label = typeof name === 'string' ? name : 'Reseau LoyalUp'
-    networkMap.set(row.user_id, { id: row.network_id ?? null, name: label })
+    networkMap.set(row.client_id, { id: row.network_id ?? null, name: label })
   }
 
   return rows.map((row) => {
@@ -250,32 +250,55 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
 }
 
 async function fetchActiveOffers(merchantId: string): Promise<MerchantActiveOffer[]> {
-  const nowIso = new Date().toISOString()
-
   const { data, error } = await supabase
-    .from('merchant_offers')
+    .from('reward_rules')
     .select('*')
-    .eq('merchant_id', merchantId)
+    .eq('fournisseur_id', merchantId)
+    .eq('actif', true)
     .order('created_at', { ascending: false })
 
   if (error) throw new Error(error.message)
 
-  return ((data ?? []) as Array<Record<string, unknown>>)
+  const ruleRows = (data ?? []) as Array<Record<string, unknown>>
+  const ruleIds = ruleRows
+    .map((row) => String(row.id ?? ''))
+    .filter((id) => id.length > 0)
+
+  const startOfMonth = new Date()
+  startOfMonth.setDate(1)
+  startOfMonth.setHours(0, 0, 0, 0)
+
+  const redemptionCounts = new Map<string, number>()
+  if (ruleIds.length > 0) {
+    const redemptionsRes = await supabase
+      .from('client_rewards')
+      .select('reward_rule_id')
+      .in('reward_rule_id', ruleIds)
+      .eq('status', 'used')
+      .gte('used_at', startOfMonth.toISOString())
+
+    if (redemptionsRes.error) throw new Error(redemptionsRes.error.message)
+
+    for (const row of (redemptionsRes.data ?? []) as Array<{ reward_rule_id: string | null }>) {
+      if (!row.reward_rule_id) continue
+      redemptionCounts.set(row.reward_rule_id, (redemptionCounts.get(row.reward_rule_id) ?? 0) + 1)
+    }
+  }
+
+  return ruleRows
     .map((row) => {
-      const statusRaw = String(row.status ?? 'active').toLowerCase()
-      const expiry = typeof row.expiry_date === 'string' ? row.expiry_date : null
-      const isExpiredByDate = Boolean(expiry && expiry < nowIso)
-      const status = statusRaw === 'paused' ? 'paused' : statusRaw === 'expired' || isExpiredByDate ? 'expired' : 'active'
+      const status: 'active' | 'paused' | 'expired' = row.actif === false ? 'paused' : 'active'
+      const id = String(row.id ?? '')
 
       return {
-        id: String(row.id ?? ''),
-        name: String(row.name ?? 'Offre'),
+        id,
+        name: String(row.nom ?? 'Offre'),
         description: typeof row.description === 'string' ? row.description : null,
         points_required: Number(row.points_required ?? 0),
-        redemption_count: Number(row.redemptions_this_month ?? row.redemptions_count ?? row.redemptions_month ?? 0),
-        expiry_date: expiry,
+        redemption_count: redemptionCounts.get(id) ?? 0,
+        expiry_date: null,
         status,
-        category: typeof row.category === 'string' ? row.category : null,
+        category: typeof row.emoji === 'string' ? row.emoji : null,
       } satisfies MerchantActiveOffer
     })
     .filter((offer) => offer.status === 'active')
@@ -284,9 +307,10 @@ async function fetchActiveOffers(merchantId: string): Promise<MerchantActiveOffe
 async function fetchNetworks(merchantId: string): Promise<MerchantNetworkSummary[]> {
   const [joinedRes, txRes] = await Promise.all([
     supabase
-      .from('merchant_networks')
+      .from('network_members')
       .select('network_id, networks:network_id(id, name, emoji, points_multiplier, primary_color, secondary_color)')
-      .eq('merchant_id', merchantId),
+      .eq('fournisseur_id', merchantId)
+      .eq('status', 'active'),
     supabase
       .from('transactions')
       .select('client_id')
@@ -344,16 +368,16 @@ async function fetchNetworks(merchantId: string): Promise<MerchantNetworkSummary
   }
 
   const userNetworksRes = await supabase
-    .from('user_networks')
-    .select('user_id, network_id, points')
-    .in('user_id', clientIds)
+    .from('network_clients')
+    .select('client_id, network_id, total_network_points')
+    .in('client_id', clientIds)
     .in('network_id', networkIds)
 
   if (userNetworksRes.error) throw new Error(userNetworksRes.error.message)
 
   const totals = new Map<string, number>()
-  for (const row of (userNetworksRes.data ?? []) as Array<{ network_id: string; points: number | null }>) {
-    totals.set(row.network_id, (totals.get(row.network_id) ?? 0) + Number(row.points ?? 0))
+  for (const row of (userNetworksRes.data ?? []) as Array<{ network_id: string; total_network_points: number | null }>) {
+    totals.set(row.network_id, (totals.get(row.network_id) ?? 0) + Number(row.total_network_points ?? 0))
   }
 
   return baseNetworks.map((network) => ({

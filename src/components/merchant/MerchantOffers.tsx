@@ -113,9 +113,10 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
 
     async function loadNetworks() {
       const { data, error: networksError } = await supabase
-        .from('merchant_networks')
+        .from('network_members')
         .select('network_id, networks:network_id(name)')
-        .eq('merchant_id', merchantId)
+        .eq('fournisseur_id', merchantId)
+        .eq('status', 'active')
 
       if (cancelled) {
         return
@@ -198,19 +199,16 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
     setOffers((prev) => [optimisticOffer, ...prev])
 
     const payload = {
-      merchant_id: merchantId,
-      name: optimisticOffer.name,
-      description: optimisticOffer.description,
+      fournisseur_id: merchantId,
+      nom: optimisticOffer.name,
+      description: optimisticOffer.description ?? 'Offre recompense',
       points_required: optimisticOffer.points_required,
-      expiry_date: optimisticOffer.expiry_date,
-      category: optimisticOffer.category,
-      network_ids: optimisticOffer.network_ids,
-      status: 'active',
-      redemptions_this_month: 0,
+      emoji: categoryMeta(optimisticOffer.category).emoji,
+      actif: true,
     }
 
     const { data, error: insertError } = await supabase
-      .from('merchant_offers')
+      .from('reward_rules')
       .insert(payload)
       .select('*')
       .single()
@@ -222,21 +220,28 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       return
     }
 
-    const inserted = data as MerchantOffer & { status?: string | null }
-    const isExpired = inserted.expiry_date ? new Date(inserted.expiry_date).getTime() < Date.now() : false
-    const normalizedStatus: MerchantOfferStatus = inserted.status === 'paused' ? 'paused' : inserted.status === 'expired' || isExpired ? 'expired' : 'active'
+    const inserted = data as {
+      id: string
+      fournisseur_id: string
+      nom: string
+      description: string | null
+      points_required: number | null
+      emoji: string | null
+      actif: boolean | null
+      created_at: string
+    }
 
     const finalOffer: MerchantOffer = {
       id: inserted.id,
-      merchant_id: inserted.merchant_id,
-      name: inserted.name,
+      merchant_id: inserted.fournisseur_id,
+      name: inserted.nom,
       description: inserted.description,
       points_required: Number(inserted.points_required ?? 0),
-      expiry_date: inserted.expiry_date,
-      category: inserted.category,
-      status: normalizedStatus,
-      redemptions_this_month: Number((inserted as { redemptions_this_month?: number | null }).redemptions_this_month ?? 0),
-      network_ids: Array.isArray(inserted.network_ids) ? inserted.network_ids : [],
+      expiry_date: null,
+      category: inserted.emoji,
+      status: inserted.actif === false ? 'paused' : 'active',
+      redemptions_this_month: 0,
+      network_ids: [],
       created_at: inserted.created_at,
     }
 
@@ -250,7 +255,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
     <section className={`rounded-lg border border-gray-200 bg-white p-4 ${className}`}>
       <header className="mb-3 flex items-center justify-between gap-3">
         <p className="font-body text-xs uppercase tracking-[0.16em] text-gray-500">Offres recompenses</p>
-        <Button variant="ghost" size="sm" className="border border-gray-200 text-gray-700" onClick={openModal}>
+        <Button variant="soft" size="sm" className="hover:bg-[#FFF4EE] hover:border-[#FF6B35]/35 hover:text-[#C84E20]" onClick={openModal}>
           + Nouvelle offre
         </Button>
       </header>
@@ -345,7 +350,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
               <Button type="submit" size="sm" loading={saving} disabled={!canSubmit}>
                 Creer
               </Button>
-              <Button type="button" variant="ghost" size="sm" className="border border-gray-200 text-gray-700" onClick={closeModal}>
+              <Button type="button" variant="soft" size="sm" onClick={closeModal}>
                 Annuler
               </Button>
             </div>

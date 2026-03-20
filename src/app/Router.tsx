@@ -4,42 +4,14 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { LoginForm } from '../modules/auth/components/LoginForm'
 import { RegisterForm } from '../modules/auth/components/RegisterForm'
 import { useAuth } from '../modules/auth/hooks/useAuth'
+import { MerchantNetworks } from '../components/merchant/MerchantNetworks'
+import { MerchantOffers } from '../components/merchant/MerchantOffers'
+import { MerchantRevenueChart } from '../components/merchant/MerchantRevenueChart'
+import { MerchantTransactions } from '../components/merchant/MerchantTransactions'
+import { TopCustomers } from '../components/merchant/TopCustomers'
 import type { SocialRole, UserRole } from '../modules/auth/services/authService'
 import { useEventTracker } from '../shared/hooks/useEventTracker'
 
-const ClientLayout = lazy(() =>
-  import('../views/client/ClientLayout').then((module) => ({ default: module.ClientLayout })),
-)
-const ClientHome = lazy(() =>
-  import('../views/client/ClientHome').then((module) => ({ default: module.ClientHome })),
-)
-const ClientScan = lazy(() =>
-  import('../views/client/ClientScan').then((module) => ({ default: module.ClientScan })),
-)
-const ClientHistory = lazy(() =>
-  import('../views/client/ClientHistory').then((module) => ({ default: module.ClientHistory })),
-)
-const ClientPromotions = lazy(() =>
-  import('../views/client/ClientPromotions').then((module) => ({ default: module.ClientPromotions })),
-)
-const ClientProfile = lazy(() =>
-  import('../views/client/ClientProfile').then((module) => ({ default: module.ClientProfile })),
-)
-const ClientGamification = lazy(() =>
-  import('../views/client/ClientGamification').then((module) => ({ default: module.ClientGamification })),
-)
-const ProviderLayout = lazy(() =>
-  import('../views/provider/ProviderLayout').then((module) => ({ default: module.ProviderLayout })),
-)
-const ProviderDashboard = lazy(() =>
-  import('../views/provider/ProviderDashboard').then((module) => ({ default: module.ProviderDashboard })),
-)
-const ProviderValidate = lazy(() =>
-  import('../views/provider/ProviderValidate').then((module) => ({ default: module.ProviderValidate })),
-)
-const ProviderNetwork = lazy(() =>
-  import('../views/provider/ProviderNetwork').then((module) => ({ default: module.ProviderNetwork })),
-)
 const AdminDashboard = lazy(() =>
   import('../views/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })),
 )
@@ -87,8 +59,41 @@ const GamificationPage = lazy(() =>
 const DashboardNotificationsPage = lazy(() =>
   import('../pages/dashboard/NotificationsPage').then((module) => ({ default: module.default })),
 )
+const ClientSettingsPage = lazy(() =>
+  import('../pages/dashboard/ClientSettingsPage').then((module) => ({ default: module.default })),
+)
+const ClientPointsPage = lazy(() =>
+  import('../pages/dashboard/ClientPointsPage').then((module) => ({ default: module.default })),
+)
+const ClientNetworksPage = lazy(() =>
+  import('../pages/dashboard/ClientNetworksPage').then((module) => ({ default: module.default })),
+)
+const ClientTransactionsPage = lazy(() =>
+  import('../pages/dashboard/ClientTransactionsPage').then((module) => ({ default: module.default })),
+)
+const ClientRewardsPage = lazy(() =>
+  import('../pages/dashboard/ClientRewardsPage').then((module) => ({ default: module.default })),
+)
+const ClientHistoryPage = lazy(() =>
+  import('../pages/dashboard/ClientHistoryPage').then((module) => ({ default: module.default })),
+)
+const AccountLinkingPage = lazy(() =>
+  import('../pages/dashboard/AccountLinkingPage').then((module) => ({ default: module.default })),
+)
+const QRScannerPage = lazy(() =>
+  import('../pages/QRScannerPage').then((module) => ({ default: module.default })),
+)
 const MerchantHome = lazy(() =>
   import('../pages/merchant/MerchantHome').then((module) => ({ default: module.MerchantHome })),
+)
+const MerchantQrPage = lazy(() =>
+  import('../pages/merchant/MerchantQrPage').then((module) => ({ default: module.default })),
+)
+const MerchantSettingsPage = lazy(() =>
+  import('../pages/merchant/MerchantSettingsPage').then((module) => ({ default: module.default })),
+)
+const MerchantSubscriptionPage = lazy(() =>
+  import('../pages/merchant/MerchantSubscriptionPage').then((module) => ({ default: module.default })),
 )
 
 function RouteFallback() {
@@ -169,21 +174,24 @@ function AuthRoute() {
     }
 
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
-        <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900/90 p-6 text-zinc-100 shadow-[0_20px_50px_-30px_rgba(79,70,229,0.5)] backdrop-blur">
-          <h2 className="text-xl font-semibold">Finaliser votre compte</h2>
-          <p className="mt-1 text-sm text-zinc-400">
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-[#F5F7FF] via-[#F8FAFF] to-white px-4 py-10">
+        <span className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+        <span className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-accent-green/10 blur-3xl" />
+
+        <div className="relative z-10 w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-card">
+          <h2 className="text-xl font-semibold text-gray-900">Finaliser votre compte</h2>
+          <p className="mt-1 text-sm text-gray-600">
             Choisissez votre rôle et votre nom pour terminer la connexion sociale.
           </p>
 
-          <div className="mt-4 grid grid-cols-2 rounded-xl border border-zinc-700 bg-zinc-900/80 p-1">
+          <div className="mt-4 grid grid-cols-2 rounded-xl border border-gray-200 bg-gray-100 p-1">
             <button
               type="button"
               onClick={() => setSocialRole('client')}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                 socialRole === 'client'
-                  ? 'bg-indigo-100 text-indigo-700 shadow-sm'
-                  : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-gray-600 hover:bg-primary-light hover:text-primary'
               }`}
             >
               Client
@@ -193,8 +201,8 @@ function AuthRoute() {
               onClick={() => setSocialRole('fournisseur')}
               className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                 socialRole === 'fournisseur'
-                  ? 'bg-indigo-100 text-indigo-700 shadow-sm'
-                  : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+                  ? 'bg-white text-primary shadow-sm'
+                  : 'text-gray-600 hover:bg-primary-light hover:text-primary'
               }`}
             >
               Fournisseur
@@ -202,7 +210,7 @@ function AuthRoute() {
           </div>
 
           <div className="mt-4">
-            <label htmlFor="social-name" className="mb-1 block text-sm text-zinc-300">
+            <label htmlFor="social-name" className="mb-1 block text-sm text-gray-700">
               Nom
             </label>
             <input
@@ -211,13 +219,13 @@ function AuthRoute() {
               required
               value={socialName}
               onChange={(event) => setSocialName(event.target.value)}
-              className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200/70"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
               placeholder="Votre nom"
             />
           </div>
 
           {socialError ? (
-            <p className="mt-3 rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">
+            <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {socialError}
             </p>
           ) : null}
@@ -243,14 +251,22 @@ function AuthRoute() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4">
-      <div className="w-full max-w-md space-y-4">
-        <div className="grid grid-cols-2 rounded-lg bg-zinc-800 p-1">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-[#F5F7FF] via-[#F8FAFF] to-white px-4 py-10">
+      <span className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
+      <span className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-accent-green/10 blur-3xl" />
+
+      <div className="relative z-10 w-full max-w-md space-y-4">
+        <div className="flex items-center justify-center gap-2 pb-2">
+          <span className="font-display text-4xl font-black text-dark">LoyalUp</span>
+          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
+        </div>
+
+        <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-gray-100 p-1">
           <button
             type="button"
             onClick={() => setAuthMode('login')}
             className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              authMode === 'login' ? 'bg-zinc-200 text-zinc-900' : 'text-zinc-300 hover:text-zinc-100'
+              authMode === 'login' ? 'bg-white text-primary shadow-sm' : 'text-gray-600 hover:text-primary'
             }`}
           >
             Login
@@ -260,8 +276,8 @@ function AuthRoute() {
             onClick={() => setAuthMode('signup')}
             className={`rounded-md px-3 py-2 text-sm font-medium transition ${
               authMode === 'signup'
-                ? 'bg-zinc-200 text-zinc-900'
-                : 'text-zinc-300 hover:text-zinc-100'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-600 hover:text-primary'
             }`}
           >
             Sign up
@@ -270,14 +286,14 @@ function AuthRoute() {
 
         {authMode === 'signup' ? (
           <>
-            <div className="grid grid-cols-2 rounded-lg bg-zinc-800 p-1">
+            <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-gray-100 p-1">
               <button
                 type="button"
                 onClick={() => setSelectedRole('client')}
                 className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                   selectedRole === 'client'
-                    ? 'bg-zinc-200 text-zinc-900'
-                    : 'text-zinc-300 hover:text-zinc-100'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:text-primary'
                 }`}
               >
                 Client
@@ -287,8 +303,8 @@ function AuthRoute() {
                 onClick={() => setSelectedRole('fournisseur')}
                 className={`rounded-md px-3 py-2 text-sm font-medium transition ${
                   selectedRole === 'fournisseur'
-                    ? 'bg-zinc-200 text-zinc-900'
-                    : 'text-zinc-300 hover:text-zinc-100'
+                    ? 'bg-white text-primary shadow-sm'
+                    : 'text-gray-600 hover:text-primary'
                 }`}
               >
                 Fournisseur
@@ -305,8 +321,41 @@ function AuthRoute() {
 }
 
 function AuthCallbackRoute() {
-  const { hydrateCurrentUser } = useAuth()
+  const { hydrateCurrentUser, user, role } = useAuth()
   const [ready, setReady] = useState(false)
+
+  const redirectTo = useMemo(() => {
+    if (!ready) {
+      return '/auth'
+    }
+
+    const sourcePartner = String(user?.user_metadata?.source_partner ?? '').trim()
+    const activationRequired = Boolean(user?.user_metadata?.activation_required)
+    const email = String(user?.email ?? '').toLowerCase()
+    const isShadowEmail = email.endsWith('@partner.loyalup.local')
+
+    if (sourcePartner && (activationRequired || isShadowEmail)) {
+      return '/account-linking'
+    }
+
+    if (role === 'client') {
+      return '/dashboard'
+    }
+
+    if (role === 'fournisseur') {
+      return '/merchant'
+    }
+
+    if (role === 'admin' || role === 'super_admin') {
+      return '/admin'
+    }
+
+    if (role === 'institution') {
+      return '/institution'
+    }
+
+    return '/auth'
+  }, [ready, role, user?.email, user?.user_metadata])
 
   useEffect(() => {
     hydrateCurrentUser()
@@ -322,7 +371,7 @@ function AuthCallbackRoute() {
     )
   }
 
-  return <Navigate to="/auth" replace />
+  return <Navigate to={redirectTo} replace />
 }
 
 function AdminAuthRoute() {
@@ -389,14 +438,93 @@ function MerchantLayoutRoute() {
 }
 
 function MerchantHomeWrapper() {
-  const { user, profile } = useAuth()
-  const merchantId = user?.id ?? ''
-  const storeName =
-    (profile as unknown as Record<string, string> | null)?.['nom_commerce']?.trim() ||
-    (profile as unknown as Record<string, string> | null)?.['nom']?.trim() ||
-    undefined
+  const { merchantId, storeName } = useMerchantRouteData()
 
   return <MerchantHome merchantId={merchantId} storeName={storeName} />
+}
+
+function useMerchantRouteData() {
+  const { user, profile } = useAuth()
+  return {
+    merchantId: user?.id ?? '',
+    storeName:
+    (profile as unknown as Record<string, string> | null)?.['nom_commerce']?.trim() ||
+    (profile as unknown as Record<string, string> | null)?.['nom']?.trim() ||
+      undefined,
+  }
+}
+
+function MerchantOffersWrapper() {
+  const { merchantId } = useMerchantRouteData()
+
+  return (
+    <section className="space-y-6">
+      <header className="rounded-lg border border-gray-200 bg-white p-5">
+        <h1 className="font-display text-3xl font-extrabold text-dark">Mes offres</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Gérez vos récompenses, points requis et réseaux associés.</p>
+      </header>
+      <MerchantOffers merchantId={merchantId} />
+    </section>
+  )
+}
+
+function MerchantClientsWrapper() {
+  const { merchantId } = useMerchantRouteData()
+
+  return (
+    <section className="space-y-6">
+      <header className="rounded-lg border border-gray-200 bg-white p-5">
+        <h1 className="font-display text-3xl font-extrabold text-dark">Clients fidèles</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Retrouvez vos meilleurs clients et leur niveau d’engagement.</p>
+      </header>
+      <TopCustomers merchantId={merchantId} />
+    </section>
+  )
+}
+
+function MerchantTransactionsWrapper() {
+  const { merchantId } = useMerchantRouteData()
+
+  return (
+    <section className="space-y-6">
+      <header className="rounded-lg border border-gray-200 bg-white p-5">
+        <h1 className="font-display text-3xl font-extrabold text-dark">Transactions</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Suivez les scans validés et les points distribués récemment.</p>
+      </header>
+      <MerchantTransactions merchantId={merchantId} limit={12} />
+    </section>
+  )
+}
+
+function MerchantPerformanceWrapper() {
+  const { merchantId } = useMerchantRouteData()
+
+  return (
+    <section className="space-y-6">
+      <header className="rounded-lg border border-gray-200 bg-white p-5">
+        <h1 className="font-display text-3xl font-extrabold text-dark">Performance</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Visualisez le revenu généré et vos tendances de fidélisation.</p>
+      </header>
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <MerchantRevenueChart merchantId={merchantId} />
+        <TopCustomers merchantId={merchantId} />
+      </div>
+    </section>
+  )
+}
+
+function MerchantNetworksWrapper() {
+  const { merchantId } = useMerchantRouteData()
+
+  return (
+    <section className="space-y-6">
+      <header className="rounded-lg border border-gray-200 bg-white p-5">
+        <h1 className="font-display text-3xl font-extrabold text-dark">Réseaux</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Rejoignez et pilotez les réseaux dans lesquels votre commerce est actif.</p>
+      </header>
+      <MerchantNetworks merchantId={merchantId} />
+    </section>
+  )
 }
 
 export function Router() {
@@ -420,29 +548,34 @@ export function Router() {
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/dashboard/gamification" element={<GamificationPage />} />
             <Route path="/dashboard/notifications" element={<DashboardNotificationsPage />} />
+            <Route path="/dashboard/networks/:id" element={<ClientNetworksPage />} />
+            <Route path="/points" element={<ClientPointsPage />} />
+            <Route path="/networks" element={<ClientNetworksPage />} />
+            <Route path="/transactions" element={<ClientTransactionsPage />} />
+            <Route path="/rewards" element={<ClientRewardsPage />} />
+            <Route path="/challenges" element={<GamificationPage />} />
+            <Route path="/history" element={<ClientHistoryPage />} />
+            <Route path="/account-linking" element={<AccountLinkingPage />} />
+            <Route path="/settings" element={<ClientSettingsPage />} />
+            <Route path="/scan" element={<QRScannerPage />} />
           </Route>
-          {/* Legacy /client/* kept for backward compat */}
-          <Route element={<ClientLayout />}>
-            <Route path="/client" element={<ClientHome />} />
-            <Route path="/client/scan" element={<ClientScan />} />
-            <Route path="/client/history" element={<ClientHistory />} />
-            <Route path="/client/promotions" element={<ClientPromotions />} />
-            <Route path="/client/profile" element={<ClientProfile />} />
-            <Route path="/client/gamification" element={<ClientGamification />} />
-          </Route>
+          <Route path="/client/*" element={<Navigate to="/dashboard" replace />} />
         </Route>
 
         <Route element={<ProtectedRoute allowedRole="fournisseur" />}>
           {/* ── New design: /merchant/* ── */}
           <Route element={<MerchantLayoutRoute />}>
             <Route path="/merchant" element={<MerchantHomeWrapper />} />
+            <Route path="/merchant/qr" element={<MerchantQrPage />} />
+            <Route path="/merchant/offers" element={<MerchantOffersWrapper />} />
+            <Route path="/merchant/clients" element={<MerchantClientsWrapper />} />
+            <Route path="/merchant/transactions" element={<MerchantTransactionsWrapper />} />
+            <Route path="/merchant/performance" element={<MerchantPerformanceWrapper />} />
+            <Route path="/merchant/networks" element={<MerchantNetworksWrapper />} />
+            <Route path="/merchant/settings" element={<MerchantSettingsPage />} />
+            <Route path="/merchant/subscription" element={<MerchantSubscriptionPage />} />
           </Route>
-          {/* Legacy /provider/* kept for backward compat */}
-          <Route element={<ProviderLayout />}>
-            <Route path="/provider" element={<ProviderDashboard />} />
-            <Route path="/provider/validate" element={<ProviderValidate />} />
-            <Route path="/provider/network" element={<ProviderNetwork />} />
-          </Route>
+          <Route path="/provider/*" element={<Navigate to="/merchant" replace />} />
         </Route>
 
         <Route

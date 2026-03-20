@@ -1,7 +1,16 @@
-import { Bell, QrCode } from 'lucide-react'
+import { QrCode } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui'
 import { useDashboardStats } from '../../hooks/useDashboardStats'
+import { useDashboard } from '../../hooks/useDashboard'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
+import NotificationBell from '../../components/notifications/NotificationBell'
+import { ChallengesList } from '../../components/dashboard/ChallengesList'
+import { PointsActivityChart } from '../../components/dashboard/PointsActivityChart'
+import { RecentTransactions } from '../../components/dashboard/RecentTransactions'
+import { RewardsList } from '../../components/dashboard/RewardsList'
+import { TierCard } from '../../components/dashboard/TierCard'
+import { UserNetworksList } from '../../components/dashboard/UserNetworksList'
 
 function formatFrenchDate(date: Date): string {
   return date.toLocaleDateString('fr-FR', {
@@ -13,7 +22,9 @@ function formatFrenchDate(date: Date): string {
 }
 
 export function DashboardHome() {
-  const { profile } = useAuth()
+  const navigate = useNavigate()
+  const { user, profile } = useAuth()
+  const userId = user?.id ?? ''
   const {
     totalPoints,
     pointsDeltaWeek,
@@ -24,6 +35,7 @@ export function DashboardHome() {
     activeNetworkName,
     loading,
   } = useDashboardStats()
+  const { networks, rewards, tier: tierData } = useDashboard(userId)
 
   const userName = profile?.nom?.trim() || 'Membre LoyalUp'
   const today = formatFrenchDate(new Date())
@@ -78,16 +90,14 @@ export function DashboardHome() {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="relative inline-flex h-11 w-11 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 transition hover:bg-gray-50"
-          >
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-accent-orange" aria-hidden="true" />
-          </button>
+          {userId ? <NotificationBell userId={userId} /> : null}
 
-          <Button variant="primary" size="lg" className="shadow-primary-glow">
+          <Button
+            variant="primary"
+            size="lg"
+            className="shadow-primary-glow"
+            onClick={() => navigate('/scan')}
+          >
             <QrCode className="h-4.5 w-4.5" />
             Scanner un QR
           </Button>
@@ -112,6 +122,29 @@ export function DashboardHome() {
             <p className={`mt-2 font-body text-sm ${card.subtitleClassName}`}>{card.subtitle}</p>
           </article>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <TierCard
+          className="xl:col-span-1"
+          totalPoints={totalPoints}
+          currentTier={tierData.current}
+          currentTierEmoji={tierData.current === 'Bronze' ? '🥉' : tierData.current === 'Silver' ? '🥈' : tierData.current === 'Gold' ? '🥇' : '💎'}
+          nextTier={tierData.next ?? 'Platinum'}
+          currentTierThreshold={tierData.currentThreshold}
+          nextTierThreshold={tierData.nextThreshold ?? Math.max(totalPoints + 1, 10_000)}
+        />
+        <PointsActivityChart userId={userId} className="xl:col-span-2" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <RecentTransactions userId={userId} className="xl:col-span-2" />
+        <ChallengesList userId={userId} className="xl:col-span-1" />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <UserNetworksList networks={networks} />
+        <RewardsList rewards={rewards} />
       </div>
     </section>
   )

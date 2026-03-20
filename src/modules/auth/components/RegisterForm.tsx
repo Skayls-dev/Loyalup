@@ -43,7 +43,7 @@ export function RegisterForm({ role }: RegisterFormProps) {
     setLoading(true)
 
     try {
-      await signUp(email, password, role)
+      await signUp(email, password, role, nom)
       setSuccessMessage('Compte créé avec succès. Vérifie votre email pour confirmer le compte.')
       setNom('')
       setEmail('')
@@ -58,10 +58,10 @@ export function RegisterForm({ role }: RegisterFormProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900/90 p-6 text-zinc-100 shadow-[0_20px_50px_-30px_rgba(79,70,229,0.5)] backdrop-blur">
-      <h2 className="text-xl font-semibold">Créer un compte</h2>
-      <p className="mt-1 text-sm text-zinc-400">
-        Rôle sélectionné: <span className="font-medium text-zinc-200">{role}</span>
+    <div className="mx-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-card">
+      <h2 className="text-xl font-semibold text-gray-900">Créer un compte</h2>
+      <p className="mt-1 text-sm text-gray-600">
+        Rôle sélectionné: <span className="font-medium text-gray-800">{role}</span>
       </p>
 
       <form onSubmit={handleSubmit} className="mt-5 space-y-4">
@@ -71,7 +71,7 @@ export function RegisterForm({ role }: RegisterFormProps) {
               type="button"
               disabled={loading}
               onClick={() => handleOAuthSignup('google')}
-              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
             >
               S'inscrire avec Google
             </button>
@@ -79,19 +79,19 @@ export function RegisterForm({ role }: RegisterFormProps) {
               type="button"
               disabled={loading}
               onClick={() => handleOAuthSignup('apple')}
-              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
             >
               S'inscrire avec Apple
             </button>
-            <div className="relative py-1 text-center text-xs text-zinc-500">
-              <span className="relative z-10 bg-zinc-900 px-2">ou avec email</span>
-              <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-zinc-700" />
+            <div className="relative py-1 text-center text-xs text-gray-500">
+              <span className="relative z-10 bg-white px-2">ou avec email</span>
+              <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-gray-200" />
             </div>
           </div>
         ) : null}
 
         <div>
-          <label htmlFor="nom" className="mb-1 block text-sm text-zinc-300">
+          <label htmlFor="nom" className="mb-1 block text-sm text-gray-700">
             Nom
           </label>
           <input
@@ -100,13 +100,13 @@ export function RegisterForm({ role }: RegisterFormProps) {
             required
             value={nom}
             onChange={(event) => setNom(event.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200/70"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             placeholder="Votre nom"
           />
         </div>
 
         <div>
-          <label htmlFor="register-email" className="mb-1 block text-sm text-zinc-300">
+          <label htmlFor="register-email" className="mb-1 block text-sm text-gray-700">
             Email
           </label>
           <input
@@ -115,13 +115,13 @@ export function RegisterForm({ role }: RegisterFormProps) {
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200/70"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="register-password" className="mb-1 block text-sm text-zinc-300">
+          <label htmlFor="register-password" className="mb-1 block text-sm text-gray-700">
             Mot de passe
           </label>
           <input
@@ -130,13 +130,13 @@ export function RegisterForm({ role }: RegisterFormProps) {
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200/70"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             placeholder="••••••••"
           />
         </div>
 
         <div>
-          <label htmlFor="register-confirm-password" className="mb-1 block text-sm text-zinc-300">
+          <label htmlFor="register-confirm-password" className="mb-1 block text-sm text-gray-700">
             Confirmer le mot de passe
           </label>
           <input
@@ -145,19 +145,19 @@ export function RegisterForm({ role }: RegisterFormProps) {
             required
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200/70"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             placeholder="••••••••"
           />
         </div>
 
         {error ? (
-          <p className="rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </p>
         ) : null}
 
         {successMessage ? (
-          <p className="rounded-lg border border-emerald-900 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
             {successMessage}
           </p>
         ) : null}

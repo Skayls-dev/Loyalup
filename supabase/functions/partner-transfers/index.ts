@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { resolvePartnerIdentity } from '../_shared/partnerIdentityResolver.ts'
 
 type TransferRequest = {
   external_user_id?: string
@@ -107,19 +108,36 @@ Deno.serve(async (req) => {
       return json({ error: 'Partner production access not enabled' }, 403)
     }
 
-    const linkedUserId = await resolveOrCreateLinkedUser(admin, {
+    const identity = await resolvePartnerIdentity({
+      admin,
       partnerId: credential.partner_id,
       partnerCode: credential.partners.code,
       externalUserId,
       email,
       displayName: body.display_name,
+      source: 'partner-api',
       createIfMissing: body.create_user_if_missing === true || credential.environment === 'sandbox',
       autoActivate: credential.environment === 'sandbox',
     })
 
-    if (!linkedUserId) {
-      return json({ error: 'Partner user is not linked to a LoyalUp account. Complete account onboarding first.' }, 404)
+    if (identity.status !== 'resolved' || !identity.loyalup_user_id) {
+      const statusCode = identity.status === 'conflict' ? 409 : 404
+      await touchCredential(admin, credential.id)
+      return json(
+        {
+          success: false,
+          status: 'identity_unresolved',
+          error: identity.message ?? 'Partner identity is not resolved',
+          identity,
+          transaction_ref: transactionRef,
+          partner_code: credential.partners.code,
+          external_user_id: externalUserId,
+        },
+        statusCode,
+      )
     }
+
+    const linkedUserId = identity.loyalup_user_id
 
     const enrollment = await ensurePartnerClientEnrollment(
       admin,
@@ -198,6 +216,7 @@ Deno.serve(async (req) => {
     return json({
       success: true,
       status: 'accepted',
+      identity_case_id: identity.case_id,
       transfer_id: claimedTransfer.transferId,
       transaction_ref: transactionRef,
       partner_code: credential.partners.code,
@@ -237,95 +256,6 @@ async function resolvePartnerCredential(
   }
 
   return data
-}
-
-async function resolveOrCreateLinkedUser(
-  admin: ReturnType<typeof createClient>,
-  params: {
-    partnerId: string
-    partnerCode: string
-    externalUserId: string
-    email?: string | null
-    displayName?: string
-    createIfMissing: boolean
-    autoActivate: boolean
-  },
-): Promise<string | null> {
-  const { partnerId, partnerCode, externalUserId, email, displayName, createIfMissing, autoActivate } = params
-
-  const existing = await admin
-    .from('partner_user_links')
-    .select('loyalup_user_id')
-    .eq('partner_id', partnerId)
-    .eq('external_user_id', externalUserId)
-    .maybeSingle<{ loyalup_user_id: string }>()
-
-  if (existing.data?.loyalup_user_id) {
-    return existing.data.loyalup_user_id
-  }
-
-  if (!createIfMissing) {
-    return null
-  }
-
-  const sanitizedExternal = sanitizeEmailPart(externalUserId)
-  const randomSuffix = crypto.randomUUID().replaceAll('-', '').slice(0, 10)
-  const generatedEmail = email || `${partnerCode.toLowerCase()}.${sanitizedExternal}.${randomSuffix}@partner.loyalup.local`
-  const generatedPassword = `P-${crypto.randomUUID()}-A1!`
-
-  const created = await admin.auth.admin.createUser({
-    email: generatedEmail,
-    password: generatedPassword,
-    email_confirm: autoActivate ? true : email ? false : true,
-    user_metadata: {
-      role: 'client',
-      source_partner: partnerCode,
-      external_user_id: externalUserId,
-      activation_required: autoActivate ? false : !email,
-    },
-  })
-
-  if (created.error || !created.data.user?.id) {
-    throw new Error(created.error?.message ?? 'Unable to create linked LoyalUp user')
-  }
-
-  const loyalupUserId = created.data.user.id
-  const resolvedName = displayName?.trim() || externalUserId
-
-  const profileUpsert = await admin.from('profiles').upsert({
-    id: loyalupUserId,
-    email: generatedEmail,
-    role: 'client',
-    nom: resolvedName,
-  })
-
-  if (profileUpsert.error) {
-    throw new Error(profileUpsert.error.message)
-  }
-
-  const linkInsert = await admin.from('partner_user_links').insert({
-    partner_id: partnerId,
-    external_user_id: externalUserId,
-    loyalup_user_id: loyalupUserId,
-    metadata: {},
-  })
-
-  if (linkInsert.error) {
-    const reloaded = await admin
-      .from('partner_user_links')
-      .select('loyalup_user_id')
-      .eq('partner_id', partnerId)
-      .eq('external_user_id', externalUserId)
-      .maybeSingle<{ loyalup_user_id: string }>()
-
-    if (reloaded.data?.loyalup_user_id) {
-      return reloaded.data.loyalup_user_id
-    }
-
-    throw new Error(linkInsert.error.message)
-  }
-
-  return loyalupUserId
 }
 
 async function claimTransfer(
@@ -486,14 +416,6 @@ async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', bytes)
   const hashArray = Array.from(new Uint8Array(digest))
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-}
-
-function sanitizeEmailPart(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '.')
-    .replace(/^\.+|\.+$/g, '')
-    .slice(0, 40) || 'user'
 }
 
 function normalizeOptionalEmail(value?: string): string | null {

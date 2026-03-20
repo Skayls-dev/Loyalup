@@ -42,26 +42,23 @@ export function useUserNetworks(userId?: string): UseUserNetworksResult {
 
       try {
         const { data, error: queryError } = await supabase
-          .from('user_networks')
+          .from('network_clients')
           .select(
             `
             network_id,
-            points,
+            total_network_points,
             networks:network_id (
               id,
               name,
               emoji,
-              merchant_count,
-              network_config (
-                bg_color,
-                badge_color,
-                multiplier,
-                next_threshold
-              )
+              member_count,
+              primary_color,
+              secondary_color,
+              points_multiplier
             )
           `,
           )
-          .eq('user_id', userId)
+          .eq('client_id', userId)
 
         if (queryError) {
           throw new Error(queryError.message)
@@ -75,24 +72,18 @@ export function useUserNetworks(userId?: string): UseUserNetworksResult {
               return null
             }
 
-            const cfgRaw = (network as { network_config?: unknown }).network_config
-            const config = Array.isArray(cfgRaw) ? cfgRaw[0] : cfgRaw
-
             const id = String((network as { id?: string }).id ?? (row as { network_id?: string }).network_id ?? '')
             const name = String((network as { name?: string }).name ?? 'Réseau')
             const emoji = String((network as { emoji?: string }).emoji ?? FALLBACK_EMOJI)
-            const merchantCount = Number((network as { merchant_count?: number }).merchant_count ?? 0)
+            const merchantCount = Number((network as { member_count?: number }).member_count ?? 0)
 
-            const bgColor =
-              typeof (config as { bg_color?: unknown })?.bg_color === 'string'
-                ? String((config as { bg_color: string }).bg_color)
-                : '#EBE9FF'
-            const badgeColor =
-              typeof (config as { badge_color?: unknown })?.badge_color === 'string'
-                ? String((config as { badge_color: string }).badge_color)
-                : '#5B4FE8'
-            const multiplier = Number((config as { multiplier?: number })?.multiplier ?? 1)
-            const nextThreshold = Number((config as { next_threshold?: number })?.next_threshold ?? 1000)
+            const primaryColor = typeof (network as { primary_color?: unknown }).primary_color === 'string'
+              ? String((network as { primary_color: string }).primary_color) : '#5B4FE8'
+            const bgColor = '#EBE9FF'
+            const badgeColor = typeof (network as { secondary_color?: unknown }).secondary_color === 'string'
+              ? String((network as { secondary_color: string }).secondary_color) : primaryColor
+            const multiplier = Number((network as { points_multiplier?: number }).points_multiplier ?? 1)
+            const nextThreshold = 1000
 
             return {
               id,
@@ -100,7 +91,7 @@ export function useUserNetworks(userId?: string): UseUserNetworksResult {
               emoji,
               bgColor,
               badgeColor,
-              points: Number((row as { points?: number }).points ?? 0),
+              points: Number((row as { total_network_points?: number }).total_network_points ?? 0),
               merchantCount,
               multiplier,
               nextThreshold,

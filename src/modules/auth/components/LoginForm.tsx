@@ -38,17 +38,26 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
 
     try {
       const authPayload = await login(email, password)
+      const effectiveRole = authPayload.role
 
-      if (authPayload.role && authPayload.role !== selectedRole) {
+      // super_admin is always allowed when the admin form is shown
+      const adminFormAllowsSuperAdmin =
+        effectiveRole === 'super_admin' && allowedRoles.includes('admin')
+
+      if (effectiveRole && effectiveRole !== selectedRole && !adminFormAllowsSuperAdmin) {
         await logout()
 
-        if ((authPayload.role === 'admin' || authPayload.role === 'super_admin') && !allowedRoles.includes('admin') && !allowedRoles.includes('super_admin')) {
+        if (
+          (effectiveRole === 'admin' || effectiveRole === 'super_admin') &&
+          !allowedRoles.includes('admin') &&
+          !allowedRoles.includes('super_admin')
+        ) {
           setLocalError('Ce compte admin doit se connecter via /admin/auth.')
           return
         }
 
         setLocalError(
-          `Ce compte est associé au rôle "${authPayload.role}" et non "${selectedRole}".`,
+          `Ce compte est associé au rôle "${effectiveRole}" et non "${selectedRole}".`,
         )
       }
     } catch {
@@ -57,18 +66,18 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
   }
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900/90 p-6 text-zinc-100 shadow-[0_20px_50px_-30px_rgba(79,70,229,0.5)] backdrop-blur">
-      <h2 className="text-xl font-semibold">{title}</h2>
+    <div className="mx-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-card">
+      <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
 
       {showRoleSelector ? (
-        <div className="mt-4 grid grid-cols-2 rounded-xl border border-zinc-700 bg-zinc-900/80 p-1">
+        <div className="mt-4 grid grid-cols-2 rounded-xl border border-gray-200 bg-gray-100 p-1">
           <button
             type="button"
             onClick={() => setSelectedRole('client')}
             className={`rounded-md px-3 py-2 text-sm font-medium transition ${
               selectedRole === 'client'
-                ? 'bg-indigo-100 text-indigo-700 shadow-sm'
-                : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-600 hover:bg-primary-light hover:text-primary'
             }`}
           >
             Client
@@ -78,8 +87,8 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
             onClick={() => setSelectedRole('fournisseur')}
             className={`rounded-md px-3 py-2 text-sm font-medium transition ${
               selectedRole === 'fournisseur'
-                ? 'bg-indigo-100 text-indigo-700 shadow-sm'
-                : 'text-zinc-500 hover:bg-indigo-50 hover:text-indigo-700'
+                ? 'bg-white text-primary shadow-sm'
+                : 'text-gray-600 hover:bg-primary-light hover:text-primary'
             }`}
           >
             Fournisseur
@@ -94,7 +103,7 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
               type="button"
               disabled={loading}
               onClick={() => handleOAuthLogin('google')}
-              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
             >
               Continuer avec Google
             </button>
@@ -102,19 +111,19 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
               type="button"
               disabled={loading}
               onClick={() => handleOAuthLogin('apple')}
-              className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-2 text-sm font-medium text-zinc-100 transition hover:bg-zinc-900 disabled:cursor-not-allowed disabled:opacity-70"
+              className="inline-flex w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-70"
             >
               Continuer avec Apple
             </button>
-            <div className="relative py-1 text-center text-xs text-zinc-500">
-              <span className="relative z-10 bg-zinc-900 px-2">ou avec email</span>
-              <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-zinc-700" />
+            <div className="relative py-1 text-center text-xs text-gray-500">
+              <span className="relative z-10 bg-white px-2">ou avec email</span>
+              <span className="absolute inset-x-0 top-1/2 -z-0 h-px bg-gray-200" />
             </div>
           </div>
         ) : null}
 
         <div>
-          <label htmlFor="email" className="mb-1 block text-sm text-zinc-300">
+          <label htmlFor="email" className="mb-1 block text-sm text-gray-700">
             Email
           </label>
           <input
@@ -123,13 +132,13 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
             required
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200/70"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             placeholder="you@example.com"
           />
         </div>
 
         <div>
-          <label htmlFor="password" className="mb-1 block text-sm text-zinc-300">
+          <label htmlFor="password" className="mb-1 block text-sm text-gray-700">
             Mot de passe
           </label>
           <input
@@ -138,13 +147,13 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
             required
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200/70"
+            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
             placeholder="••••••••"
           />
         </div>
 
         {resolvedError ? (
-          <p className="rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-sm text-red-300">
+          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {resolvedError}
           </p>
         ) : null}

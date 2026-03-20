@@ -23,17 +23,6 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-type ProfileUpsertPayload = {
-  avatar_id: string
-  city: string
-  country: string
-  language: string
-  updated_at: string
-} & (
-  | { user_id: string }
-  | { id: string }
-)
-
 export default function Step2Profile() {
   const { profile, setProfile, goNext, goPrev } = useOnboarding()
   const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarId || avatars[0].id)
@@ -65,7 +54,7 @@ export default function Step2Profile() {
       return
     }
 
-    const userId = authData.user.id
+    const metadata = authData.user.user_metadata ?? {}
 
     setProfile({
       avatarId: selectedId,
@@ -74,25 +63,19 @@ export default function Step2Profile() {
       language: values.language,
     })
 
-    const basePayload = {
-      avatar_id: selectedId,
-      city: values.city,
-      country: values.country,
-      language: values.language,
-      updated_at: new Date().toISOString(),
-    }
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: {
+        ...metadata,
+        avatar_id: selectedId,
+        city: values.city,
+        country: values.country,
+        language: values.language,
+      },
+    })
 
-    const primaryPayload: ProfileUpsertPayload = { user_id: userId, ...basePayload }
-    const fallbackPayload: ProfileUpsertPayload = { id: userId, ...basePayload }
-
-    const primary = await supabase.from('profiles').upsert(primaryPayload, { onConflict: 'user_id' })
-
-    if (primary.error) {
-      const fallback = await supabase.from('profiles').upsert(fallbackPayload, { onConflict: 'id' })
-      if (fallback.error) {
-        setError('city', { type: 'manual', message: fallback.error.message })
-        return
-      }
+    if (updateError) {
+      setError('city', { type: 'manual', message: updateError.message })
+      return
     }
 
     goNext()

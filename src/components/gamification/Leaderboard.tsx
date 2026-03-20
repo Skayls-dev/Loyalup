@@ -182,9 +182,9 @@ function useUserNetworks(userId: string): UseUserNetworksResult {
 
     const run = async () => {
       const { data, error } = await supabase
-        .from('user_networks')
+        .from('network_clients')
         .select('network_id, networks:network_id(id, name, emoji)')
-        .eq('user_id', userId)
+        .eq('client_id', userId)
 
       if (error) return
 

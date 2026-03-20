@@ -14,16 +14,16 @@ export function StatsGrid({ stats, loading, compact = false }: StatsGridProps) {
       return (
         <div className="grid grid-cols-2 gap-2">
           {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-20 animate-pulse rounded-xl border border-white/[0.07] bg-white/[0.035]" />
+            <div key={index} className="h-20 animate-pulse rounded-2xl border border-slate-200 bg-white shadow-sm" />
           ))}
         </div>
       )
     }
 
     const compactItems = [
-      { label: 'STATUT QR', value: 'Actif', color: 'text-white' },
+      { label: 'STATUT QR', value: 'Actif', color: 'text-slate-900' },
       { label: 'TEMPS RESTANT', value: '02:15', color: 'text-[#00e5a0]' },
-      { label: 'POINTS CLIENT', value: `${stats.total_points_distributed.toLocaleString()} pts`, color: 'text-[#f5c842]' },
+      { label: 'POINTS CLIENT', value: `${stats.total_points_distributed.toLocaleString()} pts`, color: 'text-[#d4a017]' },
       { label: 'SCANS AUJOURD\'HUI', value: stats.transactions_today.toLocaleString(), color: 'text-[#3eb8f0]' },
     ]
 
@@ -32,10 +32,10 @@ export function StatsGrid({ stats, loading, compact = false }: StatsGridProps) {
         {compactItems.map((item) => (
           <div
             key={item.label}
-            className="rounded-xl border border-white/[0.07] bg-white/[0.035] p-3 transition-colors hover:bg-white/[0.055]"
+            className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50"
           >
-            <p className="text-[9px] uppercase tracking-[0.16em] text-white/50">{item.label}</p>
-            <p className={`mt-1 text-lg font-semibold ${item.color}`}>{item.value}</p>
+            <p className="text-[10px] uppercase tracking-[0.16em] text-slate-400">{item.label}</p>
+            <p className={`mt-2 text-2xl font-semibold ${item.color}`}>{item.value}</p>
           </div>
         ))}
       </div>

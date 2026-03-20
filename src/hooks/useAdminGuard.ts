@@ -15,8 +15,14 @@ export function useAdminGuard() {
       setIsLoading(true)
 
       const { data, error } = await supabase.auth.getUser()
-      const role = String(data.user?.app_metadata?.role ?? '')
-      const allowed = !error && Boolean(data.user) && role === 'super_admin'
+      // Check both app_metadata (Supabase Admin-set) and user_metadata (client-set)
+      const rawRole = String(
+        data.user?.app_metadata?.role ?? data.user?.user_metadata?.role ?? ''
+      )
+      const allowed =
+        !error &&
+        Boolean(data.user) &&
+        (rawRole === 'super_admin' || rawRole === 'admin')
 
       if (cancelled) return
 

@@ -93,21 +93,17 @@ export default function Step5Success() {
         console.warn('[Step5Success] credit_welcome_bonus failed for all signatures')
       }
 
-      // 2) Mark onboarding complete in profiles (user_id first, then id fallback).
-      const markByUserId = await supabase
-        .from('profiles')
-        .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
-        .eq('user_id', userId)
+      // 2) Mark onboarding complete in auth metadata.
+      const { error: updateUserError } = await supabase.auth.updateUser({
+        data: {
+          ...(authData.user.user_metadata ?? {}),
+          onboarding_completed: true,
+          onboarding_complete: true,
+        },
+      })
 
-      if (markByUserId.error) {
-        const markById = await supabase
-          .from('profiles')
-          .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
-          .eq('id', userId)
-
-        if (markById.error && markById.error.code !== '42703') {
-          setError(markById.error.message)
-        }
+      if (updateUserError) {
+        setError(updateUserError.message)
       }
 
       // 3) Log onboarding_completed event to analytics table.

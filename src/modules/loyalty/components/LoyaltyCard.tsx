@@ -92,7 +92,7 @@ function LoyaltyCardComponent({ card, index }: LoyaltyCardProps) {
   return (
     <button
       type="button"
-      onClick={() => navigate(`/client/history?provider=${card.fournisseur.id}`)}
+      onClick={() => navigate(`/history?provider=${card.fournisseur.id}`)}
       className="w-full rounded-2xl border border-slate-200/60 bg-white/80 p-4 text-left shadow-sm shadow-slate-900/5 backdrop-blur-xl transition hover:bg-slate-50"
       style={{ animationDelay: `${index * 70}ms` }}
     >

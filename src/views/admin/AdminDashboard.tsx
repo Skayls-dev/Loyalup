@@ -8,12 +8,24 @@ import {
   Tooltip,
   XAxis,
 } from 'recharts'
-import { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAdminAnalytics } from '../../modules/analytics/hooks/useAdminAnalytics'
 import { AdminControlCenter, type AdminTab } from '../../modules/admin/components/AdminControlCenter'
 import { getPlatformNetworkOverview } from '../../modules/networks/services/networkService'
 import { supabase } from '../../shared/lib/supabaseClient'
+import {
+  Activity,
+  BarChart2,
+  CheckCircle2,
+  Clock,
+  Database,
+  Play,
+  Store,
+  Users,
+  XCircle,
+  Zap,
+} from 'lucide-react'
 
 const adminMenu: Array<{ key: AdminTab; label: string }> = [
   { key: 'overview', label: 'Overview' },
@@ -25,20 +37,11 @@ const adminMenu: Array<{ key: AdminTab; label: string }> = [
 ]
 
 const segmentColors: Record<string, string> = {
-  champion: '#0078D4',
-  loyal: '#0078D4',
-  at_risk: '#106EBE',
-  new: '#2B88D8',
-  lost: '#71AFE5',
-}
-
-const kpiAccentByLabel: Record<string, string> = {
-  Providers: '#0078D4',
-  Clients: '#2B88D8',
-  Transactions: '#106EBE',
-  'DAU/MAU': '#005A9E',
-  'Active networks': '#0078D4',
-  'Network revenue': '#2B88D8',
+  champion: '#7c3aed',
+  loyal: '#6366f1',
+  at_risk: '#f59e0b',
+  new: '#10b981',
+  lost: '#ef4444',
 }
 
 function isAdminTab(value: string | null): value is AdminTab {
@@ -152,10 +155,23 @@ export function AdminDashboard() {
   const showOverview = activeAdminTab === 'overview'
 
   return (
-    <section className="space-y-6 text-[#323130]">
-      <h1 className="text-2xl font-semibold text-[#323130]">Super Admin Dashboard</h1>
+    <section className="space-y-6">
+      {/* ── Page header ── */}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-extrabold text-slate-900">Admin Dashboard</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            {new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-100 px-3 py-1.5 text-xs font-semibold text-violet-700">
+          <span className="h-1.5 w-1.5 rounded-full bg-violet-500 animate-pulse" />
+          Console opérationnelle
+        </span>
+      </div>
 
-      <nav className="flex flex-wrap gap-1 rounded-md border border-[#edebe9] bg-white p-1 shadow-sm">
+      {/* ── Tabs ── */}
+      <div className="flex flex-wrap gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
         {adminMenu.map((item) => (
           <button
             key={item.key}
@@ -165,173 +181,263 @@ export function AdminDashboard() {
               next.set('tab', item.key)
               setSearchParams(next, { replace: true })
             }}
-            className={`rounded-md px-3 py-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0078D4]/40 ${
+            className={`rounded-lg px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/40 ${
               activeAdminTab === item.key
-                ? 'bg-[#0078D4] font-semibold text-white'
-                : 'text-[#323130] hover:bg-[#f3f2f1]'
+                ? 'bg-violet-600 font-semibold text-white shadow'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
             }`}
           >
             {item.label}
           </button>
         ))}
-      </nav>
+      </div>
 
-      <div key={activeAdminTab} className="fade-switch">
+      <div key={activeAdminTab}>
         {showOverview ? (
-          <>
-          {loading ? <div className="h-24 animate-pulse rounded-md border border-[#edebe9] bg-white" /> : null}
-
-          <div className="grid grid-cols-2 gap-6 lg:grid-cols-4">
-            <StatCard label="Providers" value={String(platformStats?.totalProviders ?? 0)} accentColor={kpiAccentByLabel.Providers} />
-            <StatCard label="Clients" value={String(platformStats?.totalClients ?? 0)} accentColor={kpiAccentByLabel.Clients} />
-            <StatCard label="Transactions" value={String(platformStats?.totalTransactions ?? 0)} accentColor={kpiAccentByLabel.Transactions} />
-            <StatCard label="DAU/MAU" value={`${((platformStats?.dauMauRatio ?? 0) * 100).toFixed(1)}%`} accentColor={kpiAccentByLabel['DAU/MAU']} />
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-5">
-            {networkKpiCards.map((item) => (
-              <StatCard
-                key={item.label}
-                label={item.label}
-                value={item.value}
-                accentColor={kpiAccentByLabel[item.label] ?? '#27272A'}
-              />
-            ))}
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            <StatCard label="Providers via discovery" value={String(networkKpis.providersViaDiscovery)} accentColor="#0078D4" />
-            <StatCard label="Clients via enrollment" value={String(networkKpis.clientsViaEnrollment)} accentColor="#2B88D8" />
-            <StatCard label="Cross-network transfer volume" value={`${networkKpis.transferVolume.toLocaleString()} pts`} accentColor="#106EBE" />
-          </div>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-md border border-[#edebe9] bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-[17px] font-semibold text-[#323130]">Segments distribution</h3>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={segmentDistribution} dataKey="total" nameKey="segment_type" outerRadius={96}>
-                      {segmentDistribution.map((entry, index) => (
-                        <Cell
-                          key={`${entry.segment_type}-${index}`}
-                          fill={segmentColors[entry.segment_type] ?? '#71717A'}
-                        />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        background: '#ffffff',
-                        border: '1px solid #edebe9',
-                        borderRadius: 6,
-                        color: '#323130',
-                      }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
+          <div className="space-y-6">
+            {loading ? (
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-28 animate-pulse rounded-xl bg-slate-200" />
+                ))}
               </div>
-              <div className="mt-3 space-y-1">
-                {segmentDistribution.map((segment) => (
-                  <div key={segment.segment_type} className="flex items-center justify-between text-sm text-[#323130]">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: segmentColors[segment.segment_type] ?? '#71717A' }}
+            ) : null}
+
+            {/* Platform KPIs */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Plateforme</p>
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <StatCard
+                  label="Marchands"
+                  value={String(platformStats?.totalProviders ?? 0)}
+                  icon={<Store className="h-4 w-4" />}
+                  color="violet"
+                />
+                <StatCard
+                  label="Clients"
+                  value={String(platformStats?.totalClients ?? 0)}
+                  icon={<Users className="h-4 w-4" />}
+                  color="indigo"
+                />
+                <StatCard
+                  label="Transactions"
+                  value={String(platformStats?.totalTransactions ?? 0)}
+                  icon={<Activity className="h-4 w-4" />}
+                  color="blue"
+                />
+                <StatCard
+                  label="DAU/MAU"
+                  value={`${((platformStats?.dauMauRatio ?? 0) * 100).toFixed(1)}%`}
+                  icon={<Zap className="h-4 w-4" />}
+                  color="emerald"
+                />
+              </div>
+            </div>
+
+            {/* Network KPIs */}
+            <div>
+              <p className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">Réseaux</p>
+              <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+                {networkKpiCards.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-px hover:shadow-md"
+                  >
+                    <p className="text-xs font-medium text-slate-500">{item.label}</p>
+                    <p className="mt-2 text-2xl font-bold text-slate-900">{item.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-slate-500">Marchands via discovery</p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">{networkKpis.providersViaDiscovery}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-slate-500">Clients via enrollment</p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">{networkKpis.clientsViaEnrollment}</p>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                  <p className="text-xs font-medium text-slate-500">Transferts cross-réseau</p>
+                  <p className="mt-2 text-2xl font-bold text-slate-900">{networkKpis.transferVolume.toLocaleString()} pts</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Charts */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                    <Users className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Distribution segments</h3>
+                    <p className="text-xs text-slate-500">Répartition clients par segment</p>
+                  </div>
+                </div>
+                <div className="h-[260px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={segmentDistribution} dataKey="total" nameKey="segment_type" outerRadius={90} innerRadius={40}>
+                        {segmentDistribution.map((entry, index) => (
+                          <Cell
+                            key={`${entry.segment_type}-${index}`}
+                            fill={segmentColors[entry.segment_type] ?? '#94a3b8'}
+                          />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, color: '#0f172a', fontSize: 12 }}
                       />
-                      <span>{segment.segment_type}</span>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-1.5">
+                  {segmentDistribution.map((seg) => (
+                    <div key={seg.segment_type} className="flex items-center justify-between rounded-md bg-slate-50 px-2.5 py-1.5 text-xs">
+                      <div className="flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: segmentColors[seg.segment_type] ?? '#94a3b8' }} />
+                        <span className="capitalize text-slate-700">{seg.segment_type}</span>
+                      </div>
+                      <span className="font-semibold text-slate-900">{seg.total}</span>
                     </div>
-                    <span>{segment.total}</span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600">
+                    <BarChart2 className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Timeline transactions</h3>
+                    <p className="text-xs text-slate-500">Activité de traitement sur 10 périodes</p>
                   </div>
-                ))}
+                </div>
+                <div className="h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={timelineData}>
+                      <defs>
+                        <linearGradient id="txGradientNew" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.18} />
+                          <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <XAxis dataKey="date" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                      <Tooltip contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 8, color: '#0f172a', fontSize: 12 }} />
+                      <Area type="monotone" dataKey="value" stroke="#7c3aed" strokeWidth={2.5} fill="url(#txGradientNew)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
 
-            <div className="rounded-md border border-[#edebe9] bg-white p-5 shadow-sm">
-              <h3 className="mb-3 text-[17px] font-semibold text-[#323130]">Transactions timeline</h3>
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={timelineData}>
-                    <defs>
-                      <linearGradient id="txGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="rgba(0,120,212,0.22)" />
-                        <stop offset="100%" stopColor="rgba(0,120,212,0)" />
-                      </linearGradient>
-                    </defs>
-                    <XAxis
-                      dataKey="date"
-                      tickLine={false}
-                      axisLine={false}
-                      tick={{ fill: '#605E5C', fontSize: 11 }}
-                    />
-                    <Tooltip
-                      contentStyle={{
-                        background: '#ffffff',
-                        border: '1px solid #edebe9',
-                        borderRadius: 6,
-                        color: '#323130',
-                      }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="value"
-                      stroke="#0078D4"
-                      strokeWidth={2}
-                      fill="url(#txGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
+            {/* Bottom row: Data asset + Jobs Monitor */}
+            <div className="grid gap-6 lg:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
+              {/* Data asset */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                    <Database className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-900">Data asset</h3>
+                    <p className="text-xs text-slate-500">Valeur estimée du patrimoine données</p>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { label: 'Analytics consent', value: dataAssetValue?.analytics ?? 0 },
+                    { label: 'Marketing consent', value: dataAssetValue?.marketing ?? 0 },
+                    { label: 'Third-party consent', value: dataAssetValue?.third_party ?? 0 },
+                    { label: 'Data points', value: dataAssetValue?.dataPointsCollected ?? 0 },
+                  ].map((row) => (
+                    <div key={row.label} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm">
+                      <span className="text-slate-600">{row.label}</span>
+                      <span className="font-semibold text-slate-900">{row.value.toLocaleString()}</span>
+                    </div>
+                  ))}
+                  <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-emerald-800">Valeur estimée</span>
+                    <span className="text-lg font-extrabold text-emerald-700">{(dataAssetValue?.estimatedValue ?? 0).toFixed(2)} €</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
 
-          <div className="rounded-md border border-[#edebe9] bg-white p-5 text-sm text-[#323130] shadow-sm">
-            <h3 className="mb-2 text-[17px] font-semibold text-[#323130]">Data asset</h3>
-            <p>Analytics consent: {dataAssetValue?.analytics ?? 0}</p>
-            <p>Marketing consent: {dataAssetValue?.marketing ?? 0}</p>
-            <p>Third-party consent: {dataAssetValue?.third_party ?? 0}</p>
-            <p>Data points: {dataAssetValue?.dataPointsCollected ?? 0}</p>
-            <p>Estimated value: {(dataAssetValue?.estimatedValue ?? 0).toFixed(2)} €</p>
-          </div>
-
-          <div className="rounded-md border border-[#edebe9] bg-white p-5 text-sm text-[#323130] shadow-sm">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-[17px] font-semibold text-[#323130]">Jobs Monitor</h3>
-              <button
-                type="button"
-                onClick={() => {
-                  runJobsNow().catch(() => undefined)
-                }}
-                disabled={runningJobs}
-                className="h-9 rounded border border-[#0078D4] bg-[#0078D4] px-3 text-xs font-semibold text-white transition hover:bg-[#106ebe] disabled:opacity-70"
-              >
-                {runningJobs ? 'Running...' : 'Run jobs now'}
-              </button>
-            </div>
-
-            {lastRunSummary ? <p className="mb-2 text-xs text-[#0078D4]">{lastRunSummary}</p> : null}
-            {runJobsError ? <p className="mb-2 text-xs text-[#a4262c]">{runJobsError}</p> : null}
-
-            {jobsLog.length === 0 ? (
-              <p className="text-[#323130]">Aucun run de job pour le moment.</p>
-            ) : (
-              <div className="space-y-2">
-                {jobsLog.slice(0, 12).map((job) => (
-                  <div key={job.id} className="rounded-md border border-[#edebe9] bg-[#faf9f8] px-3 py-2">
+              {/* Jobs Monitor */}
+              <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="mb-4 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
+                      <Clock className="h-4 w-4" />
+                    </span>
                     <div>
-                      <p className="font-medium text-[#323130]">{job.job_name}</p>
-                      <p className="text-xs text-[#605E5C]">{new Date(job.created_at).toLocaleString('fr-FR')}</p>
-                    </div>
-
-                    <div className="text-right text-xs">
-                      <p className={job.status === 'success' ? 'text-[#0078D4]' : 'text-[#a4262c]'}>{job.status}</p>
-                      <p className="text-[#605E5C]">{job.records_processed ?? 0} records · {job.duration_ms ?? 0} ms</p>
+                      <h3 className="text-sm font-semibold text-slate-900">Jobs Monitor</h3>
+                      <p className="text-xs text-slate-500">Derniers runs de traitement</p>
                     </div>
                   </div>
-                ))}
+                  <button
+                    type="button"
+                    onClick={() => { runJobsNow().catch(() => undefined) }}
+                    disabled={runningJobs}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-violet-600 px-3 text-xs font-semibold text-white transition hover:bg-violet-700 disabled:opacity-60"
+                  >
+                    <Play className="h-3 w-3" />
+                    {runningJobs ? 'En cours...' : 'Lancer'}
+                  </button>
+                </div>
+
+                {lastRunSummary ? (
+                  <p className="mb-3 rounded-md bg-violet-50 px-3 py-1.5 text-xs font-medium text-violet-700">{lastRunSummary}</p>
+                ) : null}
+                {runJobsError ? (
+                  <p className="mb-3 rounded-md bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">{runJobsError}</p>
+                ) : null}
+
+                <div className="max-h-[280px] space-y-2 overflow-y-auto">
+                  {jobsLog.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-slate-200 py-6 text-center text-sm text-slate-500">
+                      Aucun run de job enregistré.
+                    </p>
+                  ) : (
+                    jobsLog.slice(0, 12).map((job) => (
+                      <div
+                        key={job.id}
+                        className="flex items-start justify-between gap-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-semibold text-slate-900">{job.job_name}</p>
+                          <p className="mt-0.5 text-[11px] text-slate-500">{new Date(job.created_at).toLocaleString('fr-FR')}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                              job.status === 'success'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700'
+                            }`}
+                          >
+                            {job.status === 'success' ? (
+                              <CheckCircle2 className="h-2.5 w-2.5" />
+                            ) : (
+                              <XCircle className="h-2.5 w-2.5" />
+                            )}
+                            {job.status}
+                          </span>
+                          <p className="text-[10px] text-slate-400">
+                            {job.records_processed ?? 0} rec · {job.duration_ms ?? 0} ms
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
-            )}
+            </div>
           </div>
-          </>
         ) : (
           <AdminControlCenter initialTab={activeAdminTab} />
         )}
@@ -340,14 +446,43 @@ export function AdminDashboard() {
   )
 }
 
-function StatCard({ label, value, accentColor }: { label: string; value: string; accentColor: string }) {
+type StatColor = 'violet' | 'indigo' | 'blue' | 'emerald' | 'amber' | 'rose'
+
+const colorMap: Record<StatColor, { bg: string; text: string; icon: string }> = {
+  violet: { bg: 'bg-violet-50', text: 'text-violet-600', icon: 'text-violet-600' },
+  indigo: { bg: 'bg-indigo-50', text: 'text-indigo-600', icon: 'text-indigo-600' },
+  blue:   { bg: 'bg-blue-50',   text: 'text-blue-600',   icon: 'text-blue-600'   },
+  emerald:{ bg: 'bg-emerald-50',text: 'text-emerald-600',icon: 'text-emerald-600'},
+  amber:  { bg: 'bg-amber-50',  text: 'text-amber-600',  icon: 'text-amber-600'  },
+  rose:   { bg: 'bg-rose-50',   text: 'text-rose-600',   icon: 'text-rose-600'   },
+}
+
+function StatCard({
+  label,
+  value,
+  icon,
+  color = 'violet',
+}: {
+  label: string
+  value: string
+  icon?: React.ReactNode
+  color?: StatColor
+}) {
+  const c = colorMap[color]
   return (
-    <div
-      className="rounded-md border border-[#edebe9] bg-white p-5 shadow-sm"
-      style={{ borderTop: `3px solid ${accentColor}` }}
-    >
-      <p className="text-sm font-medium text-[#605E5C]">{label}</p>
-      <p className="mt-1 text-[28px] font-bold text-[#323130]">{value}</p>
+    <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-px hover:shadow-md">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium uppercase tracking-widest text-slate-500">{label}</p>
+          <p className="mt-2 text-3xl font-extrabold text-slate-900">{value}</p>
+        </div>
+        {icon ? (
+          <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${c.bg} ${c.icon}`}>
+            {icon}
+          </span>
+        ) : null}
+      </div>
+      <span className={`absolute -right-4 -top-4 h-20 w-20 rounded-full opacity-[0.06] ${c.bg}`} aria-hidden="true" />
     </div>
   )
 }

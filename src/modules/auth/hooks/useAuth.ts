@@ -10,6 +10,7 @@ export function useAuth() {
   const login = useAuthStore((state) => state.signIn)
   const loginWithOAuth = useAuthStore((state) => state.signInWithOAuth)
   const completeSocialProfile = useAuthStore((state) => state.completeSocialProfile)
+  const updatePassword = useAuthStore((state) => state.updatePassword)
   const logout = useAuthStore((state) => state.signOut)
 
   const isClient = role === 'client'
@@ -25,6 +26,7 @@ export function useAuth() {
     login,
     loginWithOAuth,
     completeSocialProfile,
+    updatePassword,
     logout,
     isClient,
     isProvider,

@@ -83,9 +83,9 @@ export function useDashboardStats(): DashboardStats {
             .eq('status', 'validated')
             .gte('created_at', startOfWeek.toISOString()),
           supabase
-            .from('user_networks')
+            .from('network_clients')
             .select('id', { count: 'exact', head: true })
-            .eq('user_id', userId),
+            .eq('client_id', userId),
           supabase
             .from('transactions')
             .select('id', { count: 'exact', head: true })
@@ -93,9 +93,9 @@ export function useDashboardStats(): DashboardStats {
             .eq('status', 'validated')
             .gte('created_at', startOfMonth.toISOString()),
           supabase
-            .from('user_networks')
-            .select('network_name')
-            .eq('user_id', userId)
+            .from('network_clients')
+            .select('networks:network_id(name)')
+            .eq('client_id', userId)
             .limit(1)
             .maybeSingle(),
         ])
@@ -120,10 +120,13 @@ export function useDashboardStats(): DashboardStats {
         const tier = getTier(totalPoints)
         const progressToNextTier = computeProgressToNext(totalPoints)
 
-        const activeNetworkName =
-          !activeNetworkRes.error && activeNetworkRes.data?.network_name
-            ? String(activeNetworkRes.data.network_name)
-            : defaultStats.activeNetworkName
+        const activeNetworkName = (() => {
+          if (activeNetworkRes.error || !activeNetworkRes.data) return defaultStats.activeNetworkName
+          const raw = (activeNetworkRes.data as { networks?: unknown }).networks
+          const first = Array.isArray(raw) ? raw[0] : raw
+          const name = first && typeof first === 'object' ? (first as { name?: string }).name : null
+          return typeof name === 'string' ? name : defaultStats.activeNetworkName
+        })()
 
         if (!cancelled) {
           setStats({

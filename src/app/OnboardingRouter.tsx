@@ -145,40 +145,36 @@ export default function OnboardingRouter() {
           accountEmail = candidateAccount.email
         }
 
-        const profileResponse = await supabase
-          .from('profiles')
-          .select('*')
-          .or(`user_id.eq.${user.id},id.eq.${user.id}`)
-          .limit(1)
-          .maybeSingle()
-
-        if (cancelled) return
-
-        const profileRow = profileResponse.data as Record<string, unknown> | null
+        const metadata = user.user_metadata as Record<string, unknown> | undefined
         const onboardingCompleted =
-          profileRow &&
-          (profileRow.onboarding_completed === true || profileRow.onboarding_complete === true)
+          metadata?.onboarding_completed === true || metadata?.onboarding_complete === true
 
         if (onboardingCompleted) {
           navigate('/dashboard', { replace: true })
           return
         }
 
-        if (profileRow) {
-          const mappedProfile = {
-            avatarId: String(profileRow.avatar_id ?? 'lion'),
-            city: String(profileRow.city ?? ''),
-            country: String(profileRow.country ?? 'Belgique'),
-            language: String(profileRow.language ?? 'Français'),
-          }
+        const mappedProfile = {
+          avatarId: typeof metadata?.avatar_id === 'string' ? metadata.avatar_id : 'lion',
+          city: typeof metadata?.city === 'string' ? metadata.city : '',
+          country: typeof metadata?.country === 'string' ? metadata.country : 'Belgique',
+          language: typeof metadata?.language === 'string' ? metadata.language : 'Français',
+        }
+
+        if (
+          mappedProfile.avatarId ||
+          mappedProfile.city ||
+          mappedProfile.country !== 'Belgique' ||
+          mappedProfile.language !== 'Français'
+        ) {
           mergedProfile = mappedProfile
           setProfile(mappedProfile)
         }
 
         const networksResponse = await supabase
-          .from('user_networks')
+          .from('network_clients')
           .select('network_id')
-          .eq('user_id', user.id)
+          .eq('client_id', user.id)
 
         if (cancelled) return
 

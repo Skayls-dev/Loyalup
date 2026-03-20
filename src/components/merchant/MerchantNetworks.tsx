@@ -50,9 +50,10 @@ export function MerchantNetworks({ merchantId, className = '' }: MerchantNetwork
 
       const [activeRes, allRes] = await Promise.all([
         supabase
-          .from('merchant_networks')
+          .from('network_members')
           .select('network_id, networks:network_id(id, name, emoji, points_multiplier, primary_color, secondary_color)')
-          .eq('merchant_id', merchantId),
+          .eq('fournisseur_id', merchantId)
+          .eq('status', 'active'),
         supabase
           .from('networks')
           .select('id, name, emoji, points_multiplier, primary_color, secondary_color, is_active')
@@ -139,9 +140,11 @@ export function MerchantNetworks({ merchantId, className = '' }: MerchantNetwork
     setActiveNetworks((prev) => [...prev, network])
     setAvailableNetworks((prev) => prev.filter((item) => item.id !== network.id))
 
-    const { error: joinError } = await supabase.from('merchant_networks').insert({
-      merchant_id: merchantId,
+    const { error: joinError } = await supabase.from('network_members').insert({
+      fournisseur_id: merchantId,
       network_id: network.id,
+      status: 'active',
+      joined_at: new Date().toISOString(),
     })
 
     if (joinError) {
@@ -158,9 +161,9 @@ export function MerchantNetworks({ merchantId, className = '' }: MerchantNetwork
       <header className="mb-3 flex items-center justify-between gap-3">
         <p className="font-body text-xs uppercase tracking-[0.16em] text-gray-500">Reseaux actifs</p>
         <Button
-          variant="ghost"
+          variant="soft"
           size="sm"
-          className="border border-gray-200 text-gray-700"
+          className="hover:bg-[#FFF4EE] hover:border-[#FF6B35]/35 hover:text-[#C84E20]"
           onClick={() => setShowBrowser((prev) => !prev)}
         >
           + Rejoindre un reseau

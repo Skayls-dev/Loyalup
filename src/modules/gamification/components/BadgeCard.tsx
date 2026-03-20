@@ -28,34 +28,51 @@ export function BadgeCard({
   language = 'fr',
 }: BadgeCardProps) {
   const rarityKey = (badge.rarity ?? 'common') as keyof typeof rarityColors
+  const badgeName = badge.name[language] ?? badge.name.fr ?? badge.name.en ?? badge.code
+  const unlockedAtLabel = badge.unlocked_at
+    ? new Date(badge.unlocked_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+    : null
 
   return (
     <div
-      className={`relative w-24 h-24 rounded-lg border-2 flex flex-col items-center justify-center transition-transform hover:scale-105 cursor-pointer ${
+      className={`group relative flex min-h-[178px] w-full flex-col rounded-2xl border-2 p-3 transition-all duration-200 ${
         rarityBorders[rarityKey] ?? rarityBorders.common
-      } ${earned ? `bg-gradient-to-br ${rarityColors[rarityKey]}` : 'bg-gray-300'}`}
+      } ${earned ? `bg-gradient-to-br ${rarityColors[rarityKey]} text-white shadow-sm` : 'bg-slate-100 text-slate-700'} ${locked ? 'opacity-80' : ''}`}
     >
-      {/* Locked overlay */}
-      {locked && !earned && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-slate-100/80">
-          <span className="text-2xl">🔒</span>
-        </div>
-      )}
+      <div className="mb-2 flex items-center justify-between">
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${earned ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'}`}>
+          {badge.rarity ?? 'common'}
+        </span>
+        {locked && !earned ? <span className="text-base" aria-hidden="true">🔒</span> : null}
+      </div>
 
-      {/* Badge emoji/content */}
-      <div className={`text-3xl ${earned ? '' : 'opacity-50'}`}>
+      <div className={`mb-2 flex h-14 items-center justify-center text-4xl ${earned ? '' : 'opacity-70'}`}>
         {badge.emoji || '🏅'}
       </div>
 
-      {/* Shimmer effect for legendary */}
-      {earned && badge.rarity === 'legendary' && (
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent rounded-lg animate-pulse" />
-      )}
+      <p className={`line-clamp-2 min-h-[38px] text-center text-sm font-semibold leading-tight ${earned ? 'text-white' : 'text-slate-800'}`}>
+        {badgeName}
+      </p>
 
-      {/* Badge name (small, on hover or below) */}
-      <div className="pointer-events-none absolute -bottom-8 left-0 right-0 truncate px-1 text-center text-xs font-bold text-slate-600">
-        {badge.name[language] ?? badge.code}
+      <p className={`mt-1 text-center text-[11px] uppercase tracking-wide ${earned ? 'text-white/80' : 'text-slate-500'}`}>
+        {badge.category || 'badge'}
+      </p>
+
+      <div className="mt-auto pt-2 text-center text-[11px]">
+        {earned && unlockedAtLabel ? (
+          <span className="rounded-full bg-white/20 px-2 py-0.5">{language === 'fr' ? `Débloqué ${unlockedAtLabel}` : `Unlocked ${unlockedAtLabel}`}</span>
+        ) : locked ? (
+          <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-600">{language === 'fr' ? 'À débloquer' : 'Locked'}</span>
+        ) : null}
       </div>
+
+      {earned && badge.rarity === 'legendary' && (
+        <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-70" />
+      )}
     </div>
   )
 }

@@ -102,9 +102,9 @@ async function merchantExists(merchantId: string): Promise<boolean> {
 
 async function userHasActiveNetwork(userId: string, networkId: string): Promise<boolean> {
   const { data, error } = await supabase
-    .from('user_networks')
+    .from('network_clients')
     .select('id')
-    .eq('user_id', userId)
+    .eq('client_id', userId)
     .eq('network_id', networkId)
     .limit(1)
 

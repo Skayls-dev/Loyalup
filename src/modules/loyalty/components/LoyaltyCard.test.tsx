@@ -57,17 +57,17 @@ describe('LoyaltyCard', () => {
     expect(screen.getByText('50%')).toBeInTheDocument()
   })
 
-  it('animates points counter when points prop changes', () => {
+  it('updates progress when points prop changes', () => {
     const { rerender } = render(<LoyaltyCard card={{ ...card, solde: 200, displaySolde: 200 }} index={0} />)
     rerender(<LoyaltyCard card={{ ...card, solde: 260, displaySolde: 260 }} index={0} />)
 
-    expect(screen.getByText(/250|260/)).toBeInTheDocument()
+    expect(screen.getByText('52%')).toBeInTheDocument()
   })
 
   it('navigates to detail view on tap', () => {
     render(<LoyaltyCard card={card} index={0} />)
     fireEvent.click(screen.getByRole('button'))
 
-    expect(navigateMock).toHaveBeenCalledWith('/client/history?provider=fournisseur-1')
+    expect(navigateMock).toHaveBeenCalledWith('/history?provider=fournisseur-1')
   })
 })

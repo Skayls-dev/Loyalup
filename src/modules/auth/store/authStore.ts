@@ -10,11 +10,13 @@ import {
   type SocialRole,
   signUp as signUpService,
   type SocialProvider,
+  updateCurrentUserPassword as updateCurrentUserPasswordService,
   type UserRole,
 } from '../services/authService'
 
 type AuthPayload = {
   user: User | null
+  profile: Profile | null
   role: UserRole | null
   session: Session | null
 }
@@ -35,6 +37,7 @@ type AuthState = {
   signInWithOAuth: (provider: SocialProvider) => Promise<void>
   completeSocialProfile: (role: SocialRole, nom: string) => Promise<AuthPayload>
   signUp: (email: string, password: string, role: UserRole) => Promise<AuthPayload>
+  updatePassword: (password: string) => Promise<void>
   signOut: () => Promise<void>
   clearError: () => void
 }
@@ -45,20 +48,6 @@ function getErrorMessage(error: unknown): string {
   }
 
   return 'Unknown authentication error'
-}
-
-function buildProfile(user: User | null, role: UserRole | null): Profile | null {
-  if (!user || !role) {
-    return null
-  }
-
-  return {
-    id: user.id,
-    email: user.email ?? '',
-    role,
-    nom: (user.user_metadata?.nom as string | undefined) ?? '',
-    created_at: user.created_at ?? new Date().toISOString(),
-  }
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -76,11 +65,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null })
 
     try {
-      const { user, role, session } = await getCurrentUser()
+      const { user, profile, role, session } = await getCurrentUser()
 
       set({
         user,
-        profile: buildProfile(user, role),
+        profile,
         role,
         session,
         userConsents: [],
@@ -96,11 +85,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null })
 
     try {
-      const { user, role, session } = await getCurrentUser()
+      const { user, profile, role, session } = await getCurrentUser()
 
       set({
         user,
-        profile: buildProfile(user, role),
+        profile,
         role,
         session,
         userConsents: [],
@@ -108,7 +97,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         loading: false,
       })
 
-      return { user, role, session }
+      return { user, profile, role, session }
     } catch (error) {
       set({ loading: false, error: getErrorMessage(error) })
       throw error
@@ -119,11 +108,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null })
 
     try {
-      const { user, role, session } = await signInService(email, password)
+      const { user, profile, role, session } = await signInService(email, password)
 
       set({
         user,
-        profile: buildProfile(user, role),
+        profile,
         role,
         session,
         userConsents: [],
@@ -131,7 +120,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         loading: false,
       })
 
-      return { user, role, session }
+      return { user, profile, role, session }
     } catch (error) {
       set({ loading: false, error: getErrorMessage(error) })
       throw error
@@ -154,11 +143,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null })
 
     try {
-      const { user, role: resolvedRole, session } = await completeSocialProfileService(role, nom)
+      const { user, profile, role: resolvedRole, session } = await completeSocialProfileService(role, nom)
 
       set({
         user,
-        profile: buildProfile(user, resolvedRole),
+        profile,
         role: resolvedRole,
         session,
         userConsents: [],
@@ -166,7 +155,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         loading: false,
       })
 
-      return { user, role: resolvedRole, session }
+      return { user, profile, role: resolvedRole, session }
     } catch (error) {
       set({ loading: false, error: getErrorMessage(error) })
       throw error
@@ -177,11 +166,11 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ loading: true, error: null })
 
     try {
-      const { user, role: resolvedRole, session } = await signUpService(email, password, role)
+      const { user, profile, role: resolvedRole, session } = await signUpService(email, password, role)
 
       set({
         user,
-        profile: buildProfile(user, resolvedRole),
+        profile,
         role: resolvedRole,
         session,
         userConsents: [],
@@ -189,7 +178,29 @@ export const useAuthStore = create<AuthState>((set) => ({
         loading: false,
       })
 
-      return { user, role: resolvedRole, session }
+      return { user, profile, role: resolvedRole, session }
+    } catch (error) {
+      set({ loading: false, error: getErrorMessage(error) })
+      throw error
+    }
+  },
+
+  updatePassword: async (password) => {
+    set({ loading: true, error: null })
+
+    try {
+      await updateCurrentUserPasswordService(password)
+      const { user, profile, role, session } = await getCurrentUser()
+
+      set({
+        user,
+        profile,
+        role,
+        session,
+        userConsents: [],
+        isAuthenticated: Boolean(session ?? user),
+        loading: false,
+      })
     } catch (error) {
       set({ loading: false, error: getErrorMessage(error) })
       throw error

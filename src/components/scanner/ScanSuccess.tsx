@@ -145,7 +145,7 @@ export function ScanSuccess({ result, onReset }: ScanSuccessProps) {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/client')}
+            onClick={() => navigate('/dashboard')}
             className="h-11 rounded-md bg-primary font-body text-sm font-semibold text-white transition hover:brightness-105"
           >
             Voir mes points →

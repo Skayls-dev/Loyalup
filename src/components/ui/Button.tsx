@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, MouseEventHandler, ReactNode } from 'react'
 
-type ButtonVariant = 'primary' | 'ghost' | 'outline-white' | 'white'
+type ButtonVariant = 'primary' | 'ghost' | 'outline-white' | 'white' | 'soft'
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
@@ -18,6 +18,7 @@ const variantClasses: Record<ButtonVariant, string> = {
   ghost: 'bg-transparent text-gray-800 border border-transparent hover:bg-gray-100',
   'outline-white': 'bg-transparent text-white border border-white/80 hover:bg-white/12',
   white: 'bg-white text-dark border border-white shadow-floating hover:bg-gray-50',
+  soft: 'border border-slate-200 bg-slate-50 text-slate-800 shadow-sm hover:bg-slate-100',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {

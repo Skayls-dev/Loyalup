@@ -111,7 +111,7 @@ async function fetchStats(userId: string): Promise<DashboardStats> {
       .select('points_credited')
       .eq('client_id', userId)
       .eq('status', 'validated'),
-    supabase.from('user_networks').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+    supabase.from('network_clients').select('id', { count: 'exact', head: true }).eq('client_id', userId),
     supabase
       .from('transactions')
       .select('id', { count: 'exact', head: true })
@@ -137,26 +137,23 @@ async function fetchStats(userId: string): Promise<DashboardStats> {
 
 async function fetchNetworks(userId: string): Promise<DashboardNetwork[]> {
   const { data, error } = await supabase
-    .from('user_networks')
+    .from('network_clients')
     .select(
       `
       network_id,
-      points,
+      total_network_points,
       networks:network_id (
         id,
         name,
         emoji,
-        merchant_count,
-        network_config (
-          bg_color,
-          badge_color,
-          multiplier,
-          next_threshold
-        )
+        member_count,
+        primary_color,
+        secondary_color,
+        points_multiplier
       )
     `,
     )
-    .eq('user_id', userId)
+    .eq('client_id', userId)
 
   if (error) throw new Error(error.message)
 
@@ -166,28 +163,23 @@ async function fetchNetworks(userId: string): Promise<DashboardNetwork[]> {
       const network = Array.isArray(networkRaw) ? networkRaw[0] : networkRaw
       if (!network || typeof network !== 'object') return null
 
-      const cfgRaw = (network as { network_config?: unknown }).network_config
-      const config = Array.isArray(cfgRaw) ? cfgRaw[0] : cfgRaw
-
-      const points = Number((row as { points?: number }).points ?? 0)
-      const nextThreshold = Math.max(1, Number((config as { next_threshold?: number })?.next_threshold ?? 1000))
+      const points = Number((row as { total_network_points?: number }).total_network_points ?? 0)
+      const nextThreshold = 1000
       const progressPercent = Math.max(0, Math.min(100, Math.round((points / nextThreshold) * 100)))
+
+      const primaryColor = typeof (network as { primary_color?: unknown }).primary_color === 'string'
+        ? String((network as { primary_color: string }).primary_color) : '#5B4FE8'
 
       return {
         id: String((network as { id?: string }).id ?? (row as { network_id?: string }).network_id ?? ''),
         name: String((network as { name?: string }).name ?? 'Réseau'),
         emoji: String((network as { emoji?: string }).emoji ?? '🌐'),
-        bgColor:
-          typeof (config as { bg_color?: unknown })?.bg_color === 'string'
-            ? String((config as { bg_color: string }).bg_color)
-            : '#EBE9FF',
-        badgeColor:
-          typeof (config as { badge_color?: unknown })?.badge_color === 'string'
-            ? String((config as { badge_color: string }).badge_color)
-            : '#5B4FE8',
+        bgColor: '#EBE9FF',
+        badgeColor: typeof (network as { secondary_color?: unknown }).secondary_color === 'string'
+          ? String((network as { secondary_color: string }).secondary_color) : primaryColor,
         points,
-        merchantCount: Number((network as { merchant_count?: number }).merchant_count ?? 0),
-        multiplier: Number((config as { multiplier?: number })?.multiplier ?? 1),
+        merchantCount: Number((network as { member_count?: number }).member_count ?? 0),
+        multiplier: Number((network as { points_multiplier?: number }).points_multiplier ?? 1),
         nextThreshold,
         progressPercent,
       } satisfies DashboardNetwork

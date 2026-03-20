@@ -290,7 +290,7 @@ export async function getLeaderboard(
 ): Promise<{ entries: LeaderboardEntry[]; myRank: number | null; myScore: number | null }> {
   let query = supabase
     .from('leaderboard_entries')
-    .select('rank, score, client_id, profiles!inner(nom, prenom)')
+    .select('rank, score, client_id')
     .eq('leaderboard_type', type)
     .eq('period', period)
     .order('rank', { ascending: true })
@@ -310,12 +310,12 @@ export async function getLeaderboard(
     data: { user },
   } = await supabase.auth.getUser()
 
-  const entries: LeaderboardEntry[] = (data as any[])?.map((entry) => ({
+  const entries: LeaderboardEntry[] = ((data ?? []) as Array<{ rank: number; score: number; client_id: string }>).map((entry) => ({
     rank: entry.rank,
-    client_name: `${entry.profiles.prenom} ${entry.profiles.nom?.charAt(0)}.`,
+    client_name: entry.client_id === user?.id ? 'Vous' : `Utilisateur #${entry.rank}`,
     score: entry.score,
     is_current_user: entry.client_id === user?.id,
-  })) ?? []
+  }))
 
   const myEntry = entries.find((e) => e.is_current_user)
 

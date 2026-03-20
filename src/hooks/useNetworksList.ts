@@ -73,35 +73,19 @@ async function loadMerchantCounts(networkIds: string[]): Promise<Map<string, num
   const result = new Map<string, number>()
   if (networkIds.length === 0) return result
 
-  const primary = await supabase.from('merchant_networks').select('network_id, merchant_id').in('network_id', networkIds)
-  if (!primary.error) {
-    for (const row of (primary.data ?? []) as Array<{ network_id: string; merchant_id: string }>) {
-      const key = `${row.network_id}:${row.merchant_id}`
-      result.set(key, 1)
-    }
-
-    const aggregated = new Map<string, number>()
-    for (const key of result.keys()) {
-      const [networkId] = key.split(':')
-      aggregated.set(networkId, (aggregated.get(networkId) ?? 0) + 1)
-    }
-
-    return aggregated
-  }
-
-  const fallback = await supabase
+  const membersRes = await supabase
     .from('network_members')
     .select('network_id, fournisseur_id, status')
     .in('network_id', networkIds)
     .eq('status', 'active')
 
-  if (fallback.error) {
+  if (membersRes.error) {
     return new Map<string, number>()
   }
 
   const seen = new Set<string>()
   const aggregated = new Map<string, number>()
-  for (const row of (fallback.data ?? []) as Array<{ network_id: string; fournisseur_id: string }>) {
+  for (const row of (membersRes.data ?? []) as Array<{ network_id: string; fournisseur_id: string }>) {
     const key = `${row.network_id}:${row.fournisseur_id}`
     if (seen.has(key)) continue
     seen.add(key)
@@ -114,32 +98,17 @@ async function loadMerchantCounts(networkIds: string[]): Promise<Map<string, num
 async function loadMemberCounts(networkIds: string[]): Promise<Map<string, number>> {
   if (networkIds.length === 0) return new Map<string, number>()
 
-  const primary = await supabase.from('user_networks').select('network_id, user_id').in('network_id', networkIds)
-
-  if (!primary.error) {
-    const seen = new Set<string>()
-    const aggregated = new Map<string, number>()
-    for (const row of (primary.data ?? []) as Array<{ network_id: string; user_id: string }>) {
-      const key = `${row.network_id}:${row.user_id}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      aggregated.set(row.network_id, (aggregated.get(row.network_id) ?? 0) + 1)
-    }
-    return aggregated
-  }
-
-  const fallback = await supabase.from('network_clients').select('network_id, client_id').in('network_id', networkIds)
-  if (fallback.error) return new Map<string, number>()
+  const { data, error } = await supabase.from('network_clients').select('network_id, client_id').in('network_id', networkIds)
+  if (error) return new Map<string, number>()
 
   const seen = new Set<string>()
   const aggregated = new Map<string, number>()
-  for (const row of (fallback.data ?? []) as Array<{ network_id: string; client_id: string }>) {
+  for (const row of (data ?? []) as Array<{ network_id: string; client_id: string }>) {
     const key = `${row.network_id}:${row.client_id}`
     if (seen.has(key)) continue
     seen.add(key)
     aggregated.set(row.network_id, (aggregated.get(row.network_id) ?? 0) + 1)
   }
-
   return aggregated
 }
 

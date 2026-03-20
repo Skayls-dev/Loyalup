@@ -91,9 +91,9 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
             : Promise.resolve({ data: [], error: null }),
           clientIds.length
             ? supabase
-                .from('user_networks')
-                .select('user_id, networks:network_id(name)')
-                .in('user_id', clientIds)
+                .from('network_clients')
+                .select('client_id, networks:network_id(name)')
+                .in('client_id', clientIds)
             : Promise.resolve({ data: [], error: null }),
         ])
 
@@ -112,12 +112,12 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
         }
 
         const networkMap = new Map<string, string>()
-        for (const row of (networksRes.data ?? []) as Array<{ user_id: string; networks?: unknown }>) {
+        for (const row of (networksRes.data ?? []) as Array<{ client_id: string; networks?: unknown }>) {
           const raw = row.networks as unknown
           const first = Array.isArray(raw) ? raw[0] : raw
           const name = first && typeof first === 'object' ? (first as { name?: string }).name : undefined
-          if (!networkMap.has(row.user_id)) {
-            networkMap.set(row.user_id, name?.trim() || 'Réseau LoyalUp')
+          if (!networkMap.has(row.client_id)) {
+            networkMap.set(row.client_id, name?.trim() || 'Réseau LoyalUp')
           }
         }
 

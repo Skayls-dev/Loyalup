@@ -166,19 +166,14 @@ export default function Step3Networks() {
 
     setSubmitting(true)
 
-    const rows = selectedIds.map((networkId) => ({ user_id: userId, network_id: networkId }))
+    const rows = selectedIds.map((networkId) => ({ client_id: userId, network_id: networkId }))
 
-    const primaryInsert = await supabase.from('user_networks').insert(rows)
+    const primaryInsert = await supabase.from('network_clients').insert(rows)
 
     if (primaryInsert.error) {
-      const fallbackRows = selectedIds.map((networkId) => ({ client_id: userId, network_id: networkId }))
-      const fallbackInsert = await supabase.from('network_clients').insert(fallbackRows)
-
-      if (fallbackInsert.error) {
-        setSubmitting(false)
-        setError(fallbackInsert.error.message)
-        return
-      }
+      setSubmitting(false)
+      setError(primaryInsert.error.message)
+      return
     }
 
     setNetworks(selectedIds)
