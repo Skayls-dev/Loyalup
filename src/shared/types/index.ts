@@ -45,6 +45,16 @@ export type Profile = {
 	email: string
 	role: Role
 	nom: string
+	prenom?: string | null
+	nom_commerce?: string | null
+	ville?: string | null
+	city?: string | null
+	telephone?: string | null
+	avatar_id?: string | null
+	country?: string | null
+	language?: string | null
+	onboarding_completed?: boolean | null
+	onboarding_complete?: boolean | null
 	created_at: string
 }
 
@@ -68,3 +78,4 @@ export type AuthState = {
 }
 
 export * from './webhooks'
+export * from './partnerIdentity'
