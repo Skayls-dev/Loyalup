@@ -306,7 +306,7 @@ export async function getProviderNetworks(fournisseur_id?: string): Promise<Arra
 }
 
 export async function enrollInNetwork(network_id: string, invite_code?: string): Promise<{ success: boolean; welcome_bonus_awarded: number }> {
-  const { data, error } = await supabase.functions.invoke('manage-client-enrollment', {
+  const { data, error } = await invokeManageClientEnrollment({
     body: {
       action: 'ENROLL_CLIENT',
       network_id,
@@ -322,7 +322,7 @@ export async function enrollInNetwork(network_id: string, invite_code?: string):
 }
 
 export async function unenrollFromNetwork(network_id: string): Promise<{ success: boolean }> {
-  const { data, error } = await supabase.functions.invoke('manage-client-enrollment', {
+  const { data, error } = await invokeManageClientEnrollment({
     body: {
       action: 'UNENROLL_CLIENT',
       network_id,
@@ -378,7 +378,7 @@ export async function getClientNetworks(client_id?: string): Promise<Array<{ net
 }
 
 export async function getEligibleNetworks(): Promise<NetworkWithEligibility[]> {
-  const { data, error } = await supabase.functions.invoke('manage-client-enrollment', {
+  const { data, error } = await invokeManageClientEnrollment({
     body: {
       action: 'GET_ELIGIBLE_NETWORKS',
     },
@@ -406,10 +406,44 @@ function isAuthFunctionError(error: unknown): boolean {
     return false
   }
 
-  const context = (error as { context?: { status?: number } }).context
-  const status = context?.status
+  const maybeError = error as {
+    message?: string
+    status?: number
+    context?: { status?: number; response?: { status?: number } }
+  }
 
-  return status === 401 || status === 403
+  const context = maybeError.context
+  const status = context?.status ?? context?.response?.status ?? maybeError.status
+
+  if (status === 401 || status === 403) {
+    return true
+  }
+
+  const message = (maybeError.message ?? '').toLowerCase()
+  return message.includes('unauthorized') || message.includes('forbidden') || message.includes('jwt')
+}
+
+async function invokeManageClientEnrollment(payload: { body: Record<string, unknown> }) {
+  const { data: sessionData } = await supabase.auth.getSession()
+  const accessToken = sessionData.session?.access_token
+
+  if (!accessToken) {
+    return {
+      data: null,
+      error: {
+        message: 'Unauthorized',
+        status: 401,
+        context: { status: 401 },
+      },
+    }
+  }
+
+  return supabase.functions.invoke('manage-client-enrollment', {
+    body: payload.body,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
 }
 
 async function getNetworkStatsFallback(network_id: string): Promise<NetworkStats> {
