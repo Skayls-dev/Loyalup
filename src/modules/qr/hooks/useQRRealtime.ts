@@ -61,6 +61,10 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
     }
 
     const loadCurrentPending = async () => {
+      if (cancelled) {
+        return
+      }
+
       const { data } = await supabase
         .from('pending_transactions')
         .select('id, qr_token_id, client_id, fournisseur_id, status, created_at, expires_at')
@@ -76,13 +80,19 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
     }
 
     void loadCurrentPending()
+    const pollingInterval = window.setInterval(() => {
+      if (!pendingTransaction) {
+        void loadCurrentPending()
+      }
+    }, 1000)
     subscribeToPendingTransactions(fournisseurId, hydratePending)
 
     return () => {
       cancelled = true
+      window.clearInterval(pollingInterval)
       unsubscribe()
     }
-  }, [fournisseurId])
+  }, [fournisseurId, pendingTransaction])
 
   const clearPending = () => {
     setPendingTransaction(null)
