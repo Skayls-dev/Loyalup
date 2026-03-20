@@ -11,6 +11,7 @@ import { MerchantTransactions } from '../components/merchant/MerchantTransaction
 import { TopCustomers } from '../components/merchant/TopCustomers'
 import type { SocialRole, UserRole } from '../modules/auth/services/authService'
 import { useEventTracker } from '../shared/hooks/useEventTracker'
+import { supabase } from '../shared/lib/supabaseClient'
 
 const AdminDashboard = lazy(() =>
   import('../views/admin/AdminDashboard').then((module) => ({ default: module.AdminDashboard })),
@@ -423,12 +424,7 @@ function DashboardLayoutRoute() {
 }
 
 function MerchantLayoutRoute() {
-  const { user, profile } = useAuth()
-  const merchantId = user?.id ?? ''
-  const storeName =
-    (profile as unknown as Record<string, string> | null)?.['nom_commerce']?.trim() ||
-    (profile as unknown as Record<string, string> | null)?.['nom']?.trim() ||
-    undefined
+  const { merchantId, storeName } = useMerchantRouteData()
 
   return (
     <MerchantLayout activePage="">
@@ -438,24 +434,86 @@ function MerchantLayoutRoute() {
 }
 
 function MerchantHomeWrapper() {
-  const { merchantId, storeName } = useMerchantRouteData()
+  const { merchantId, storeName, loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
 
   return <MerchantHome merchantId={merchantId} storeName={storeName} />
 }
 
+function MerchantRouteLoading() {
+  return (
+    <div className="flex min-h-[220px] items-center justify-center rounded-lg border border-gray-200 bg-white">
+      <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-900 border-t-transparent" />
+    </div>
+  )
+}
+
 function useMerchantRouteData() {
   const { user, profile } = useAuth()
+  const [merchantId, setMerchantId] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+
+    const resolveMerchantId = async () => {
+      if (!user?.id) {
+        if (!cancelled) {
+          setMerchantId('')
+          setLoading(false)
+        }
+        return
+      }
+
+      setLoading(true)
+
+      const metadataMerchantId = String(user.user_metadata?.fournisseur_id ?? '').trim()
+      if (metadataMerchantId) {
+        if (!cancelled) {
+          setMerchantId(metadataMerchantId)
+          setLoading(false)
+        }
+        return
+      }
+
+      const { data, error } = await supabase
+        .from('fournisseurs')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle<{ id: string }>()
+
+      if (!cancelled) {
+        setMerchantId(!error && data?.id ? data.id : '')
+        setLoading(false)
+      }
+    }
+
+    void resolveMerchantId()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user?.id, user?.user_metadata])
+
   return {
-    merchantId: user?.id ?? '',
+    merchantId,
     storeName:
     (profile as unknown as Record<string, string> | null)?.['nom_commerce']?.trim() ||
     (profile as unknown as Record<string, string> | null)?.['nom']?.trim() ||
       undefined,
+    loading,
   }
 }
 
 function MerchantOffersWrapper() {
-  const { merchantId } = useMerchantRouteData()
+  const { merchantId, loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
 
   return (
     <section className="space-y-6">
@@ -469,7 +527,11 @@ function MerchantOffersWrapper() {
 }
 
 function MerchantClientsWrapper() {
-  const { merchantId } = useMerchantRouteData()
+  const { merchantId, loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
 
   return (
     <section className="space-y-6">
@@ -483,7 +545,11 @@ function MerchantClientsWrapper() {
 }
 
 function MerchantTransactionsWrapper() {
-  const { merchantId } = useMerchantRouteData()
+  const { merchantId, loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
 
   return (
     <section className="space-y-6">
@@ -497,7 +563,11 @@ function MerchantTransactionsWrapper() {
 }
 
 function MerchantPerformanceWrapper() {
-  const { merchantId } = useMerchantRouteData()
+  const { merchantId, loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
 
   return (
     <section className="space-y-6">
@@ -514,7 +584,11 @@ function MerchantPerformanceWrapper() {
 }
 
 function MerchantNetworksWrapper() {
-  const { merchantId } = useMerchantRouteData()
+  const { merchantId, loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
 
   return (
     <section className="space-y-6">

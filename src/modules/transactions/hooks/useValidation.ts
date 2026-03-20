@@ -36,7 +36,8 @@ function computePointsPreview(service: Service | null, montant: string): number 
     return 0
   }
 
-  return Math.floor(parsed * 10)
+  const rate = service?.points_per_euro ?? 10
+  return Math.floor(parsed * rate)
 }
 
 export function useValidation(): UseValidationResult {

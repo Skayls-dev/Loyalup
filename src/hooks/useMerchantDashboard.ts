@@ -49,9 +49,7 @@ function tierFromLevel(level: number): MerchantTier {
   return 'Bronze'
 }
 
-function profileName(profile: { prenom?: string | null; nom?: string | null } | undefined, userId: string): string {
-  const full = [profile?.prenom?.trim(), profile?.nom?.trim()].filter(Boolean).join(' ').trim()
-  if (full) return full
+function profileName(profile: { nom?: string | null } | undefined, userId: string): string {
   if (profile?.nom?.trim()) return profile.nom.trim()
   return `Client ${userId.slice(0, 6)}`
 }
@@ -198,7 +196,7 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
   const userIds = [...new Set(rows.map((row) => row.client_id).filter(Boolean))] as string[]
 
   const [profilesRes, levelsRes, userNetworksRes] = await Promise.all([
-    userIds.length ? supabase.from('profiles').select('id, prenom, nom').in('id', userIds) : Promise.resolve({ data: [], error: null }),
+    userIds.length ? supabase.from('profiles').select('id, nom').in('id', userIds) : Promise.resolve({ data: [], error: null }),
     userIds.length
       ? supabase.from('client_levels').select('client_id, current_level').in('client_id', userIds)
       : Promise.resolve({ data: [], error: null }),
@@ -211,9 +209,9 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
   if (levelsRes.error) throw new Error(levelsRes.error.message)
   if (userNetworksRes.error) throw new Error(userNetworksRes.error.message)
 
-  const profileMap = new Map<string, { prenom?: string | null; nom?: string | null }>()
-  for (const row of (profilesRes.data ?? []) as Array<{ id: string; prenom?: string | null; nom?: string | null }>) {
-    profileMap.set(row.id, { prenom: row.prenom ?? null, nom: row.nom ?? null })
+  const profileMap = new Map<string, { nom?: string | null }>()
+  for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null }>) {
+    profileMap.set(row.id, { nom: row.nom ?? null })
   }
 
   const tierMap = new Map<string, MerchantTier>()
@@ -416,16 +414,16 @@ async function fetchTopCustomers(merchantId: string): Promise<MerchantTopCustome
   }
 
   const [profilesRes, levelsRes] = await Promise.all([
-    supabase.from('profiles').select('id, prenom, nom').in('id', topIds),
+    supabase.from('profiles').select('id, nom').in('id', topIds),
     supabase.from('client_levels').select('client_id, current_level').in('client_id', topIds),
   ])
 
   if (profilesRes.error) throw new Error(profilesRes.error.message)
   if (levelsRes.error) throw new Error(levelsRes.error.message)
 
-  const profileMap = new Map<string, { prenom?: string | null; nom?: string | null }>()
-  for (const row of (profilesRes.data ?? []) as Array<{ id: string; prenom?: string | null; nom?: string | null }>) {
-    profileMap.set(row.id, { prenom: row.prenom ?? null, nom: row.nom ?? null })
+  const profileMap = new Map<string, { nom?: string | null }>()
+  for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null }>) {
+    profileMap.set(row.id, { nom: row.nom ?? null })
   }
 
   const levelMap = new Map<string, number>()

@@ -75,7 +75,15 @@ function NavItemLink({ item, active }: { item: NavItem; active: boolean }) {
   )
 }
 
-function MobileBottomNav({ currentActive }: { currentActive: string }) {
+function MobileBottomNav({
+  currentActive,
+  onLogout,
+  logoutLoading,
+}: {
+  currentActive: string
+  onLogout: () => void
+  logoutLoading: boolean
+}) {
   const mobileNav: NavItem[] = [
     { key: 'overview', label: 'Accueil', to: '/merchant', icon: LayoutDashboard },
     { key: 'qr', label: 'QR', to: '/merchant/qr', icon: QrCode },
@@ -105,6 +113,18 @@ function MobileBottomNav({ currentActive }: { currentActive: string }) {
             </Link>
           )
         })}
+      </div>
+      <div className="border-t border-gray-100 px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] pt-1">
+        <button
+          type="button"
+          onClick={onLogout}
+          disabled={logoutLoading}
+          className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md text-xs font-semibold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-60"
+          aria-label="Se deconnecter"
+        >
+          <LogOut className="h-4 w-4" />
+          Se deconnecter
+        </button>
       </div>
     </nav>
   )
@@ -197,7 +217,11 @@ export function MerchantLayout({ children, activePage }: MerchantLayoutProps) {
       </aside>
 
       <main className="h-screen overflow-y-auto p-4 pb-28 lg:ml-[220px] lg:p-8 lg:pb-8">{children}</main>
-      <MobileBottomNav currentActive={currentActive} />
+      <MobileBottomNav
+        currentActive={currentActive}
+        onLogout={() => void logout()}
+        logoutLoading={loading}
+      />
     </div>
   )
 }

@@ -33,12 +33,7 @@ function levelToTier(level: number): MerchantTier {
   return 'Bronze'
 }
 
-function resolveDisplayName(profile: { nom?: string | null; prenom?: string | null }, fallbackId: string | null): string {
-  const full = [profile.prenom?.trim(), profile.nom?.trim()].filter(Boolean).join(' ').trim()
-  if (full) {
-    return full
-  }
-
+function resolveDisplayName(profile: { nom?: string | null }, fallbackId: string | null): string {
   if (profile.nom?.trim()) {
     return profile.nom.trim()
   }
@@ -84,7 +79,7 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
 
         const [profilesRes, levelsRes, networksRes] = await Promise.all([
           clientIds.length
-            ? supabase.from('profiles').select('id, nom, prenom').in('id', clientIds)
+            ? supabase.from('profiles').select('id, nom').in('id', clientIds)
             : Promise.resolve({ data: [], error: null }),
           clientIds.length
             ? supabase.from('client_levels').select('client_id, current_level').in('client_id', clientIds)
@@ -101,9 +96,9 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
         if (levelsRes.error) throw new Error(levelsRes.error.message)
         if (networksRes.error) throw new Error(networksRes.error.message)
 
-        const profileMap = new Map<string, { nom?: string | null; prenom?: string | null }>()
-        for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null; prenom?: string | null }>) {
-          profileMap.set(row.id, { nom: row.nom ?? null, prenom: row.prenom ?? null })
+        const profileMap = new Map<string, { nom?: string | null }>()
+        for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null }>) {
+          profileMap.set(row.id, { nom: row.nom ?? null })
         }
 
         const tierMap = new Map<string, MerchantTier>()

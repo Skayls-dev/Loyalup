@@ -15,6 +15,8 @@ export function PriceInput({
   selectedService,
 }: PriceInputProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
+  const hasFixedPoints = selectedService?.points_defaut != null
+  const pointsRate = selectedService?.points_per_euro ?? 10
 
   useEffect(() => {
     inputRef.current?.focus()
@@ -43,11 +45,13 @@ export function PriceInput({
       </div>
 
       <div className="mt-4 space-y-2">
-        <p className="text-sm text-zinc-400">1€ = 10 pts</p>
-
-        {selectedService?.points_defaut != null ? (
-          <p className="text-sm text-zinc-300">Points fixes: {selectedService.points_defaut}</p>
-        ) : null}
+        {hasFixedPoints ? (
+          <p className="text-sm text-zinc-300">
+            Points fixes appliqués: {selectedService?.points_defaut}
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-400">1€ = {pointsRate} pts</p>
+        )}
 
         <p className="text-2xl font-bold text-amber-400 transition-all duration-200">
           {pointsPreview} pts

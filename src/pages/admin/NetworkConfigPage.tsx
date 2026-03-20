@@ -201,13 +201,13 @@ export default function NetworkConfigPage() {
       const memberIds = memberRows.map((row) => row.client_id)
 
       const [profilesRes, levelsRes] = await Promise.all([
-        memberIds.length ? supabase.from('profiles').select('id, nom, prenom').in('id', memberIds) : Promise.resolve({ data: [], error: null }),
+        memberIds.length ? supabase.from('profiles').select('id, nom').in('id', memberIds) : Promise.resolve({ data: [], error: null }),
         memberIds.length ? supabase.from('client_levels').select('client_id, current_level').in('client_id', memberIds) : Promise.resolve({ data: [], error: null }),
       ])
 
-      const profileMap = new Map<string, { nom?: string | null; prenom?: string | null }>()
-      for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null; prenom?: string | null }>) {
-        profileMap.set(row.id, { nom: row.nom ?? null, prenom: row.prenom ?? null })
+      const profileMap = new Map<string, { nom?: string | null }>()
+      for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null }>) {
+        profileMap.set(row.id, { nom: row.nom ?? null })
       }
 
       const levelMap = new Map<string, number>()
@@ -218,13 +218,12 @@ export default function NetworkConfigPage() {
       setMembers(
         memberRows.map((row) => {
           const profile = profileMap.get(row.client_id)
-          const full = [profile?.prenom?.trim(), profile?.nom?.trim()].filter(Boolean).join(' ').trim()
           const level = levelMap.get(row.client_id) ?? 1
           const tier = level >= 8 ? 'Gold' : level >= 4 ? 'Silver' : 'Bronze'
 
           return {
             id: row.client_id,
-            name: full || profile?.nom?.trim() || `Client ${row.client_id.slice(0, 6)}`,
+            name: profile?.nom?.trim() || `Client ${row.client_id.slice(0, 6)}`,
             points: Number(row.total_network_points ?? 0),
             tier,
           }

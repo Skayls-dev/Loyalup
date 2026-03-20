@@ -41,9 +41,7 @@ function initials(name: string): string {
   return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase()
 }
 
-function displayName(firstName: string | null | undefined, lastName: string | null | undefined, userId: string): string {
-  const full = [firstName?.trim(), lastName?.trim()].filter(Boolean).join(' ').trim()
-  if (full) return full
+function displayName(lastName: string | null | undefined, userId: string): string {
   if (lastName?.trim()) return lastName.trim()
   return `Client ${userId.slice(0, 6)}`
 }
@@ -105,7 +103,7 @@ export function TopCustomers({ merchantId, className = '' }: TopCustomersProps) 
       }
 
       const [profilesRes, levelsRes] = await Promise.all([
-        supabase.from('profiles').select('id, nom, prenom').in('id', rankedIds),
+        supabase.from('profiles').select('id, nom').in('id', rankedIds),
         supabase.from('client_levels').select('client_id, current_level').in('client_id', rankedIds),
       ])
 
@@ -118,9 +116,9 @@ export function TopCustomers({ merchantId, className = '' }: TopCustomersProps) 
         return
       }
 
-      const profileMap = new Map<string, { nom?: string | null; prenom?: string | null }>()
-      for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null; prenom?: string | null }>) {
-        profileMap.set(row.id, { nom: row.nom ?? null, prenom: row.prenom ?? null })
+      const profileMap = new Map<string, { nom?: string | null }>()
+      for (const row of (profilesRes.data ?? []) as Array<{ id: string; nom?: string | null }>) {
+        profileMap.set(row.id, { nom: row.nom ?? null })
       }
 
       const levelMap = new Map<string, number>()
@@ -134,7 +132,7 @@ export function TopCustomers({ merchantId, className = '' }: TopCustomersProps) 
 
         return {
           userId,
-          name: displayName(profile?.prenom, profile?.nom, userId),
+          name: displayName(profile?.nom, userId),
           visits: pointsInfo.visits,
           tier: tierFromLevel(levelMap.get(userId) ?? 1),
           points: pointsInfo.points,
