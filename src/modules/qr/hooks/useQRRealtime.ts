@@ -25,8 +25,14 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
       return
     }
 
-    const handlePending = async (payload: PendingTransactionPayload) => {
+    let cancelled = false
+
+    const hydratePending = async (payload: PendingTransactionPayload) => {
       if (payload.status !== 'pending') {
+        return
+      }
+
+      if (cancelled) {
         return
       }
 
@@ -38,7 +44,7 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
         .eq('id', payload.client_id)
         .maybeSingle()
 
-      if (data) {
+      if (!cancelled && data) {
         setClientProfile(data)
       }
 
@@ -49,12 +55,31 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
         .eq('fournisseur_id', payload.fournisseur_id)
         .eq('status', 'validated')
 
-      setClientPoints(count ?? 0)
+      if (!cancelled) {
+        setClientPoints(count ?? 0)
+      }
     }
 
-    subscribeToPendingTransactions(fournisseurId, handlePending)
+    const loadCurrentPending = async () => {
+      const { data } = await supabase
+        .from('pending_transactions')
+        .select('id, qr_token_id, client_id, fournisseur_id, status, created_at, expires_at')
+        .eq('fournisseur_id', fournisseurId)
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle<PendingTransactionPayload>()
+
+      if (data) {
+        await hydratePending(data)
+      }
+    }
+
+    void loadCurrentPending()
+    subscribeToPendingTransactions(fournisseurId, hydratePending)
 
     return () => {
+      cancelled = true
       unsubscribe()
     }
   }, [fournisseurId])
