@@ -8,6 +8,8 @@ import { PriceInput } from './PriceInput'
 import { ServiceSelector } from './ServiceSelector'
 import { TransactionSuccess } from './TransactionSuccess'
 
+type ValidationMode = 'service' | 'amount'
+
 type ValidationPanelProps = {
   pendingTransaction: PendingTransactionPayload
   clientProfile: Profile | null
@@ -35,18 +37,20 @@ export function ValidationPanel({
     error,
     canValidate,
     selectService,
+    clearSelectedService,
     setMontant,
     validate,
     cancel,
     reset,
   } = useValidation()
+  const [validationMode, setValidationMode] = useState<ValidationMode>('service')
 
   // Auto-select first non-custom service when services load
   useEffect(() => {
-    if (selectedService || servicesLoading || services.length === 0) return
+    if (validationMode !== 'service' || selectedService || servicesLoading || services.length === 0) return
     const first = services.find((s) => s.nom !== 'Personnalisé') ?? services[0]
     if (first) selectService(first)
-  }, [services, servicesLoading, selectedService, selectService])
+  }, [services, servicesLoading, selectedService, selectService, validationMode])
 
   const [successData, setSuccessData] = useState<{
     serviceName: string
@@ -60,12 +64,30 @@ export function ValidationPanel({
   const displayError = error ?? servicesError
 
   const selectedServiceName = useMemo(() => {
+    if (validationMode === 'amount') {
+      return 'Achat libre'
+    }
+
     if (selectedService) {
       return selectedService.nom
     }
 
     return 'Personnalisé'
-  }, [selectedService])
+  }, [selectedService, validationMode])
+
+  const handleModeChange = (mode: ValidationMode) => {
+    setValidationMode(mode)
+
+    if (mode === 'amount') {
+      clearSelectedService()
+      return
+    }
+
+    const first = services.find((service) => service.nom !== 'Personnalisé') ?? services[0] ?? null
+    if (first) {
+      selectService(first)
+    }
+  }
 
   const handleValidate = async () => {
     try {
@@ -120,21 +142,55 @@ export function ValidationPanel({
 
         <div className="space-y-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-              Choisir un service
-            </h3>
-            {servicesLoading ? (
-              <div className="flex min-h-32 items-center justify-center">
-                <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
-              </div>
-            ) : (
-              <ServiceSelector
-                services={services}
-                selectedService={selectedService}
-                onSelect={selectService}
-              />
-            )}
+            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
+              Mode de validation
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => handleModeChange('service')}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  validationMode === 'service'
+                    ? 'border-teal-400 bg-teal-500/10 text-teal-300'
+                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
+                }`}
+              >
+                <p className="text-sm font-semibold">Par service</p>
+                <p className="mt-1 text-xs text-zinc-400">Choisir un produit ou une prestation</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange('amount')}
+                className={`rounded-xl border px-4 py-3 text-left transition ${
+                  validationMode === 'amount'
+                    ? 'border-amber-400 bg-amber-500/10 text-amber-300'
+                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
+                }`}
+              >
+                <p className="text-sm font-semibold">Montant libre</p>
+                <p className="mt-1 text-xs text-zinc-400">Saisir directement le prix de l'achat</p>
+              </button>
+            </div>
           </div>
+
+          {validationMode === 'service' ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
+                Choisir un service
+              </h3>
+              {servicesLoading ? (
+                <div className="flex min-h-32 items-center justify-center">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
+                </div>
+              ) : (
+                <ServiceSelector
+                  services={services}
+                  selectedService={selectedService}
+                  onSelect={selectService}
+                />
+              )}
+            </div>
+          ) : null}
 
           <PriceInput
             montant={montant}
@@ -157,7 +213,7 @@ export function ValidationPanel({
         <button
           type="button"
           onClick={handleValidate}
-          disabled={!canValidate || isSubmitting || servicesLoading}
+          disabled={!canValidate || isSubmitting || (validationMode === 'service' && servicesLoading)}
           className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           ✓ Valider

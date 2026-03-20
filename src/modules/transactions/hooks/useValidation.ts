@@ -15,6 +15,7 @@ type UseValidationResult = {
   error: string | null
   canValidate: boolean
   selectService: (service: Service) => void
+  clearSelectedService: () => void
   setMontant: (value: string) => void
   validate: (pending_transaction_id: string) => Promise<CreditPointsResponse>
   cancel: (pending_transaction_id: string) => Promise<void>
@@ -62,6 +63,11 @@ export function useValidation(): UseValidationResult {
     if (service.prix_defaut != null) {
       setMontantState(service.prix_defaut.toFixed(2))
     }
+  }
+
+  const clearSelectedService = () => {
+    setSelectedService(null)
+    setError(null)
   }
 
   const setMontant = (value: string) => {
@@ -129,6 +135,7 @@ export function useValidation(): UseValidationResult {
     error,
     canValidate,
     selectService,
+    clearSelectedService,
     setMontant,
     validate,
     cancel,
