@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { CONSENT_TYPE_LIST, CONSENT_TYPES, CURRENT_POLICY_VERSION, type SupportedLocale } from '../lib/consentPolicy'
 import { useConsent } from '../hooks/useConsent'
 import type { ConsentType } from '../types'
@@ -15,25 +15,81 @@ const PRIVACY_POLICY_URL = {
   nl: '/privacy/nl',
 }
 
+const CONSENT_STORAGE_KEY = `loyalup-consent-v${CURRENT_POLICY_VERSION}`
+
+function getStoredChoices(): Record<ConsentType, boolean> | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(CONSENT_STORAGE_KEY)
+    if (!raw) {
+      return null
+    }
+
+    const parsed = JSON.parse(raw) as { choices?: Partial<Record<ConsentType, boolean>> }
+    return {
+      essential: true,
+      analytics: Boolean(parsed.choices?.analytics),
+      marketing: Boolean(parsed.choices?.marketing),
+      third_party: Boolean(parsed.choices?.third_party),
+    }
+  } catch {
+    return null
+  }
+}
+
+function markChoicesStored(choices: Record<ConsentType, boolean>) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(
+      CONSENT_STORAGE_KEY,
+      JSON.stringify({
+        policyVersion: CURRENT_POLICY_VERSION,
+        updatedAt: new Date().toISOString(),
+        choices,
+      }),
+    )
+  } catch {
+    null
+  }
+}
+
 export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
   const { consents, updateConsent, loading } = useConsent()
   const [expanded, setExpanded] = useState(false)
-  const [choices, setChoices] = useState<Record<ConsentType, boolean>>({
-    essential: true,
-    analytics: false,
-    marketing: false,
-    third_party: false,
-  })
+  const [choices, setChoices] = useState<Record<ConsentType, boolean>>(
+    () =>
+      getStoredChoices() ?? {
+        essential: true,
+        analytics: false,
+        marketing: false,
+        third_party: false,
+      },
+  )
   const [submitting, setSubmitting] = useState(false)
 
-  const hasAnyConsent = consents.some((consent) => consent.policy_version === CURRENT_POLICY_VERSION)
+  const hasFullConsentForCurrentPolicy = useMemo(() => {
+    const consentTypes = new Set(
+      consents
+        .filter((consent) => consent.policy_version === CURRENT_POLICY_VERSION)
+        .map((consent) => consent.consent_type),
+    )
+
+    return CONSENT_TYPE_LIST.every((type) => consentTypes.has(type))
+  }, [consents])
 
   const initialChoices = useMemo(() => {
+    const stored = getStoredChoices()
     const next: Record<ConsentType, boolean> = {
       essential: true,
-      analytics: false,
-      marketing: false,
-      third_party: false,
+      analytics: stored?.analytics ?? false,
+      marketing: stored?.marketing ?? false,
+      third_party: stored?.third_party ?? false,
     }
 
     for (const row of consents) {
@@ -46,11 +102,11 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
     return next
   }, [consents])
 
-  useMemo(() => {
+  useEffect(() => {
     setChoices(initialChoices)
   }, [initialChoices])
 
-  if (hasAnyConsent) {
+  if (hasFullConsentForCurrentPolicy) {
     return null
   }
 
@@ -69,27 +125,36 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
     setSubmitting(true)
 
     try {
+      const nextChoices: Record<ConsentType, boolean> = {
+        essential: true,
+        analytics: allAccepted ? true : choices.analytics,
+        marketing: allAccepted ? true : choices.marketing,
+        third_party: allAccepted ? true : choices.third_party,
+      }
+
       for (const type of CONSENT_TYPE_LIST) {
-        const granted = type === 'essential' ? true : allAccepted ? true : choices[type]
+        const granted = nextChoices[type]
         await updateConsent(type, granted)
       }
+
+      markChoicesStored(nextChoices)
     } finally {
       setSubmitting(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-zinc-950 text-zinc-100">
-      <div className="mx-auto flex h-full max-w-3xl flex-col px-4 py-6">
-        <header className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-md bg-zinc-100 text-center text-base font-bold leading-9 text-zinc-900">L</div>
+    <div className="fixed inset-0 z-50 bg-gradient-to-b from-zinc-950 via-zinc-950 to-zinc-900/95 text-zinc-100">
+      <div className="mx-auto flex h-full max-w-lg flex-col justify-start px-4 py-6 sm:justify-center">
+        <header className="mb-4 flex items-center gap-3">
+          <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 text-base font-bold text-zinc-900 shadow-lg shadow-black/30">L</div>
           <div>
             <p className="text-sm text-zinc-400">LoyalUp</p>
-            <h2 className="text-xl font-semibold">Avant de commencer</h2>
+            <h2 className="text-[1.85rem] font-semibold leading-tight">Avant de commencer</h2>
           </div>
         </header>
 
-        <div className="mt-6 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+        <div className="rounded-3xl border border-zinc-800 bg-gradient-to-b from-zinc-900 to-zinc-950 p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]">
           <div className="space-y-3">
             {CONSENT_TYPE_LIST.map((type) => {
               const item = CONSENT_TYPES[type]
@@ -100,24 +165,24 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
               }
 
               return (
-                <div key={type} className="rounded-lg border border-zinc-800 bg-zinc-900/70 p-3">
+                <div key={type} className="rounded-2xl border border-zinc-800 bg-zinc-900/75 p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-zinc-100">{item.title[locale]}</p>
-                      <p className="mt-1 text-xs text-zinc-400">{item.description[locale]}</p>
+                      <p className="text-[1rem] font-semibold text-zinc-100">{item.title[locale]}</p>
+                      <p className="mt-1 text-sm text-zinc-400">{item.description[locale]}</p>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => handleToggle(type)}
                       disabled={item.required || submitting || loading}
-                      className={`relative h-6 w-11 rounded-full transition ${
+                      className={`relative h-7 w-12 rounded-full transition ${
                         choices[type] ? 'bg-emerald-500' : 'bg-zinc-700'
                       } ${item.required ? 'opacity-70' : ''}`}
                       aria-label={`Consentement ${type}`}
                     >
                       <span
-                        className={`absolute top-0.5 h-5 w-5 rounded-full bg-zinc-100 transition ${
+                        className={`absolute top-0.5 h-6 w-6 rounded-full bg-zinc-100 transition ${
                           choices[type] ? 'left-[22px]' : 'left-0.5'
                         }`}
                       />
@@ -128,12 +193,12 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
             })}
           </div>
 
-          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+          <div className="mt-5 flex flex-col gap-2">
             <button
               type="button"
               onClick={() => saveChoices(true)}
               disabled={submitting || loading}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-70"
+              className="rounded-xl bg-emerald-600 px-4 py-3 text-base font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-70"
             >
               Tout accepter
             </button>
@@ -142,7 +207,7 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
               type="button"
               onClick={() => setExpanded((prev) => !prev)}
               disabled={submitting || loading}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-70"
+              className="rounded-xl border border-zinc-700 px-4 py-3 text-base font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-70"
             >
               {expanded ? 'Masquer' : 'Personnaliser'}
             </button>
@@ -151,7 +216,7 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
               type="button"
               onClick={() => saveChoices(false)}
               disabled={submitting || loading}
-              className="rounded-lg border border-zinc-700 px-4 py-2 text-sm font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-70"
+              className="rounded-xl border border-zinc-700 px-4 py-3 text-base font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:opacity-70"
             >
               Enregistrer mes choix
             </button>
