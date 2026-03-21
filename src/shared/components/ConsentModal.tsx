@@ -72,6 +72,7 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
       },
   )
   const [submitting, setSubmitting] = useState(false)
+  const [isCompleted, setIsCompleted] = useState(false)
 
   const hasFullConsentForCurrentPolicy = useMemo(() => {
     const consentTypes = new Set(
@@ -82,6 +83,8 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
 
     return CONSENT_TYPE_LIST.every((type) => consentTypes.has(type))
   }, [consents])
+
+  const hasStoredConsentSnapshot = useMemo(() => Boolean(getStoredChoices()), [consents])
 
   const initialChoices = useMemo(() => {
     const stored = getStoredChoices()
@@ -106,7 +109,7 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
     setChoices(initialChoices)
   }, [initialChoices])
 
-  if (hasFullConsentForCurrentPolicy) {
+  if (hasFullConsentForCurrentPolicy || hasStoredConsentSnapshot || isCompleted) {
     return null
   }
 
@@ -124,21 +127,23 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
   const saveChoices = async (allAccepted = false) => {
     setSubmitting(true)
 
-    try {
-      const nextChoices: Record<ConsentType, boolean> = {
-        essential: true,
-        analytics: allAccepted ? true : choices.analytics,
-        marketing: allAccepted ? true : choices.marketing,
-        third_party: allAccepted ? true : choices.third_party,
-      }
+    const nextChoices: Record<ConsentType, boolean> = {
+      essential: true,
+      analytics: allAccepted ? true : choices.analytics,
+      marketing: allAccepted ? true : choices.marketing,
+      third_party: allAccepted ? true : choices.third_party,
+    }
 
+    try {
       for (const type of CONSENT_TYPE_LIST) {
         const granted = nextChoices[type]
         await updateConsent(type, granted)
       }
-
-      markChoicesStored(nextChoices)
+    } catch {
+      // Keep UX resilient: local persistence still allows user to proceed.
     } finally {
+      markChoicesStored(nextChoices)
+      setIsCompleted(true)
       setSubmitting(false)
     }
   }

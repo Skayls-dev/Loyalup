@@ -9,6 +9,29 @@ export type ProviderStats = {
   revenue_today: number
 }
 
+export type ProviderConsumedService = {
+  service_id: string | null
+  service_nom: string
+  service_emoji: string
+  transactions_count: number
+  total_amount: number
+  total_points: number
+}
+
+export type ProviderServiceTopClient = {
+  client_id: string
+  client_nom: string
+  client_email: string
+  transactions_count: number
+  total_amount: number
+  total_points: number
+}
+
+export type ProviderConsumptionQueryOptions = {
+  periodDays?: number | null
+  limit?: number
+}
+
 export type ProviderClient = {
   profile: {
     id: string
@@ -284,6 +307,188 @@ export async function getProviderServices(fournisseur_id: string): Promise<Servi
 
     return (data ?? []) as ServiceItem[]
   })
+}
+
+export async function getProviderConsumedServices(
+  fournisseur_id: string,
+  options: ProviderConsumptionQueryOptions = {},
+): Promise<ProviderConsumedService[]> {
+  const periodDays = options.periodDays ?? 30
+  const limit = options.limit ?? 6
+
+  return withCachedRead(`provider:consumed-services:${fournisseur_id}:${periodDays ?? 'all'}:${limit}`, async () => {
+    const windowStart =
+      typeof periodDays === 'number'
+        ? new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
+        : null
+
+    const [{ data: transactions, error: txError }, { data: services, error: serviceError }] = await Promise.all([
+      (windowStart
+        ? supabase
+            .from('transactions')
+            .select('service_id, montant, points_credited')
+            .eq('fournisseur_id', fournisseur_id)
+            .eq('status', 'validated')
+            .gte('created_at', windowStart)
+        : supabase
+            .from('transactions')
+            .select('service_id, montant, points_credited')
+            .eq('fournisseur_id', fournisseur_id)
+            .eq('status', 'validated')),
+      supabase
+        .from('services')
+        .select('id, nom, emoji')
+        .eq('fournisseur_id', fournisseur_id),
+    ])
+
+    if (txError) {
+      throw new Error(txError.message)
+    }
+
+    if (serviceError) {
+      throw new Error(serviceError.message)
+    }
+
+    const serviceMap = new Map(
+      ((services ?? []) as Array<{ id: string; nom: string; emoji: string | null }>).map((service) => [
+        service.id,
+        service,
+      ]),
+    )
+
+    const grouped = new Map<string, ProviderConsumedService>()
+    const rows = (transactions ?? []) as Array<{
+      service_id: string | null
+      montant: number | null
+      points_credited: number | null
+    }>
+
+    for (const row of rows) {
+      const key = row.service_id ?? '__free_amount__'
+      const service = row.service_id ? serviceMap.get(row.service_id) : null
+
+      const current = grouped.get(key) ?? {
+        service_id: row.service_id,
+        service_nom: service?.nom?.trim() || 'Montant libre',
+        service_emoji: service?.emoji?.trim() || '✨',
+        transactions_count: 0,
+        total_amount: 0,
+        total_points: 0,
+      }
+
+      current.transactions_count += 1
+      current.total_amount += Number(row.montant ?? 0)
+      current.total_points += Number(row.points_credited ?? 0)
+
+      grouped.set(key, current)
+    }
+
+    return Array.from(grouped.values())
+      .sort((a, b) => {
+        if (b.transactions_count !== a.transactions_count) {
+          return b.transactions_count - a.transactions_count
+        }
+
+        return b.total_amount - a.total_amount
+      })
+      .slice(0, Math.max(1, limit))
+  })
+}
+
+export async function getProviderTopClientsByService(
+  fournisseur_id: string,
+  service_id: string | null,
+  options: ProviderConsumptionQueryOptions = {},
+): Promise<ProviderServiceTopClient[]> {
+  const periodDays = options.periodDays ?? 30
+  const limit = options.limit ?? 5
+
+  return withCachedRead(
+    `provider:service-top-clients:${fournisseur_id}:${service_id ?? 'free-amount'}:${periodDays ?? 'all'}:${limit}`,
+    async () => {
+      const windowStart =
+        typeof periodDays === 'number'
+          ? new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
+          : null
+
+      let query = supabase
+        .from('transactions')
+        .select('client_id, montant, points_credited')
+        .eq('fournisseur_id', fournisseur_id)
+        .eq('status', 'validated')
+
+      query = service_id ? query.eq('service_id', service_id) : query.is('service_id', null)
+
+      if (windowStart) {
+        query = query.gte('created_at', windowStart)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      const rows = (data ?? []) as Array<{
+        client_id: string
+        montant: number | null
+        points_credited: number | null
+      }>
+
+      if (rows.length === 0) {
+        return []
+      }
+
+      const grouped = new Map<string, ProviderServiceTopClient>()
+
+      for (const row of rows) {
+        const current = grouped.get(row.client_id) ?? {
+          client_id: row.client_id,
+          client_nom: 'Client',
+          client_email: '',
+          transactions_count: 0,
+          total_amount: 0,
+          total_points: 0,
+        }
+
+        current.transactions_count += 1
+        current.total_amount += Number(row.montant ?? 0)
+        current.total_points += Number(row.points_credited ?? 0)
+        grouped.set(row.client_id, current)
+      }
+
+      const clientIds = [...grouped.keys()]
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, nom, email')
+        .in('id', clientIds)
+
+      const profileMap = new Map((profilesData ?? []).map((profile) => [profile.id as string, profile]))
+
+      const ranked = Array.from(grouped.values()).map((item) => {
+        const profile = profileMap.get(item.client_id)
+        return {
+          ...item,
+          client_nom: resolveClientDisplayName(
+            profile?.nom as string | undefined,
+            profile?.email as string | undefined,
+            item.client_id,
+          ),
+          client_email: (profile?.email as string | undefined) ?? '',
+        }
+      })
+
+      return ranked
+        .sort((a, b) => {
+          if (b.transactions_count !== a.transactions_count) {
+            return b.transactions_count - a.transactions_count
+          }
+
+          return b.total_amount - a.total_amount
+        })
+        .slice(0, Math.max(1, limit))
+    },
+  )
 }
 
 export async function createService(params: CreateServiceParams): Promise<ServiceItem> {
