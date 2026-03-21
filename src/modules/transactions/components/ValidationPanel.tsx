@@ -93,7 +93,8 @@ export function ValidationPanel({
 
   const handleValidate = async () => {
     try {
-      const response = await validate(pendingTransaction.id)
+      const freeLabel = validationMode === 'amount' ? customServiceName.trim() || undefined : undefined
+      const response = await validate(pendingTransaction.id, freeLabel)
       const amount = Number.parseFloat(montant || '0')
 
       setSuccessData({

@@ -8,6 +8,7 @@ const corsHeaders = {
 type CreditPointsRequest = {
   pending_transaction_id?: string
   service_id?: string | null
+  service_nom_libre?: string | null
   montant?: number
   access_token?: string
 }
@@ -148,6 +149,7 @@ Deno.serve(async (req) => {
       p_pending_transaction_id: payload.pending_transaction_id,
       p_montant: payload.montant,
       p_service_id: payload.service_id ?? null,
+      p_service_nom_libre: payload.service_nom_libre?.trim() || null,
     })
 
     if (rpcError) {
@@ -400,7 +402,7 @@ Deno.serve(async (req) => {
             })),
           },
         })
-        .catch((error) => {
+        .then(null, (error) => {
           console.warn('Failed to insert network bonus notification', error)
         })
     }

@@ -17,7 +17,7 @@ type UseValidationResult = {
   selectService: (service: Service) => void
   clearSelectedService: () => void
   setMontant: (value: string) => void
-  validate: (pending_transaction_id: string) => Promise<CreditPointsResponse>
+  validate: (pending_transaction_id: string, free_amount_label?: string) => Promise<CreditPointsResponse>
   cancel: (pending_transaction_id: string) => Promise<void>
   reset: () => void
 }
@@ -76,7 +76,7 @@ export function useValidation(): UseValidationResult {
     setMontantState(sanitizeMontant(value))
   }
 
-  const validate = async (pending_transaction_id: string): Promise<CreditPointsResponse> => {
+  const validate = async (pending_transaction_id: string, free_amount_label?: string): Promise<CreditPointsResponse> => {
     const value = Number.parseFloat(montant)
 
     if (!Number.isFinite(value) || value <= 0) {
@@ -90,6 +90,7 @@ export function useValidation(): UseValidationResult {
       const result = await creditPoints({
         pending_transaction_id,
         service_id: selectedService?.id,
+        service_nom_libre: free_amount_label?.trim() || undefined,
         montant: value,
       })
 

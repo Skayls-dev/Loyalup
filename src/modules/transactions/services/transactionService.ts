@@ -38,6 +38,7 @@ export type ClientPoints = {
 export type CreditPointsParams = {
   pending_transaction_id: string
   service_id?: string
+  service_nom_libre?: string
   montant: number
 }
 
@@ -68,6 +69,7 @@ export async function creditPoints(params: CreditPointsParams): Promise<CreditPo
       body: {
         pending_transaction_id: params.pending_transaction_id,
         service_id: params.service_id ?? null,
+        service_nom_libre: params.service_nom_libre ?? null,
         montant: params.montant,
         access_token: accessToken,
       },
