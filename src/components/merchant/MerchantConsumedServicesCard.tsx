@@ -45,15 +45,15 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
   const [period, setPeriod] = useState<PeriodFilter>(30)
   const [services, setServices] = useState<ProviderConsumedService[]>([])
   const [topClients, setTopClients] = useState<ProviderServiceTopClient[]>([])
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
+  const [selectedServiceKey, setSelectedServiceKey] = useState<string | null>(null)
   const [loadingServices, setLoadingServices] = useState(true)
   const [loadingClients, setLoadingClients] = useState(true)
 
   const periodDays = period === 'all' ? null : period
 
   const selectedService = useMemo(
-    () => services.find((item) => (item.service_id ?? null) === selectedServiceId) ?? null,
-    [services, selectedServiceId],
+    () => services.find((item) => item.service_key === selectedServiceKey) ?? null,
+    [services, selectedServiceKey],
   )
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
       try {
         if (!merchantId) {
           setServices([])
-          setSelectedServiceId(null)
+          setSelectedServiceKey(null)
           return
         }
 
@@ -73,9 +73,9 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
 
         setServices(rows)
 
-        const hasSelection = rows.some((item) => (item.service_id ?? null) === selectedServiceId)
+        const hasSelection = rows.some((item) => item.service_key === selectedServiceKey)
         if (!hasSelection) {
-          setSelectedServiceId((rows[0]?.service_id as string | null | undefined) ?? null)
+          setSelectedServiceKey(rows[0]?.service_key ?? null)
         }
       } finally {
         setLoadingServices(false)
@@ -83,7 +83,7 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
     }
 
     void loadServices()
-  }, [merchantId, periodDays, selectedServiceId])
+  }, [merchantId, periodDays, selectedServiceKey])
 
   useEffect(() => {
     const loadTopClients = async () => {
@@ -94,9 +94,10 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
           return
         }
 
-        const rows = await getProviderTopClientsByService(merchantId, selectedServiceId, {
+        const rows = await getProviderTopClientsByService(merchantId, selectedService?.service_id ?? null, {
           periodDays,
           limit: 5,
+          serviceNomLibre: selectedService?.service_nom_libre ?? null,
         })
 
         setTopClients(rows)
@@ -106,7 +107,7 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
     }
 
     void loadTopClients()
-  }, [merchantId, periodDays, selectedServiceId])
+  }, [merchantId, periodDays, selectedService?.service_id, selectedService?.service_nom_libre])
 
   const handleExportCsv = () => {
     const suffix = period === 'all' ? 'all-time' : `${period}d`
@@ -187,12 +188,12 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           <div className="space-y-2">
             {services.map((service) => {
-              const isActive = (service.service_id ?? null) === selectedServiceId
+              const isActive = service.service_key === selectedServiceKey
               return (
                 <button
-                  key={service.service_id ?? 'free-amount'}
+                  key={service.service_key}
                   type="button"
-                  onClick={() => setSelectedServiceId(service.service_id ?? null)}
+                  onClick={() => setSelectedServiceKey(service.service_key)}
                   className={`grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${
                     isActive ? 'border-primary/40 bg-primary/5' : 'border-gray-200 bg-white hover:bg-gray-50'
                   }`}

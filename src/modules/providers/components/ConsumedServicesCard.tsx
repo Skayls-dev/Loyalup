@@ -47,12 +47,12 @@ export function ConsumedServicesCard({ fournisseur_id }: ConsumedServicesCardPro
   const [loadingServices, setLoadingServices] = useState(true)
   const [loadingClients, setLoadingClients] = useState(true)
   const [period, setPeriod] = useState<PeriodFilter>(30)
-  const [selectedServiceId, setSelectedServiceId] = useState<string | null>(null)
+  const [selectedServiceKey, setSelectedServiceKey] = useState<string | null>(null)
   const periodDays = period === 'all' ? null : period
 
   const selectedService = useMemo(
-    () => items.find((item) => (item.service_id ?? null) === selectedServiceId) ?? null,
-    [items, selectedServiceId],
+    () => items.find((item) => item.service_key === selectedServiceKey) ?? null,
+    [items, selectedServiceKey],
   )
 
   useEffect(() => {
@@ -62,7 +62,7 @@ export function ConsumedServicesCard({ fournisseur_id }: ConsumedServicesCardPro
       try {
         if (!fournisseur_id) {
           setItems([])
-          setSelectedServiceId(null)
+          setSelectedServiceKey(null)
           return
         }
 
@@ -72,9 +72,9 @@ export function ConsumedServicesCard({ fournisseur_id }: ConsumedServicesCardPro
         })
         setItems(rows)
 
-        const hasCurrentSelection = rows.some((item) => (item.service_id ?? null) === selectedServiceId)
+        const hasCurrentSelection = rows.some((item) => item.service_key === selectedServiceKey)
         if (!hasCurrentSelection) {
-          setSelectedServiceId((rows[0]?.service_id as string | null | undefined) ?? null)
+          setSelectedServiceKey(rows[0]?.service_key ?? null)
         }
       } finally {
         setLoadingServices(false)
@@ -82,7 +82,7 @@ export function ConsumedServicesCard({ fournisseur_id }: ConsumedServicesCardPro
     }
 
     void load()
-  }, [fournisseur_id, periodDays, selectedServiceId])
+  }, [fournisseur_id, periodDays, selectedServiceKey])
 
   useEffect(() => {
     const loadClients = async () => {
@@ -94,9 +94,10 @@ export function ConsumedServicesCard({ fournisseur_id }: ConsumedServicesCardPro
           return
         }
 
-        const rows = await getProviderTopClientsByService(fournisseur_id, selectedServiceId, {
+        const rows = await getProviderTopClientsByService(fournisseur_id, selectedService?.service_id ?? null, {
           limit: 5,
           periodDays,
+          serviceNomLibre: selectedService?.service_nom_libre ?? null,
         })
         setClients(rows)
       } finally {
@@ -105,7 +106,7 @@ export function ConsumedServicesCard({ fournisseur_id }: ConsumedServicesCardPro
     }
 
     void loadClients()
-  }, [fournisseur_id, selectedServiceId, periodDays])
+  }, [fournisseur_id, selectedService?.service_id, selectedService?.service_nom_libre, periodDays])
 
   if (loadingServices) {
     return <div className="h-52 animate-pulse rounded-xl bg-zinc-800/70" />
@@ -191,12 +192,12 @@ export function ConsumedServicesCard({ fournisseur_id }: ConsumedServicesCardPro
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-2">
             {items.map((item) => {
-              const isActive = (item.service_id ?? null) === selectedServiceId
+              const isActive = item.service_key === selectedServiceKey
               return (
                 <button
-                  key={item.service_id ?? 'free-amount'}
+                  key={item.service_key}
                   type="button"
-                  onClick={() => setSelectedServiceId(item.service_id ?? null)}
+                  onClick={() => setSelectedServiceKey(item.service_key)}
                   className={`grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-lg border px-3 py-2 text-left transition ${
                     isActive
                       ? 'border-zinc-500 bg-zinc-800/70'

@@ -10,7 +10,9 @@ export type ProviderStats = {
 }
 
 export type ProviderConsumedService = {
+  service_key: string
   service_id: string | null
+  service_nom_libre: string | null
   service_nom: string
   service_emoji: string
   transactions_count: number
@@ -30,6 +32,7 @@ export type ProviderServiceTopClient = {
 export type ProviderConsumptionQueryOptions = {
   periodDays?: number | null
   limit?: number
+  serviceNomLibre?: string | null
 }
 
 export type ProviderClient = {
@@ -326,13 +329,13 @@ export async function getProviderConsumedServices(
       (windowStart
         ? supabase
             .from('transactions')
-            .select('service_id, montant, points_credited')
+            .select('service_id, service_nom_libre, montant, points_credited')
             .eq('fournisseur_id', fournisseur_id)
             .eq('status', 'validated')
             .gte('created_at', windowStart)
         : supabase
             .from('transactions')
-            .select('service_id, montant, points_credited')
+            .select('service_id, service_nom_libre, montant, points_credited')
             .eq('fournisseur_id', fournisseur_id)
             .eq('status', 'validated')),
       supabase
@@ -359,17 +362,21 @@ export async function getProviderConsumedServices(
     const grouped = new Map<string, ProviderConsumedService>()
     const rows = (transactions ?? []) as Array<{
       service_id: string | null
+      service_nom_libre: string | null
       montant: number | null
       points_credited: number | null
     }>
 
     for (const row of rows) {
-      const key = row.service_id ?? '__free_amount__'
+      const freeLabel = (row.service_nom_libre ?? '').trim()
+      const key = row.service_id ?? `__free_amount__:${freeLabel || 'Montant libre'}`
       const service = row.service_id ? serviceMap.get(row.service_id) : null
 
       const current = grouped.get(key) ?? {
+        service_key: key,
         service_id: row.service_id,
-        service_nom: service?.nom?.trim() || 'Montant libre',
+        service_nom_libre: row.service_id ? null : freeLabel || null,
+        service_nom: service?.nom?.trim() || freeLabel || 'Montant libre',
         service_emoji: service?.emoji?.trim() || '✨',
         transactions_count: 0,
         total_amount: 0,
@@ -402,9 +409,10 @@ export async function getProviderTopClientsByService(
 ): Promise<ProviderServiceTopClient[]> {
   const periodDays = options.periodDays ?? 30
   const limit = options.limit ?? 5
+  const serviceNomLibre = options.serviceNomLibre?.trim() || null
 
   return withCachedRead(
-    `provider:service-top-clients:${fournisseur_id}:${service_id ?? 'free-amount'}:${periodDays ?? 'all'}:${limit}`,
+    `provider:service-top-clients:${fournisseur_id}:${service_id ?? 'free-amount'}:${serviceNomLibre ?? 'all-free-labels'}:${periodDays ?? 'all'}:${limit}`,
     async () => {
       const windowStart =
         typeof periodDays === 'number'
@@ -418,6 +426,9 @@ export async function getProviderTopClientsByService(
         .eq('status', 'validated')
 
       query = service_id ? query.eq('service_id', service_id) : query.is('service_id', null)
+      if (!service_id && serviceNomLibre) {
+        query = query.eq('service_nom_libre', serviceNomLibre)
+      }
 
       if (windowStart) {
         query = query.gte('created_at', windowStart)
