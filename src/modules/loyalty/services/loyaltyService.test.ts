@@ -111,6 +111,21 @@ describe('loyaltyService', () => {
     await expect(useReward('insufficient')).rejects.toThrow('INSUFFICIENT_POINTS')
   })
 
+  it('useReward: physical presence required without pending_transaction_id → throws PHYSICAL_PRESENCE_REQUIRED', async () => {
+    setFunctionError('unlock-reward', 'PHYSICAL_PRESENCE_REQUIRED')
+    await expect(useReward('physical-required')).rejects.toThrow('PHYSICAL_PRESENCE_REQUIRED')
+  })
+
+  it('useReward: with valid pending_transaction_id → succeeds', async () => {
+    setFunctionResult('unlock-reward', { success: true, points_deducted: 100, new_balance: 0 })
+
+    await expect(useReward('reward-1', 'pending-uuid-123')).resolves.toMatchObject({
+      success: true,
+      points_deducted: 100,
+      new_balance: 0,
+    })
+  })
+
   it('useReward: without session → throws authentication error', async () => {
     setAuthSession(null)
     await expect(useReward('reward-1')).rejects.toThrow('Vous devez être connecté pour utiliser une récompense.')

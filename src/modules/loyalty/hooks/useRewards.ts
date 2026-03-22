@@ -14,7 +14,7 @@ type UseRewardsParams = {
 type UseRewardsResult = {
   rewards: RewardCatalogItem[]
   loading: boolean
-  useReward: (reward: RewardCatalogItem) => Promise<void>
+  useReward: (reward: RewardCatalogItem, pending_transaction_id?: string) => Promise<void>
   error: string | null
   refetch: () => Promise<void>
 }
@@ -68,7 +68,7 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
     }
   }, [fournisseur_id, refetch, user?.id])
 
-  const useReward = useCallback(async (reward: RewardCatalogItem) => {
+  const useReward = useCallback(async (reward: RewardCatalogItem, pending_transaction_id?: string) => {
     if (!reward.unlocked_reward_id) {
       setError('Cette récompense n\'est pas encore débloquée.')
       return
@@ -89,7 +89,7 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
     setError(null)
 
     try {
-      await consumeReward(reward.unlocked_reward_id)
+      await consumeReward(reward.unlocked_reward_id, pending_transaction_id)
       await refetch()
     } catch (caughtError) {
       setRewards(previous)

@@ -7,6 +7,7 @@ const corsHeaders = {
 
 type UnlockRewardRequest = {
   client_reward_id?: string
+  pending_transaction_id?: string
 }
 
 Deno.serve(async (req) => {
@@ -51,6 +52,8 @@ Deno.serve(async (req) => {
       })
     }
 
+    const pendingTransactionId = payload.pending_transaction_id?.trim() ?? ''
+
     const authClient = createClient(supabaseUrl, anonKey)
     const { data: userData, error: userError } = await authClient.auth.getUser(jwt)
 
@@ -66,7 +69,7 @@ Deno.serve(async (req) => {
 
     const { data: rewardData, error: rewardError } = await adminClient
       .from('client_rewards')
-      .select('id, client_id, status, reward_rule_id')
+      .select('id, client_id, status, reward_rule_id, fournisseur_id')
       .eq('id', payload.client_reward_id)
       .maybeSingle()
 
@@ -100,7 +103,7 @@ Deno.serve(async (req) => {
 
     const { data: rewardRuleData, error: rewardRuleError } = await adminClient
       .from('reward_rules')
-      .select('id, points_required')
+      .select('id, points_required, requires_physical_presence')
       .eq('id', rewardData.reward_rule_id)
       .maybeSingle()
 
@@ -116,6 +119,38 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    if (rewardRuleData.requires_physical_presence === true) {
+      if (!pendingTransactionId) {
+        return new Response(JSON.stringify({ error: 'PHYSICAL_PRESENCE_REQUIRED' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      const { data: pendingTransactionData, error: pendingTransactionError } = await adminClient
+        .from('pending_transactions')
+        .select('id')
+        .eq('id', pendingTransactionId)
+        .eq('client_id', clientId)
+        .eq('fournisseur_id', rewardData.fournisseur_id)
+        .eq('status', 'pending')
+        .maybeSingle()
+
+      if (pendingTransactionError) {
+        return new Response(JSON.stringify({ error: pendingTransactionError.message }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+
+      if (!pendingTransactionData) {
+        return new Response(JSON.stringify({ error: 'INVALID_PENDING_TRANSACTION' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
     }
 
     const { data: rpcData, error: rpcError } = await adminClient.rpc('consume_client_reward', {

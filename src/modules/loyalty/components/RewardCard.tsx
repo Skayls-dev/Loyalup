@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, Gift, Lock } from 'lucide-react'
+import { CheckCircle2, Gift, Lock, MapPin } from 'lucide-react'
 import type { RewardCatalogItem } from '../services/loyaltyService'
 
 type RewardCardProps = {
@@ -11,6 +11,7 @@ export function RewardCard({ reward, onUse }: RewardCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isAvailable = reward.status === 'available'
+  const requiresPhysicalPresence = reward.reward_rule.requires_physical_presence === true
   const isNew = reward.unlocked_at ? Date.now() - new Date(reward.unlocked_at).getTime() < 15000 : false
   const isCloseToUnlock = !isAvailable && reward.points_needed > 0 && reward.points_needed <= 25
 
@@ -74,17 +75,24 @@ export function RewardCard({ reward, onUse }: RewardCardProps) {
 
       <div className="mt-3">
         {isAvailable ? (
-          <button
-            type="button"
-            onClick={() => {
-              handleUse().catch(() => null)
-            }}
-            disabled={isSubmitting}
-            className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500"
-          >
-            <Gift className="h-4 w-4" />
-            Utiliser
-          </button>
+          requiresPhysicalPresence ? (
+            <p className="inline-flex items-center gap-2 text-xs text-amber-600">
+              <MapPin className="h-4 w-4" />
+              À utiliser en boutique lors de votre prochain achat
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                handleUse().catch(() => null)
+              }}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500"
+            >
+              <Gift className="h-4 w-4" />
+              Utiliser
+            </button>
+          )
         ) : (
           <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
             <p className="inline-flex items-center gap-2">

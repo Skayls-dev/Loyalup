@@ -61,6 +61,14 @@ export const handlers = [
   http.post(`${base}/unlock-reward`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as { client_reward_id?: string }
 
+    if (body.client_reward_id === 'physical-required') {
+      return HttpResponse.json({ error: 'PHYSICAL_PRESENCE_REQUIRED' }, { status: 403 })
+    }
+
+    if (body.client_reward_id === 'invalid-pending') {
+      return HttpResponse.json({ error: 'INVALID_PENDING_TRANSACTION' }, { status: 403 })
+    }
+
     if (body.client_reward_id === 'insufficient') {
       return HttpResponse.json({ error: 'INSUFFICIENT_POINTS' }, { status: 400 })
     }
