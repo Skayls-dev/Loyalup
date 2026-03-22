@@ -317,6 +317,7 @@ export function ValidationPanel({
               pendingTransaction={pendingTransaction}
               clientProfile={clientProfile}
               clientPoints={clientPoints}
+              totalVisites={totalVisites}
               onDismiss={onDismiss}
             />
           ) : null}

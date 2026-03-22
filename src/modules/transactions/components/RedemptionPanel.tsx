@@ -15,6 +15,7 @@ type RedemptionPanelProps = {
   pendingTransaction: PendingTransactionPayload
   clientProfile: Profile | null
   clientPoints: number
+  totalVisites?: number
   onDismiss: () => void
 }
 
@@ -117,6 +118,7 @@ export function RedemptionPanel({
   pendingTransaction,
   clientProfile,
   clientPoints,
+  totalVisites = 0,
   onDismiss,
 }: RedemptionPanelProps) {
   const {
@@ -302,7 +304,7 @@ export function RedemptionPanel({
           <ClientPreview
             clientProfile={clientProfile}
             clientPoints={clientPoints}
-            totalVisites={0}
+            totalVisites={totalVisites}
             pendingTransaction={pendingTransaction}
           />
 

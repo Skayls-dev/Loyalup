@@ -16,7 +16,7 @@ export function QRDisplay() {
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
   const [providerName, setProviderName] = useState<string>('')
   const [networkBadges, setNetworkBadges] = useState<Array<{ id: string; emoji: string; name: string; multiplier: number }>>([])
-  const { pendingTransaction, clientProfile, clientPoints, clearPending } = useQRRealtime(fournisseurId)
+  const { pendingTransaction, clientProfile, clientPoints, totalVisites, clearPending } = useQRRealtime(fournisseurId)
 
   useEffect(() => {
     const loadProvider = async () => {
@@ -160,6 +160,7 @@ export function QRDisplay() {
             pendingTransaction={pendingTransaction}
             clientProfile={clientProfile}
             clientPoints={clientPoints}
+            totalVisites={totalVisites}
             onDismiss={handleValidationPanelDismiss}
           />
         </div>

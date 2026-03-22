@@ -12,29 +12,20 @@ import type { Profile } from '../../shared/types'
 type PendingItem = PendingTransactionPayload & {
   clientName: string
   clientEmail: string
+  clientCreatedAt: string
   clientPoints: number
+  totalVisites: number
 }
 
 function resolveClientName(
   rawNom: string | null | undefined,
-  rawPrenom: string | null | undefined,
   rawEmail: string | null | undefined,
   clientId: string,
 ): string {
   const nom = (rawNom ?? '').trim()
-  const prenom = (rawPrenom ?? '').trim()
-
-  const fullName = [prenom, nom].filter(Boolean).join(' ').trim()
-  if (fullName) {
-    return fullName
-  }
 
   if (nom) {
     return nom
-  }
-
-  if (prenom) {
-    return prenom
   }
 
   const emailPrefix = (rawEmail ?? '').split('@')[0]?.trim()
@@ -71,37 +62,41 @@ export function ProviderValidate() {
     const transactions = (pendingData ?? []) as PendingTransactionPayload[]
     const clientIds = [...new Set(transactions.map((transaction) => transaction.client_id))]
 
-    const profileMap = new Map<string, { nom: string; email: string }>()
+    const profileMap = new Map<string, { nom: string; email: string; created_at: string }>()
     if (clientIds.length > 0) {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('id, nom, prenom, email')
+        .select('id, nom, email, created_at')
         .in('id', clientIds)
 
       for (const profile of profileData ?? []) {
         profileMap.set(profile.id as string, {
           nom: resolveClientName(
             profile.nom as string | undefined,
-            profile.prenom as string | undefined,
             profile.email as string | undefined,
             String(profile.id),
           ),
           email: (profile.email as string | undefined) ?? '',
+          created_at: (profile.created_at as string | undefined) ?? '',
         })
       }
     }
 
-    const pointsMap = new Map<string, number>()
+    const pointsMap = new Map<string, { solde: number; totalVisites: number }>()
     if (clientIds.length > 0) {
       const { data: pointsData } = await supabase
         .from('client_points')
-        .select('client_id, solde')
+        .select('client_id, solde, total_visites')
         .eq('fournisseur_id', providerId)
         .in('client_id', clientIds)
 
-      for (const row of (pointsData ?? []) as Array<{ client_id: string; solde: number | string | null }>) {
+      for (const row of (pointsData ?? []) as Array<{ client_id: string; solde: number | string | null; total_visites: number | string | null }>) {
         const balance = Number(row.solde ?? 0)
-        pointsMap.set(row.client_id, Number.isFinite(balance) ? balance : 0)
+        const visits = Number(row.total_visites ?? 0)
+        pointsMap.set(row.client_id, {
+          solde: Number.isFinite(balance) ? balance : 0,
+          totalVisites: Number.isFinite(visits) ? visits : 0,
+        })
       }
     }
 
@@ -111,9 +106,11 @@ export function ProviderValidate() {
 
         return {
           ...transaction,
-          clientName: profile?.nom ?? resolveClientName(undefined, undefined, profile?.email, transaction.client_id),
+          clientName: profile?.nom ?? resolveClientName(undefined, profile?.email, transaction.client_id),
           clientEmail: profile?.email ?? '',
-          clientPoints: pointsMap.get(transaction.client_id) ?? 0,
+          clientCreatedAt: profile?.created_at || transaction.created_at,
+          clientPoints: pointsMap.get(transaction.client_id)?.solde ?? 0,
+          totalVisites: pointsMap.get(transaction.client_id)?.totalVisites ?? 0,
         }
       })
 
@@ -173,30 +170,32 @@ export function ProviderValidate() {
     const handleIncoming = async (payload: PendingTransactionPayload) => {
       const { data: profileData } = await supabase
         .from('profiles')
-        .select('nom, prenom, email')
+        .select('nom, email, created_at')
         .eq('id', payload.client_id)
         .maybeSingle()
 
       const { data: pointsData } = await supabase
         .from('client_points')
-        .select('solde')
+        .select('solde, total_visites')
         .eq('fournisseur_id', payload.fournisseur_id)
         .eq('client_id', payload.client_id)
-        .maybeSingle<{ solde: number | string | null }>()
+        .maybeSingle<{ solde: number | string | null; total_visites: number | string | null }>()
 
       const balance = Number(pointsData?.solde ?? 0)
+      const visits = Number(pointsData?.total_visites ?? 0)
 
       setItems((prev) => [
         {
           ...payload,
           clientName: resolveClientName(
             profileData?.nom as string | undefined,
-            profileData?.prenom as string | undefined,
             profileData?.email as string | undefined,
             payload.client_id,
           ),
           clientEmail: (profileData?.email as string | undefined) ?? '',
+          clientCreatedAt: (profileData?.created_at as string | undefined) ?? payload.created_at,
           clientPoints: Number.isFinite(balance) ? balance : 0,
+          totalVisites: Number.isFinite(visits) ? visits : 0,
         },
         ...prev.filter((item) => item.id !== payload.id),
       ])
@@ -225,7 +224,7 @@ export function ProviderValidate() {
       email: selectedItem.clientEmail || 'email non disponible',
       role: 'client',
       nom: selectedItem.clientName,
-      created_at: selectedItem.created_at,
+      created_at: selectedItem.clientCreatedAt,
     }
   }, [selectedItem])
 
@@ -292,6 +291,7 @@ export function ProviderValidate() {
           pendingTransaction={selectedItem}
           clientProfile={selectedClientProfile}
           clientPoints={selectedItem.clientPoints}
+          totalVisites={selectedItem.totalVisites}
           onDismiss={handleValidationPanelDismiss}
         />
       ) : null}

@@ -11,29 +11,19 @@ type UseQRRealtimeResult = {
   pendingTransaction: PendingTransactionPayload | null
   clientProfile: Profile | null
   clientPoints: number
+  totalVisites: number
   clearPending: () => void
 }
 
 function resolveClientName(
   rawNom: string | null | undefined,
-  rawPrenom: string | null | undefined,
   rawEmail: string | null | undefined,
   clientId: string,
 ): string {
   const nom = (rawNom ?? '').trim()
-  const prenom = (rawPrenom ?? '').trim()
-
-  const fullName = [prenom, nom].filter(Boolean).join(' ').trim()
-  if (fullName) {
-    return fullName
-  }
 
   if (nom) {
     return nom
-  }
-
-  if (prenom) {
-    return prenom
   }
 
   const emailPrefix = (rawEmail ?? '').split('@')[0]?.trim()
@@ -47,7 +37,6 @@ function resolveClientName(
 function buildFallbackProfile(payload: PendingTransactionPayload, rawProfile?: Partial<Profile> | null): Profile {
   const resolvedName = resolveClientName(
     rawProfile?.nom,
-    rawProfile?.prenom,
     rawProfile?.email,
     payload.client_id,
   )
@@ -57,7 +46,6 @@ function buildFallbackProfile(payload: PendingTransactionPayload, rawProfile?: P
     email: typeof rawProfile?.email === 'string' ? rawProfile.email : '',
     role: (rawProfile?.role as Profile['role'] | undefined) ?? 'client',
     nom: resolvedName,
-    prenom: typeof rawProfile?.prenom === 'string' ? rawProfile.prenom : null,
     created_at:
       typeof rawProfile?.created_at === 'string' && rawProfile.created_at
         ? rawProfile.created_at
@@ -70,6 +58,7 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
     useState<PendingTransactionPayload | null>(null)
   const [clientProfile, setClientProfile] = useState<Profile | null>(null)
   const [clientPoints, setClientPoints] = useState(0)
+  const [totalVisites, setTotalVisites] = useState(0)
 
   useEffect(() => {
     if (!fournisseurId) {
@@ -89,7 +78,7 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
 
       const { data } = await supabase
         .from('profiles')
-        .select('id, email, role, nom, prenom, created_at')
+        .select('id, email, role, nom, created_at')
         .eq('id', payload.client_id)
         .maybeSingle()
 
@@ -99,14 +88,16 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
 
       const { data: pointsData } = await supabase
         .from('client_points')
-        .select('solde')
+        .select('solde, total_visites')
         .eq('client_id', payload.client_id)
         .eq('fournisseur_id', payload.fournisseur_id)
-        .maybeSingle<{ solde: number | string | null }>()
+        .maybeSingle<{ solde: number | string | null; total_visites: number | string | null }>()
 
       if (!cancelled) {
         const balance = Number(pointsData?.solde ?? 0)
+        const visits = Number(pointsData?.total_visites ?? 0)
         setClientPoints(Number.isFinite(balance) ? balance : 0)
+        setTotalVisites(Number.isFinite(visits) ? visits : 0)
         setPendingTransaction(payload)
       }
     }
@@ -149,10 +140,11 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
     setPendingTransaction(null)
     setClientProfile(null)
     setClientPoints(0)
+    setTotalVisites(0)
   }
 
   return useMemo(
-    () => ({ pendingTransaction, clientProfile, clientPoints, clearPending }),
-    [pendingTransaction, clientProfile, clientPoints],
+    () => ({ pendingTransaction, clientProfile, clientPoints, totalVisites, clearPending }),
+    [pendingTransaction, clientProfile, clientPoints, totalVisites],
   )
 }

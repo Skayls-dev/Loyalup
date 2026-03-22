@@ -25,24 +25,13 @@ const providerMenu = [
 
 function resolveClientName(
   rawNom: string | null | undefined,
-  rawPrenom: string | null | undefined,
   rawEmail: string | null | undefined,
   clientId: string,
 ): string {
   const nom = (rawNom ?? '').trim()
-  const prenom = (rawPrenom ?? '').trim()
-
-  const fullName = [prenom, nom].filter(Boolean).join(' ').trim()
-  if (fullName) {
-    return fullName
-  }
 
   if (nom) {
     return nom
-  }
-
-  if (prenom) {
-    return prenom
   }
 
   const emailPrefix = (rawEmail ?? '').split('@')[0]?.trim()
@@ -61,6 +50,7 @@ export function ProviderLayout() {
     pendingTransaction: PendingTransactionPayload
     clientProfile: Profile | null
     clientPoints: number
+    totalVisites: number
   } | null>(null)
   const [lastNotifiedPendingId, setLastNotifiedPendingId] = useState<string | null>(null)
 
@@ -97,15 +87,15 @@ export function ProviderLayout() {
         const [profileResult, pointsResult] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, email, role, nom, prenom, created_at')
+            .select('id, email, role, nom, created_at')
             .eq('id', payload.client_id)
             .maybeSingle(),
           supabase
             .from('client_points')
-            .select('solde')
+            .select('solde, total_visites')
             .eq('client_id', payload.client_id)
             .eq('fournisseur_id', payload.fournisseur_id)
-            .maybeSingle<{ solde: number | string | null }>(),
+            .maybeSingle<{ solde: number | string | null; total_visites: number | string | null }>(),
         ])
 
         const resolvedProfile =
@@ -116,11 +106,9 @@ export function ProviderLayout() {
                 role: (profileResult.data.role as 'client' | 'fournisseur' | 'admin' | undefined) ?? 'client',
                 nom: resolveClientName(
                   profileResult.data.nom as string | undefined,
-                  profileResult.data.prenom as string | undefined,
                   profileResult.data.email as string | undefined,
                   payload.client_id,
                 ),
-                prenom: (profileResult.data.prenom as string | undefined) ?? null,
                 created_at: (profileResult.data.created_at as string | undefined) ?? payload.created_at,
               }
             : null
@@ -129,6 +117,7 @@ export function ProviderLayout() {
           pendingTransaction: payload,
           clientProfile: resolvedProfile,
           clientPoints: Number(pointsResult.data?.solde ?? 0),
+          totalVisites: Number(pointsResult.data?.total_visites ?? 0),
         })
       }
 
@@ -263,6 +252,7 @@ export function ProviderLayout() {
               pendingTransaction={incomingValidation.pendingTransaction}
               clientProfile={incomingValidation.clientProfile}
               clientPoints={incomingValidation.clientPoints}
+              totalVisites={incomingValidation.totalVisites}
               onDismiss={handleDismissValidationPopup}
             />
           </div>
