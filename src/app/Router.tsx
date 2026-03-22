@@ -78,6 +78,9 @@ const ClientSettingsPage = lazy(() =>
 const ClientPointsPage = lazy(() =>
   import('../pages/dashboard/ClientPointsPage').then((module) => ({ default: module.default })),
 )
+const PointTransfersPage = lazy(() =>
+  import('../pages/dashboard/PointTransfersPage').then((module) => ({ default: module.default })),
+)
 const ClientNetworksPage = lazy(() =>
   import('../pages/dashboard/ClientNetworksPage').then((module) => ({ default: module.default })),
 )
@@ -767,6 +770,7 @@ export function Router() {
             <Route path="/dashboard/gamification" element={<GamificationPage />} />
             <Route path="/dashboard/referral" element={<ReferralProgramPage />} />
             <Route path="/dashboard/referral/analytics" element={<ReferrerAnalyticsDashboard />} />
+            <Route path="/dashboard/transfers" element={<PointTransfersPage />} />
             <Route path="/dashboard/notifications" element={<DashboardNotificationsPage />} />
             <Route path="/dashboard/networks/:id" element={<ClientNetworksPage />} />
             <Route path="/points" element={<ClientPointsPage />} />

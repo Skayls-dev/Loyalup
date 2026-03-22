@@ -43,6 +43,24 @@ export default function ClientPointsPage() {
         </Link>
       </SectionCard>
 
+      <SectionCard className="flex flex-wrap items-center justify-between gap-3 border-amber-100 bg-gradient-to-r from-amber-50 to-white">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-amber-100 text-amber-700">
+            <TrendingUp className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Transferer mes points</h2>
+            <p className="text-sm text-slate-600">Deplacez des points entre marchands du meme reseau, avec apercu des frais et conversion avant validation.</p>
+          </div>
+        </div>
+        <Link
+          to="/dashboard/transfers"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-amber-600 px-4 text-sm font-semibold text-white transition hover:bg-amber-700"
+        >
+          Ouvrir les transferts
+        </Link>
+      </SectionCard>
+
       <SectionCard className="space-y-3">
         <div className="flex items-center gap-2">
           <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">

@@ -38,6 +38,7 @@ const primaryNav: NavItem[] = [
 const activityNav: NavItem[] = [
   { key: 'transactions', label: 'Transactions', to: '/transactions', icon: ArrowLeftRight },
   { key: 'challenges', label: 'Defis', to: '/challenges', icon: Swords, badgeCount: 3 },
+  { key: 'transfers', label: 'Transferts', to: '/dashboard/transfers', icon: ArrowLeftRight },
   { key: 'referral', label: 'Parrainage', to: '/dashboard/referral', icon: Users },
   { key: 'rewards', label: 'Recompenses', to: '/rewards', icon: Gift },
 ]

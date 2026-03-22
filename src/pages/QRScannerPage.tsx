@@ -7,6 +7,7 @@ import {
   unsubscribeTransactionStatus,
   getPendingTransactionStatus,
 } from '../modules/qr/services/qrService'
+import { getReferralStats, generateReferralLink } from '../modules/gamification/services/gamificationService'
 import { supabase } from '../shared/lib/supabaseClient'
 
 export interface ScanResult {
@@ -29,6 +30,9 @@ interface ScanSuccessProps {
   state: 'pending' | 'validated' | 'cancelled'
   points?: number
   balance?: number
+  shareUrl?: string
+  shareMessage?: string
+  shareLoading?: boolean
   onReset: () => void
 }
 
@@ -215,7 +219,35 @@ function PendingCountdown({ onTimeout }: { onTimeout: () => void }) {
   )
 }
 
-function ScanSuccess({ state, points, balance, onReset }: ScanSuccessProps) {
+function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoading = false, onReset }: ScanSuccessProps) {
+  const [showShareActions, setShowShareActions] = useState(false)
+  const [copyNotice, setCopyNotice] = useState<string | null>(null)
+
+  const shareText = shareMessage ?? 'Rejoignez-moi sur LoyalUp et gagnez un bonus de bienvenue.'
+
+  const shareToWhatsApp = () => {
+    if (!shareUrl) return
+    const text = encodeURIComponent(`${shareText} ${shareUrl}`)
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer')
+  }
+
+  const shareBySms = () => {
+    if (!shareUrl) return
+    const body = encodeURIComponent(`${shareText} ${shareUrl}`)
+    window.location.href = `sms:?&body=${body}`
+  }
+
+  const copyLink = async () => {
+    if (!shareUrl) return
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setCopyNotice('Lien copie.')
+    } catch {
+      setCopyNotice('Impossible de copier automatiquement.')
+    }
+    window.setTimeout(() => setCopyNotice(null), 1800)
+  }
+
   if (state === 'pending') {
     return (
       <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
@@ -264,6 +296,61 @@ function ScanSuccess({ state, points, balance, onReset }: ScanSuccessProps) {
           Nouveau solde: {balance.toLocaleString('fr-FR')} pts
         </p>
       ) : null}
+
+      <div className="rounded-lg border border-emerald-200 bg-white p-3">
+        <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">Viralite</p>
+        <p className="mt-1 font-body text-xs text-gray-600">Invitez un ami juste apres votre scan et boostez votre reseau.</p>
+
+        <button
+          type="button"
+          onClick={() => setShowShareActions((open) => !open)}
+          disabled={shareLoading || !shareUrl}
+          className="mt-3 h-10 w-full rounded-md bg-emerald-600 px-3 font-body text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {shareLoading ? 'Preparation du lien...' : 'Partage maintenant'}
+        </button>
+
+        {showShareActions ? (
+          <div className="mt-3 space-y-3">
+            <p className="font-body text-xs text-gray-600">Message pre-rempli avec votre lien d'invitation:</p>
+            <p className="rounded-md border border-gray-200 bg-gray-50 p-2 font-body text-xs text-gray-700">
+              {shareText}
+            </p>
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              <button
+                type="button"
+                onClick={shareToWhatsApp}
+                disabled={!shareUrl}
+                className="h-9 rounded-md border border-emerald-200 bg-emerald-50 px-2 font-body text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+              >
+                WhatsApp
+              </button>
+              <button
+                type="button"
+                onClick={shareBySms}
+                disabled={!shareUrl}
+                className="h-9 rounded-md border border-blue-200 bg-blue-50 px-2 font-body text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+              >
+                SMS
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  void copyLink()
+                }}
+                disabled={!shareUrl}
+                className="h-9 rounded-md border border-slate-200 bg-slate-50 px-2 font-body text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+              >
+                Copier le lien
+              </button>
+            </div>
+
+            {copyNotice ? <p className="font-body text-xs text-emerald-700">{copyNotice}</p> : null}
+          </div>
+        ) : null}
+      </div>
+
       <button
         type="button"
         onClick={onReset}
@@ -390,6 +477,9 @@ export default function QRScannerPage() {
   const [validatedPoints, setValidatedPoints] = useState<number | undefined>(undefined)
   const [validatedBalance, setValidatedBalance] = useState<number | undefined>(undefined)
   const [errorReason, setErrorReason] = useState('')
+  const [shareUrl, setShareUrl] = useState<string | undefined>(undefined)
+  const [shareMessage, setShareMessage] = useState<string>('')
+  const [shareLoading, setShareLoading] = useState(false)
 
   const handleSuccess = useCallback((result: ScanResult) => {
     setPendingTxId(result.pending_transaction_id)
@@ -407,8 +497,48 @@ export default function QRScannerPage() {
     setValidatedPoints(undefined)
     setValidatedBalance(undefined)
     setErrorReason('')
+    setShareUrl(undefined)
+    setShareMessage('')
+    setShareLoading(false)
     setState('scanning')
   }, [])
+
+  useEffect(() => {
+    if (state !== 'validated') return
+
+    let cancelled = false
+
+    async function loadShareLink() {
+      setShareLoading(true)
+
+      try {
+        const stats = await getReferralStats()
+        const withLink = stats?.url ? stats : await generateReferralLink()
+
+        if (cancelled) return
+
+        const url = withLink?.url ?? ''
+        const pointsPart = typeof validatedPoints === 'number' ? `Je viens de gagner ${validatedPoints} points sur LoyalUp.` : 'Je viens de valider une transaction sur LoyalUp.'
+        setShareUrl(url || undefined)
+        setShareMessage(`${pointsPart} Rejoignez-moi et gagnez un bonus de bienvenue.`)
+      } catch {
+        if (!cancelled) {
+          setShareUrl(undefined)
+          setShareMessage('Rejoignez-moi sur LoyalUp et gagnez un bonus de bienvenue.')
+        }
+      } finally {
+        if (!cancelled) {
+          setShareLoading(false)
+        }
+      }
+    }
+
+    void loadShareLink()
+
+    return () => {
+      cancelled = true
+    }
+  }, [state, validatedPoints])
 
   // When a pending transaction exists, subscribe to status updates and poll
   useEffect(() => {
@@ -469,6 +599,9 @@ export default function QRScannerPage() {
           state={state}
           points={validatedPoints}
           balance={validatedBalance}
+          shareUrl={shareUrl}
+          shareMessage={shareMessage}
+          shareLoading={shareLoading}
           onReset={resetScanner}
         />
       )
@@ -479,7 +612,18 @@ export default function QRScannerPage() {
     }
 
     return <QRViewport onSuccess={handleSuccess} onError={handleError} />
-  }, [errorReason, handleError, handleSuccess, resetScanner, state, validatedBalance, validatedPoints])
+  }, [
+    errorReason,
+    handleError,
+    handleSuccess,
+    resetScanner,
+    shareLoading,
+    shareMessage,
+    shareUrl,
+    state,
+    validatedBalance,
+    validatedPoints,
+  ])
 
   return (
     <main className="mx-auto flex w-full max-w-[420px] flex-col gap-6 px-4 py-6">

@@ -651,10 +651,33 @@ export async function getReferrerAnalytics(): Promise<ReferrerAnalytics | null> 
 
   if (!user?.id) return null
 
-  const stats = await getReferralStats()
-  const tier = await getReferrerTier(user.id)
+  const [statsResult, tierResult] = await Promise.allSettled([getReferralStats(), getReferrerTier(user.id)])
 
-  if (!stats || !tier) return null
+  const stats = statsResult.status === 'fulfilled' ? statsResult.value : null
+  const tier = tierResult.status === 'fulfilled' ? tierResult.value : null
+
+  const safeStats: ReferralStats =
+    stats ?? {
+      code: '',
+      url: `${getReferralBaseUrl()}/join`,
+      expires_at: new Date().toISOString(),
+      total_generated: 0,
+      activated: 0,
+      rewarded: 0,
+      points_earned: 0,
+    }
+
+  const safeTier: ReferrerTierInfo =
+    tier ?? {
+      current_tier: 1,
+      tier_name: 'Novice',
+      tier_description: 'Commencez a parrainer pour progresser.',
+      activated_count: safeStats.activated,
+      next_tier: 2,
+      referrals_to_next: Math.max(0, 5 - safeStats.activated),
+      perks: [],
+      tier_updated_at: new Date().toISOString(),
+    }
 
   const { data: recentReferrals, error: recentsError } = await supabase
     .from('client_referrals')
@@ -664,12 +687,12 @@ export async function getReferrerAnalytics(): Promise<ReferrerAnalytics | null> 
     .limit(10)
 
   if (recentsError) {
-    throw recentsError
+    console.error('Failed to load recent referrals:', recentsError)
   }
 
   return {
-    tier,
-    referral_stats: stats,
+    tier: safeTier,
+    referral_stats: safeStats,
     recent_referrals: (recentReferrals ?? []).map((r: any) => ({
       code: r.referral_code,
       status: r.status,
@@ -734,6 +757,15 @@ export interface TransferOption {
   fee_pct: number
 }
 
+export interface TransferHistory {
+  id: string
+  from_provider_name: string
+  to_provider_name: string
+  points_transferred: number
+  points_received: number
+  created_at: string
+}
+
 export async function getTransferOptions(
   from_fournisseur_id: string,
 ): Promise<TransferOption[]> {
@@ -762,7 +794,7 @@ export async function getTransferOptions(
   const providerIds = (otherMembers as any[])?.map((m) => m.fournisseur_id) ?? []
   const { data: providers, error: providersError } = await supabase
     .from('fournisseurs')
-    .select('id, nom')
+    .select('id, nom_commerce')
     .in('id', providerIds)
 
   if (providersError) throw providersError
@@ -773,7 +805,7 @@ export async function getTransferOptions(
 
     return {
       to_fournisseur_id: member.fournisseur_id,
-      provider_name: provider?.nom ?? 'Unknown',
+      provider_name: provider?.nom_commerce ?? 'Unknown',
       estimated_points: 0, // Will be calculated based on amount
       conversion_rate: coalition.conversion_rate,
       fee_pct: coalition.platform_fee_pct,
@@ -805,6 +837,54 @@ export async function transferPoints(params: {
   }
 
   return response.json()
+}
+
+export async function getRecentTransfers(limit: number = 5): Promise<TransferHistory[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) return []
+
+  const { data: transfers, error } = await supabase
+    .from('point_transfers')
+    .select(
+      `
+      id,
+      points_deducted,
+      points_credited,
+      created_at,
+      from_fournisseur:from_fournisseur_id (nom_commerce),
+      to_fournisseur:to_fournisseur_id (nom_commerce)
+    `,
+    )
+    .eq('client_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) {
+    console.error('Failed to fetch transfer history:', error)
+    return []
+  }
+
+  return (transfers ?? []).map((t: any) => ({
+    id: t.id,
+    from_provider_name: t.from_fournisseur?.nom_commerce ?? 'Unknown',
+    to_provider_name: t.to_fournisseur?.nom_commerce ?? 'Unknown',
+    points_transferred: t.points_deducted,
+    points_received: t.points_credited,
+    created_at: t.created_at,
+  }))
+}
+
+export function findBestTransferRate(options: TransferOption[]): TransferOption | null {
+  if (!options.length) return null
+
+  return options.reduce((best, current) => {
+    const bestNet = best.conversion_rate * (1 - best.fee_pct)
+    const currentNet = current.conversion_rate * (1 - current.fee_pct)
+    return currentNet > bestNet ? current : best
+  })
 }
 
 // ============================================================================

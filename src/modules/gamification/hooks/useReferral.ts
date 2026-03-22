@@ -5,8 +5,10 @@ import {
   getReferralStats,
   getTransferOptions,
   transferPoints,
+  getRecentTransfers,
+  findBestTransferRate,
 } from '../services/gamificationService'
-import type { ReferralStats, TransferOption } from '../services/gamificationService'
+import type { ReferralStats, TransferOption, TransferHistory } from '../services/gamificationService'
 import { getClientCards } from '../../loyalty/services/loyaltyService'
 
 type TransferSourceProvider = {
@@ -20,6 +22,8 @@ interface UseReferralReturn {
   sourceProviders: TransferSourceProvider[]
   transferOptions: TransferOption[]
   transferOptionsLoading: boolean
+  recentTransfers: TransferHistory[]
+  bestTransferOption: TransferOption | null
   loading: boolean
   error: Error | null
   generateLink: () => Promise<void>
@@ -37,6 +41,8 @@ export function useReferral(): UseReferralReturn {
   const [sourceProviders, setSourceProviders] = useState<TransferSourceProvider[]>([])
   const [transferOptions, setTransferOptions] = useState<TransferOption[]>([])
   const [transferOptionsLoading, setTransferOptionsLoading] = useState(false)
+  const [recentTransfers, setRecentTransfers] = useState<TransferHistory[]>([])
+  const [bestTransferOption, setBestTransferOption] = useState<TransferOption | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
 
@@ -81,6 +87,29 @@ export function useReferral(): UseReferralReturn {
 
     loadSources().catch(() => null)
   }, [clientId])
+
+  useEffect(() => {
+    const loadTransferHistory = async () => {
+      if (!clientId) {
+        setRecentTransfers([])
+        return
+      }
+
+      try {
+        const transfers = await getRecentTransfers(5)
+        setRecentTransfers(transfers)
+      } catch (err) {
+        console.error('Failed to load transfer history:', err)
+      }
+    }
+
+    loadTransferHistory().catch(() => null)
+  }, [clientId])
+
+  useEffect(() => {
+    const best = findBestTransferRate(transferOptions)
+    setBestTransferOption(best)
+  }, [transferOptions])
 
   const loadTransferOptions = async (from_fournisseur_id: string) => {
     if (!from_fournisseur_id) {
@@ -147,6 +176,8 @@ export function useReferral(): UseReferralReturn {
     sourceProviders,
     transferOptions,
     transferOptionsLoading,
+    recentTransfers,
+    bestTransferOption,
     loading,
     error,
     generateLink,

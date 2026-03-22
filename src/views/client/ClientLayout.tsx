@@ -9,7 +9,7 @@ export function ClientLayout() {
   const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
-  const isScanRoute = location.pathname === '/client/scan'
+  const isScanRoute = location.pathname === '/scan'
   const mustChangePassword = Boolean(user?.user_metadata?.force_password_change)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [promoBadgeCount, setPromoBadgeCount] = useState(0)
@@ -114,7 +114,7 @@ export function ClientLayout() {
         <div className={`grid h-16 w-full grid-cols-5 ${isScanRoute ? 'px-0' : 'px-1'}`}>
           <NavItem to="/client" label="Mes cartes" icon={<CreditCard className="h-5 w-5" />} />
           <NavItem
-            to="/client/scan"
+            to="/scan"
             label="Scanner"
             icon={<QrCode className="h-5 w-5" />}
             accent
