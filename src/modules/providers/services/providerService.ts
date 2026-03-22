@@ -82,6 +82,7 @@ export type RewardRuleItem = {
   description: string
   points_required: number
   emoji: string
+  expiry_date: string | null
   actif: boolean
   created_at: string
 }
@@ -105,6 +106,7 @@ export type CreateRewardRuleParams = {
   description: string
   emoji: string
   points_required: number
+  expiry_date?: string | null
 }
 
 export type UpdateRewardRuleParams = Partial<Omit<CreateRewardRuleParams, 'fournisseur_id'>>
@@ -551,7 +553,7 @@ export async function getRewardRules(fournisseur_id: string): Promise<RewardRule
   return withCachedRead(`provider:reward-rules:${fournisseur_id}`, async () => {
     const { data, error } = await supabase
       .from('reward_rules')
-      .select('id, fournisseur_id, nom, description, points_required, emoji, actif, created_at')
+      .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
       .eq('fournisseur_id', fournisseur_id)
       .order('points_required', { ascending: true })
 
@@ -574,9 +576,10 @@ export async function createRewardRule(params: CreateRewardRuleParams): Promise<
       description: params.description,
       emoji: params.emoji,
       points_required: params.points_required,
+      expiry_date: params.expiry_date ?? null,
       actif: true,
     })
-    .select('id, fournisseur_id, nom, description, points_required, emoji, actif, created_at')
+    .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
     .single()
 
   if (error) {
@@ -593,7 +596,7 @@ export async function updateRewardRule(id: string, updates: UpdateRewardRulePara
     .from('reward_rules')
     .update(updates)
     .eq('id', id)
-    .select('id, fournisseur_id, nom, description, points_required, emoji, actif, created_at')
+    .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
     .single()
 
   if (error) {
@@ -610,7 +613,7 @@ export async function toggleRewardRule(id: string, actif: boolean): Promise<Rewa
     .from('reward_rules')
     .update({ actif })
     .eq('id', id)
-    .select('id, fournisseur_id, nom, description, points_required, emoji, actif, created_at')
+    .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
     .single()
 
   if (error) {
@@ -618,4 +621,17 @@ export async function toggleRewardRule(id: string, actif: boolean): Promise<Rewa
   }
 
   return data as RewardRuleItem
+}
+
+export async function deleteRewardRule(id: string): Promise<void> {
+  requireOnlineForWrite()
+
+  const { error } = await supabase
+    .from('reward_rules')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    throw new Error(error.message)
+  }
 }

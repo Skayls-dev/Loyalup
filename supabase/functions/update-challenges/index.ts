@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
                     points: challenge.reward_points,
                     valide: true,
                   })
-                  .catch((e) => console.warn('Failed to log challenge reward transaction:', e))
+                  .then(null, (e) => console.warn('Failed to log challenge reward transaction:', e))
               }
             }
           } catch (creditError) {

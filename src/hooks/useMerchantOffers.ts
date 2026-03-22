@@ -30,21 +30,25 @@ type OfferRow = {
   description: string | null
   points_required: number | null
   emoji: string | null
+  expiry_date: string | null
   actif: boolean | null
   created_at: string
 }
 
 function toOffer(row: OfferRow, redemptionsByRuleId: Map<string, number>): MerchantOffer {
   const redemptions = redemptionsByRuleId.get(row.id) ?? 0
+  const today = new Date().toISOString().slice(0, 10)
+  const isExpiredByDate = Boolean(row.expiry_date && row.expiry_date < today)
+
   return {
     id: row.id,
     merchant_id: row.fournisseur_id,
     name: row.nom,
     description: row.description,
     points_required: Number(row.points_required ?? 0),
-    expiry_date: null,
+    expiry_date: row.expiry_date,
     category: row.emoji,
-    status: row.actif === false ? 'paused' : 'active',
+    status: isExpiredByDate ? 'expired' : row.actif === false ? 'paused' : 'active',
     redemptions_this_month: redemptions,
     network_ids: [],
     created_at: row.created_at,

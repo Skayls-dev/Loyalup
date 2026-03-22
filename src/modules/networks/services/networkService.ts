@@ -96,6 +96,66 @@ async function getCurrentUserRole(): Promise<string | null> {
   return data?.role ?? null
 }
 
+async function resolveAccessToken(): Promise<string | null> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) {
+    return null
+  }
+
+  let accessToken = sessionData.session?.access_token ?? null
+
+  // Attempt one refresh when no token is currently present.
+  if (!accessToken) {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      return null
+    }
+    accessToken = refreshData.session?.access_token ?? null
+  }
+
+  if (!accessToken) {
+    return null
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (!userError && userData.user?.id) {
+    return accessToken
+  }
+
+  // If current token is stale, try one refresh before giving up.
+  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+  if (refreshError) {
+    return null
+  }
+
+  return refreshData.session?.access_token ?? null
+}
+
+async function invokeAuthedFunction(
+  functionName: string,
+  body: Record<string, unknown>,
+) {
+  const accessToken = await resolveAccessToken()
+
+  if (!accessToken) {
+    return {
+      data: null,
+      error: {
+        message: 'Unauthorized',
+        status: 401,
+        context: { status: 401 },
+      },
+    }
+  }
+
+  return supabase.functions.invoke(functionName, {
+    body,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  })
+}
+
 export async function getAllNetworks(filters?: NetworkFilters): Promise<NetworkWithEligibility[]> {
   let query = supabase
     .from('networks')
@@ -424,26 +484,7 @@ function isAuthFunctionError(error: unknown): boolean {
 }
 
 async function invokeManageClientEnrollment(payload: { body: Record<string, unknown> }) {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const accessToken = sessionData.session?.access_token
-
-  if (!accessToken) {
-    return {
-      data: null,
-      error: {
-        message: 'Unauthorized',
-        status: 401,
-        context: { status: 401 },
-      },
-    }
-  }
-
-  return supabase.functions.invoke('manage-client-enrollment', {
-    body: payload.body,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
+  return invokeAuthedFunction('manage-client-enrollment', payload.body)
 }
 
 async function getNetworkStatsFallback(network_id: string): Promise<NetworkStats> {
@@ -619,7 +660,7 @@ export async function getNetworkLeaderboard(
 
   const { data, error } = await supabase
     .from('network_clients')
-    .select('client_id, total_network_points, profiles!inner(nom, prenom)')
+    .select('client_id, total_network_points')
     .eq('network_id', network_id)
     .order('total_network_points', { ascending: false })
     .limit(Math.max(1, Math.min(100, limit)))
@@ -631,11 +672,27 @@ export async function getNetworkLeaderboard(
   const rows = (data ?? []) as Array<{
     client_id: string
     total_network_points: number
-    profiles: { nom: string | null; prenom: string | null } | Array<{ nom: string | null; prenom: string | null }> | null
   }>
 
+  const clientIds = rows.map((row) => row.client_id)
+  const profilesByClientId = new Map<string, { nom: string | null; prenom: string | null }>()
+
+  if (clientIds.length > 0) {
+    const { data: profilesRows } = await supabase
+      .from('profiles')
+      .select('id, nom, prenom')
+      .in('id', clientIds)
+
+    for (const row of (profilesRows ?? []) as Array<{ id: string; nom: string | null; prenom: string | null }>) {
+      profilesByClientId.set(row.id, {
+        nom: row.nom,
+        prenom: row.prenom,
+      })
+    }
+  }
+
   const entries: NetworkLeaderboardEntry[] = rows.map((row, index) => {
-    const profile = Array.isArray(row.profiles) ? row.profiles[0] : row.profiles
+    const profile = profilesByClientId.get(row.client_id)
     const prenom = profile?.prenom?.trim() ?? 'Client'
     const nomInitial = profile?.nom?.trim() ? `${profile.nom.trim().charAt(0)}.` : ''
 
@@ -700,11 +757,9 @@ export async function getAnnouncementsForNetwork(networkId?: string): Promise<Ne
     return []
   }
 
-  const { data, error } = await supabase.functions.invoke('manage-announcements', {
-    body: {
-      action: 'GET_ANNOUNCEMENTS',
-      network_id: networkId,
-    },
+  const { data, error } = await invokeAuthedFunction('manage-announcements', {
+    action: 'GET_ANNOUNCEMENTS',
+    network_id: networkId,
   })
 
   if (error) {

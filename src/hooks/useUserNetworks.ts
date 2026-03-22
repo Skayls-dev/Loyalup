@@ -21,6 +21,30 @@ export interface UseUserNetworksResult {
 
 const FALLBACK_EMOJI = '🌐'
 
+function resolveNetworkName(raw: unknown): string {
+  if (typeof raw === 'string' && raw.trim().length > 0) {
+    return raw
+  }
+
+  if (raw && typeof raw === 'object') {
+    const localized = raw as Record<string, unknown>
+    if (typeof localized.fr === 'string' && localized.fr.trim().length > 0) {
+      return localized.fr
+    }
+    if (typeof localized.en === 'string' && localized.en.trim().length > 0) {
+      return localized.en
+    }
+
+    for (const value of Object.values(localized)) {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value
+      }
+    }
+  }
+
+  return 'Reseau'
+}
+
 export function useUserNetworks(userId?: string): UseUserNetworksResult {
   const [networks, setNetworks] = useState<UserNetworkItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -73,7 +97,7 @@ export function useUserNetworks(userId?: string): UseUserNetworksResult {
             }
 
             const id = String((network as { id?: string }).id ?? (row as { network_id?: string }).network_id ?? '')
-            const name = String((network as { name?: string }).name ?? 'Réseau')
+            const name = resolveNetworkName((network as { name?: unknown }).name)
             const emoji = String((network as { emoji?: string }).emoji ?? FALLBACK_EMOJI)
             const merchantCount = Number((network as { member_count?: number }).member_count ?? 0)
 

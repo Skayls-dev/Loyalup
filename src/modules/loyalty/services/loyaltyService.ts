@@ -34,6 +34,7 @@ export type RewardRule = {
   description: string
   points_required: number
   emoji: string
+  expiry_date: string | null
   actif: boolean
   created_at: string
 }
@@ -47,6 +48,18 @@ export type ClientReward = {
   unlocked_at: string
   used_at: string | null
   created_at: string
+  reward_rule: RewardRule
+}
+
+export type RewardCatalogItem = {
+  id: string
+  fournisseur_id: string
+  fournisseur_nom: string
+  status: 'available' | 'locked'
+  unlocked_reward_id: string | null
+  unlocked_at: string | null
+  current_points: number
+  points_needed: number
   reward_rule: RewardRule
 }
 
@@ -195,7 +208,7 @@ export async function getAvailableRewards(
     let query = supabase
       .from('client_rewards')
       .select(
-        'id, client_id, fournisseur_id, reward_rule_id, status, unlocked_at, used_at, created_at, reward_rule:reward_rules(id, fournisseur_id, nom, description, points_required, emoji, actif, created_at)',
+        'id, client_id, fournisseur_id, reward_rule_id, status, unlocked_at, used_at, created_at, reward_rule:reward_rules(id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at)',
       )
       .eq('client_id', client_id)
       .eq('status', 'available')
@@ -241,13 +254,135 @@ export async function getAvailableRewards(
   })
 }
 
+export async function getRewardCatalog(
+  client_id: string,
+  fournisseur_id?: string,
+): Promise<RewardCatalogItem[]> {
+  return withCachedRead(`loyalty:reward-catalog:${client_id}:${fournisseur_id ?? 'all'}`, async () => {
+    let pointsQuery = supabase
+      .from('client_points')
+      .select('fournisseur_id, solde')
+      .eq('client_id', client_id)
+
+    let availableRewardsQuery = supabase
+      .from('client_rewards')
+      .select('id, fournisseur_id, reward_rule_id, status, unlocked_at')
+      .eq('client_id', client_id)
+      .eq('status', 'available')
+
+    if (fournisseur_id) {
+      pointsQuery = pointsQuery.eq('fournisseur_id', fournisseur_id)
+      availableRewardsQuery = availableRewardsQuery.eq('fournisseur_id', fournisseur_id)
+    }
+
+    const [{ data: pointsRows, error: pointsError }, { data: availableRewardsRows, error: availableRewardsError }] = await Promise.all([
+      pointsQuery,
+      availableRewardsQuery,
+    ])
+
+    if (pointsError) {
+      throw new Error(pointsError.message)
+    }
+
+    if (availableRewardsError) {
+      throw new Error(availableRewardsError.message)
+    }
+
+    const providerIds = [...new Set([
+      ...((pointsRows ?? []) as Array<{ fournisseur_id: string }>).map((row) => row.fournisseur_id),
+      ...((availableRewardsRows ?? []) as Array<{ fournisseur_id: string }>).map((row) => row.fournisseur_id),
+    ])]
+
+    if (providerIds.length === 0) {
+      return []
+    }
+
+    const [providersRes, rewardRulesRes] = await Promise.all([
+      supabase
+        .from('fournisseurs')
+        .select('id, nom_commerce')
+        .in('id', providerIds),
+      supabase
+        .from('reward_rules')
+        .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
+        .in('fournisseur_id', providerIds)
+        .eq('actif', true)
+        .or('expiry_date.is.null,expiry_date.gte.' + new Date().toISOString().slice(0, 10))
+        .order('points_required', { ascending: true }),
+    ])
+
+    if (providersRes.error) {
+      throw new Error(providersRes.error.message)
+    }
+
+    if (rewardRulesRes.error) {
+      throw new Error(rewardRulesRes.error.message)
+    }
+
+    const providerNames = new Map<string, string>()
+    for (const provider of (providersRes.data ?? []) as Array<{ id: string; nom_commerce?: string | null }>) {
+      providerNames.set(provider.id, provider.nom_commerce?.trim() || 'Marchand')
+    }
+
+    const pointsByProvider = new Map<string, number>()
+    for (const row of (pointsRows ?? []) as Array<{ fournisseur_id: string; solde: number | null }>) {
+      pointsByProvider.set(row.fournisseur_id, Number(row.solde ?? 0))
+    }
+
+    const availableByRule = new Map<string, { id: string; unlocked_at: string | null }>()
+    for (const row of (availableRewardsRows ?? []) as Array<{ id: string; reward_rule_id: string; unlocked_at: string | null }>) {
+      const existing = availableByRule.get(row.reward_rule_id)
+      if (!existing || (existing.unlocked_at ?? '') < (row.unlocked_at ?? '')) {
+        availableByRule.set(row.reward_rule_id, {
+          id: row.id,
+          unlocked_at: row.unlocked_at ?? null,
+        })
+      }
+    }
+
+    return ((rewardRulesRes.data ?? []) as RewardRule[])
+      .map((rule) => {
+        const currentPoints = Number(pointsByProvider.get(rule.fournisseur_id) ?? 0)
+        const availableReward = availableByRule.get(rule.id) ?? null
+
+        return {
+          id: rule.id,
+          fournisseur_id: rule.fournisseur_id,
+          fournisseur_nom: providerNames.get(rule.fournisseur_id) ?? 'Marchand',
+          status: availableReward ? 'available' : 'locked',
+          unlocked_reward_id: availableReward?.id ?? null,
+          unlocked_at: availableReward?.unlocked_at ?? null,
+          current_points: currentPoints,
+          points_needed: Math.max(0, Number(rule.points_required ?? 0) - currentPoints),
+          reward_rule: {
+            ...rule,
+            points_required: Number(rule.points_required),
+            actif: Boolean(rule.actif),
+          },
+        } satisfies RewardCatalogItem
+      })
+      .sort((a, b) => {
+        if (a.status !== b.status) {
+          return a.status === 'available' ? -1 : 1
+        }
+
+        if (a.points_needed !== b.points_needed) {
+          return a.points_needed - b.points_needed
+        }
+
+        return a.reward_rule.points_required - b.reward_rule.points_required
+      })
+  })
+}
+
 export async function getRewardRules(fournisseur_id: string): Promise<RewardRule[]> {
   return withCachedRead(`loyalty:reward-rules:${fournisseur_id}`, async () => {
     const { data, error } = await supabase
       .from('reward_rules')
-      .select('id, fournisseur_id, nom, description, points_required, emoji, actif, created_at')
+      .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
       .eq('fournisseur_id', fournisseur_id)
       .eq('actif', true)
+      .or('expiry_date.is.null,expiry_date.gte.' + new Date().toISOString().slice(0, 10))
       .order('points_required', { ascending: true })
 
     if (error) {
@@ -265,8 +400,21 @@ export async function getRewardRules(fournisseur_id: string): Promise<RewardRule
 export async function useReward(client_reward_id: string): Promise<UseRewardResponse> {
   requireOnlineForWrite()
 
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) {
+    throw new Error(sessionError.message)
+  }
+
+  const accessToken = sessionData?.session?.access_token
+  if (!accessToken) {
+    throw new Error('Vous devez être connecté pour utiliser une récompense.')
+  }
+
   const { data, error } = await supabase.functions.invoke<UseRewardResponse>('unlock-reward', {
     method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: { client_reward_id },
   })
 
@@ -388,7 +536,7 @@ export function subscribeToRewards(client_id: string, callback: RewardsCallback)
 
         const { data: rewardRule, error } = await supabase
           .from('reward_rules')
-          .select('id, fournisseur_id, nom, description, points_required, emoji, actif, created_at')
+          .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
           .eq('id', row.reward_rule_id)
           .maybeSingle()
 

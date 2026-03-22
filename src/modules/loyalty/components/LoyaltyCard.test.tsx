@@ -38,6 +38,7 @@ describe('LoyaltyCard', () => {
       description: '',
       points_required: 500,
       emoji: '🎁',
+      expiry_date: null,
       actif: true,
       created_at: new Date().toISOString(),
     },

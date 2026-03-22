@@ -1,6 +1,7 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../shared/lib/supabaseClient'
+import { getRewardCatalog } from '../modules/loyalty/services/loyaltyService'
 import type {
   DashboardChallenge,
   DashboardNetwork,
@@ -172,7 +173,7 @@ async function fetchNetworks(userId: string): Promise<DashboardNetwork[]> {
 
       return {
         id: String((network as { id?: string }).id ?? (row as { network_id?: string }).network_id ?? ''),
-        name: String((network as { name?: string }).name ?? 'Réseau'),
+        name: parseLocalizedText((network as { name?: unknown }).name) || 'Reseau',
         emoji: String((network as { emoji?: string }).emoji ?? '🌐'),
         bgColor: '#EBE9FF',
         badgeColor: typeof (network as { secondary_color?: unknown }).secondary_color === 'string'
@@ -287,54 +288,18 @@ async function fetchChallenges(userId: string): Promise<DashboardChallenge[]> {
 }
 
 async function fetchRewards(userId: string): Promise<DashboardReward[]> {
-  const { data, error } = await supabase
-    .from('client_rewards')
-    .select(
-      'id, fournisseur_id, reward_rule:reward_rules(id, nom, emoji, points_required), status, created_at',
-    )
-    .eq('client_id', userId)
-    .eq('status', 'available')
+  const catalog = await getRewardCatalog(userId)
 
-  if (error) throw new Error(error.message)
-
-  const rows = (data ?? []) as Array<{
-    id: string
-    fournisseur_id: string
-    reward_rule: unknown
-  }>
-
-  const providerIds = [...new Set(rows.map((row) => row.fournisseur_id).filter(Boolean))]
-  const providersRes = providerIds.length
-    ? await supabase.from('fournisseurs').select('id, nom_commerce').in('id', providerIds)
-    : { data: [], error: null }
-
-  if (providersRes.error) throw new Error(providersRes.error.message)
-
-  const providerMap = new Map<string, string>()
-  for (const provider of (providersRes.data ?? []) as Array<{ id: string; nom_commerce?: string | null }>) {
-    providerMap.set(provider.id, provider.nom_commerce?.trim() || 'Marchand')
-  }
-
-  const mapped: DashboardReward[] = rows
-    .map((row) => {
-      const rawRule = row.reward_rule as unknown
-      const rule = Array.isArray(rawRule) ? rawRule[0] : rawRule
-      if (!rule || typeof rule !== 'object') return null
-
-      const name = String((rule as { nom?: string }).nom ?? 'Récompense')
-
-      return {
-        id: row.id,
-        emoji: String((rule as { emoji?: string }).emoji ?? '🎁'),
-        name,
-        merchant: providerMap.get(row.fournisseur_id) ?? 'Marchand',
-        costPoints: Number((rule as { points_required?: number }).points_required ?? 0),
-        featured: /platinum/i.test(name),
-      } satisfies DashboardReward
-    })
-    .filter((item): item is DashboardReward => item !== null)
-
-  return mapped.sort((a, b) => a.costPoints - b.costPoints)
+  return catalog
+    .map((item) => ({
+      id: item.id,
+      emoji: item.reward_rule.emoji ?? '🎁',
+      name: item.reward_rule.nom,
+      merchant: item.fournisseur_nom,
+      costPoints: item.reward_rule.points_required,
+      featured: item.status === 'available' || /platinum/i.test(item.reward_rule.nom),
+    }))
+    .sort((a, b) => a.costPoints - b.costPoints)
 }
 
 async function fetchDashboardPayload(userId: string): Promise<DashboardPayload> {

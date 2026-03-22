@@ -37,6 +37,7 @@ const topNav: NavItem[] = [
 const analyticsNav: NavItem[] = [
   { key: 'transactions', label: 'Transactions', to: '/merchant/transactions', icon: CreditCard },
   { key: 'performance', label: 'Performance', to: '/merchant/performance', icon: Gauge },
+  { key: 'consumption', label: 'Consommation', to: '/merchant/consumption', icon: BarChart3 },
   { key: 'networks', label: 'Réseaux', to: '/merchant/networks', icon: BarChart3, badge: '4' },
 ]
 

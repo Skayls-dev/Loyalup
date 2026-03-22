@@ -74,6 +74,8 @@ export function createMockPromotion(overrides: Override<Promotion> = {}): Promot
 }
 
 export function createMockRewardRule(overrides: Override<RewardRule> = {}): RewardRule {
+  const { expiry_date, ...restOverrides } = overrides
+
   return {
     id: 'reward-rule-1',
     fournisseur_id: 'fournisseur-1',
@@ -81,9 +83,10 @@ export function createMockRewardRule(overrides: Override<RewardRule> = {}): Rewa
     description: 'Une boisson gratuite',
     points_required: 300,
     emoji: '🎁',
+    expiry_date: expiry_date ?? null,
     actif: true,
     created_at: new Date().toISOString(),
-    ...overrides,
+    ...restOverrides,
   }
 }
 

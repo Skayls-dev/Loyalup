@@ -1,4 +1,5 @@
 import { Suspense, lazy, useMemo, useState } from 'react'
+import { ConfirmModal } from '../../../shared/components/ConfirmModal'
 import { PromoTypeBadge } from './PromoTypeBadge'
 import { usePromoManager } from '../hooks/usePromoManager'
 import type { Promotion } from '../services/promotionService'
@@ -23,6 +24,7 @@ export function PromoManager() {
     error,
   } = usePromoManager()
   const [openCreate, setOpenCreate] = useState(false)
+  const [promoToDelete, setPromoToDelete] = useState<Promotion | null>(null)
 
   const now = new Date()
   const activePromotions = useMemo(
@@ -34,13 +36,9 @@ export function PromoManager() {
     [promotions, now],
   )
 
-  const handleDelete = async (id: string) => {
-    const confirmed = window.confirm('Supprimer cette promotion ?')
-    if (!confirmed) {
-      return
-    }
-
-    await deletePromo(id)
+  const handleDelete = async (promotion: Promotion) => {
+    await deletePromo(promotion.id)
+    setPromoToDelete(null)
   }
 
   return (
@@ -64,7 +62,7 @@ export function PromoManager() {
         items={activePromotions}
         emptyText="Aucune promotion active"
         onEdit={setEditingPromo}
-        onDelete={handleDelete}
+        onDelete={setPromoToDelete}
       />
 
       <div className="my-4 border-t border-zinc-800" />
@@ -74,7 +72,7 @@ export function PromoManager() {
         items={pastPromotions}
         emptyText="Aucune promotion passée"
         onEdit={setEditingPromo}
-        onDelete={handleDelete}
+        onDelete={setPromoToDelete}
       />
 
       {openCreate ? (
@@ -99,6 +97,21 @@ export function PromoManager() {
           />
         </Suspense>
       ) : null}
+
+      <ConfirmModal
+        open={promoToDelete !== null}
+        title="Supprimer cette promotion"
+        description={promoToDelete ? `La promotion "${promoToDelete.titre}" sera retirée de la liste.` : ''}
+        onClose={() => setPromoToDelete(null)}
+        onConfirm={() => {
+          if (promoToDelete) {
+            void handleDelete(promoToDelete)
+          }
+        }}
+        confirmLabel="Supprimer"
+        destructive
+        theme="dark"
+      />
     </section>
   )
 }
@@ -108,7 +121,7 @@ type SectionListProps = {
   items: Promotion[]
   emptyText: string
   onEdit: (promotion: Promotion) => void
-  onDelete: (id: string) => Promise<void>
+  onDelete: (promotion: Promotion) => void
 }
 
 function SectionList({ title, items, emptyText, onEdit, onDelete }: SectionListProps) {
@@ -143,7 +156,7 @@ function SectionList({ title, items, emptyText, onEdit, onDelete }: SectionListP
               <button
                 type="button"
                 onClick={() => {
-                  onDelete(promotion.id).catch(() => null)
+                  onDelete(promotion)
                 }}
                 className={dangerButtonClass}
               >

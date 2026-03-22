@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { ConfirmModal } from '../../../shared/components/ConfirmModal'
 import type { RewardRuleItem } from '../services/providerService'
 import { useRewardRuleManager } from '../hooks/useRewardRuleManager'
 import { RewardRuleForm } from './RewardRuleForm'
@@ -7,9 +8,41 @@ const secondaryButtonClass =
   'rounded-xl border border-zinc-700/80 bg-zinc-900/70 px-2.5 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60'
 
 export function RewardRuleManager() {
-  const { rules, loading, createItem, updateItem, toggleItem } = useRewardRuleManager()
+  const { rules, loading, createItem, updateItem, toggleItem, deleteItem } = useRewardRuleManager()
   const [editing, setEditing] = useState<RewardRuleItem | null>(null)
+  const [ruleToDelete, setRuleToDelete] = useState<RewardRuleItem | null>(null)
   const [openCreate, setOpenCreate] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const handleDuplicate = async (rule: RewardRuleItem) => {
+    setActionError(null)
+
+    try {
+      await createItem({
+        nom: `${rule.nom} (copie)`,
+        description: rule.description,
+        emoji: rule.emoji,
+        points_required: rule.points_required,
+      })
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Impossible de dupliquer cette récompense.')
+    }
+  }
+
+  const handleDelete = async (rule: RewardRuleItem) => {
+    setActionError(null)
+
+    try {
+      await deleteItem(rule.id)
+      setRuleToDelete(null)
+
+      if (editing?.id === rule.id) {
+        setEditing(null)
+      }
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Impossible de supprimer cette récompense.')
+    }
+  }
 
   return (
     <section className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-4">
@@ -21,6 +54,7 @@ export function RewardRuleManager() {
       </div>
 
       {loading ? <p className="text-xs text-zinc-500">Chargement...</p> : null}
+      {actionError ? <p className="text-xs text-rose-400">{actionError}</p> : null}
 
       <div className="space-y-2">
         {rules.map((rule) => (
@@ -34,21 +68,29 @@ export function RewardRuleManager() {
               <button
                 type="button"
                 onClick={() => {
-                  toggleItem(rule.id, !rule.actif).catch(() => null)
+                  setActionError(null)
+                  toggleItem(rule.id, !rule.actif).catch((error) => {
+                    setActionError(error instanceof Error ? error.message : 'Impossible de mettre à jour le statut.')
+                  })
                 }}
                 className={`rounded-md px-2 py-1 text-xs ${rule.actif ? 'bg-emerald-900/60 text-emerald-300' : 'bg-zinc-800 text-zinc-300'}`}
               >
                 {rule.actif ? 'Actif' : 'Inactif'}
               </button>
               <button type="button" onClick={() => setEditing(rule)} className={secondaryButtonClass}>Edit</button>
+              <button type="button" onClick={() => { void handleDuplicate(rule) }} className={secondaryButtonClass}>Dupliquer</button>
+              <button type="button" onClick={() => setRuleToDelete(rule)} className={secondaryButtonClass}>Supprimer</button>
             </div>
           </article>
         ))}
+
+        {!loading && rules.length === 0 ? <p className="text-xs text-zinc-500">Aucune récompense configurée.</p> : null}
       </div>
 
       {openCreate ? (
         <RewardRuleForm
           onSubmit={async (data) => {
+            setActionError(null)
             await createItem(data)
           }}
           onCancel={() => setOpenCreate(false)}
@@ -59,11 +101,27 @@ export function RewardRuleManager() {
         <RewardRuleForm
           initialData={editing}
           onSubmit={async (data) => {
+            setActionError(null)
             await updateItem(editing.id, data)
           }}
           onCancel={() => setEditing(null)}
         />
       ) : null}
+
+      <ConfirmModal
+        open={ruleToDelete !== null}
+        title="Supprimer cette récompense"
+        description={ruleToDelete ? `La récompense "${ruleToDelete.nom}" sera supprimée définitivement.` : ''}
+        onClose={() => setRuleToDelete(null)}
+        onConfirm={() => {
+          if (ruleToDelete) {
+            void handleDelete(ruleToDelete)
+          }
+        }}
+        confirmLabel="Supprimer"
+        destructive
+        theme="dark"
+      />
     </section>
   )
 }

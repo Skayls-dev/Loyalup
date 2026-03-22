@@ -250,7 +250,7 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
 async function fetchActiveOffers(merchantId: string): Promise<MerchantActiveOffer[]> {
   const { data, error } = await supabase
     .from('reward_rules')
-    .select('*')
+    .select('id, nom, description, points_required, emoji, actif, expiry_date, created_at')
     .eq('fournisseur_id', merchantId)
     .eq('actif', true)
     .order('created_at', { ascending: false })
@@ -285,7 +285,13 @@ async function fetchActiveOffers(merchantId: string): Promise<MerchantActiveOffe
 
   return ruleRows
     .map((row) => {
-      const status: 'active' | 'paused' | 'expired' = row.actif === false ? 'paused' : 'active'
+      const today = new Date().toISOString().slice(0, 10)
+      const expiryDate = typeof row.expiry_date === 'string' ? row.expiry_date : null
+      const status: 'active' | 'paused' | 'expired' = expiryDate && expiryDate < today
+        ? 'expired'
+        : row.actif === false
+          ? 'paused'
+          : 'active'
       const id = String(row.id ?? '')
 
       return {
@@ -294,7 +300,7 @@ async function fetchActiveOffers(merchantId: string): Promise<MerchantActiveOffe
         description: typeof row.description === 'string' ? row.description : null,
         points_required: Number(row.points_required ?? 0),
         redemption_count: redemptionCounts.get(id) ?? 0,
-        expiry_date: null,
+        expiry_date: expiryDate,
         status,
         category: typeof row.emoji === 'string' ? row.emoji : null,
       } satisfies MerchantActiveOffer

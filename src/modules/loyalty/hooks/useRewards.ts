@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../auth/hooks/useAuth'
 import {
-  getAvailableRewards,
+  getRewardCatalog,
   subscribeToRewards,
   useReward as consumeReward,
-  type ClientReward,
+  type RewardCatalogItem,
 } from '../services/loyaltyService'
 
 type UseRewardsParams = {
@@ -12,16 +12,16 @@ type UseRewardsParams = {
 }
 
 type UseRewardsResult = {
-  rewards: ClientReward[]
+  rewards: RewardCatalogItem[]
   loading: boolean
-  useReward: (client_reward_id: string) => Promise<void>
+  useReward: (reward: RewardCatalogItem) => Promise<void>
   error: string | null
   refetch: () => Promise<void>
 }
 
 export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResult {
   const { user } = useAuth()
-  const [rewards, setRewards] = useState<ClientReward[]>([])
+  const [rewards, setRewards] = useState<RewardCatalogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,7 +36,7 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
     setError(null)
 
     try {
-      const rows = await getAvailableRewards(user.id, fournisseur_id)
+      const rows = await getRewardCatalog(user.id, fournisseur_id)
       setRewards(rows)
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : 'Unable to load rewards'
@@ -60,30 +60,44 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
         return
       }
 
-      setRewards((prev) => [reward, ...prev.filter((item) => item.id !== reward.id)])
+      refetch().catch(() => null)
     })
 
     return () => {
       unsubscribe()
     }
-  }, [fournisseur_id, user?.id])
+  }, [fournisseur_id, refetch, user?.id])
 
-  const useReward = useCallback(async (client_reward_id: string) => {
+  const useReward = useCallback(async (reward: RewardCatalogItem) => {
+    if (!reward.unlocked_reward_id) {
+      setError('Cette récompense n\'est pas encore débloquée.')
+      return
+    }
+
     const previous = rewards
 
-    setRewards((prev) => prev.map((item) => (item.id === client_reward_id ? { ...item, status: 'used' } : item)))
+    setRewards((prev) => prev.map((item) => (
+      item.id === reward.id
+        ? {
+            ...item,
+            status: 'locked',
+            unlocked_reward_id: null,
+            unlocked_at: null,
+          }
+        : item
+    )))
     setError(null)
 
     try {
-      await consumeReward(client_reward_id)
-      setRewards((prev) => prev.map((item) => (item.id === client_reward_id ? { ...item, used_at: new Date().toISOString() } : item)))
+      await consumeReward(reward.unlocked_reward_id)
+      await refetch()
     } catch (caughtError) {
       setRewards(previous)
       const message = caughtError instanceof Error ? caughtError.message : 'Unable to use reward'
       setError(message)
       throw new Error(message)
     }
-  }, [rewards])
+  }, [rewards, refetch])
 
   return { rewards, loading, useReward, error, refetch }
 }

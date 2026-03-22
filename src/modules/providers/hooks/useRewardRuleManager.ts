@@ -3,6 +3,7 @@ import { useAuth } from '../../auth/hooks/useAuth'
 import { supabase } from '../../../shared/lib/supabaseClient'
 import {
   createRewardRule,
+  deleteRewardRule,
   getRewardRules,
   toggleRewardRule,
   updateRewardRule,
@@ -18,6 +19,7 @@ type UseRewardRuleManagerResult = {
   createItem: (data: Omit<CreateRewardRuleParams, 'fournisseur_id'>) => Promise<void>
   updateItem: (id: string, updates: UpdateRewardRuleParams) => Promise<void>
   toggleItem: (id: string, actif: boolean) => Promise<void>
+  deleteItem: (id: string) => Promise<void>
   refresh: () => Promise<void>
 }
 
@@ -81,6 +83,7 @@ export function useRewardRuleManager(): UseRewardRuleManagerResult {
       description: data.description,
       emoji: data.emoji,
       points_required: data.points_required,
+      expiry_date: data.expiry_date ?? null,
       actif: true,
       created_at: new Date().toISOString(),
     }
@@ -122,6 +125,18 @@ export function useRewardRuleManager(): UseRewardRuleManagerResult {
     }
   }, [rules])
 
+  const deleteItem = useCallback(async (id: string) => {
+    const previous = rules
+    setRules((prev) => prev.filter((item) => item.id !== id))
+
+    try {
+      await deleteRewardRule(id)
+    } catch (error) {
+      setRules(previous)
+      throw error
+    }
+  }, [rules])
+
   return {
     rules,
     loading,
@@ -129,6 +144,7 @@ export function useRewardRuleManager(): UseRewardRuleManagerResult {
     createItem,
     updateItem,
     toggleItem,
+    deleteItem,
     refresh,
   }
 }

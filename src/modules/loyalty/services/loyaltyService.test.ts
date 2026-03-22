@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
   getAvailableRewards,
+  getRewardCatalog,
   getClientCards,
   getClientPartnerBalance,
   getTransactionHistory,
@@ -9,6 +10,7 @@ import {
 } from './loyaltyService'
 import {
   emitRealtimeByPrefix,
+  setAuthSession,
   setFunctionError,
   setFunctionResult,
   setTableData,
@@ -78,6 +80,23 @@ describe('loyaltyService', () => {
     expect(rewards.every((item) => item.status === 'available')).toBe(true)
   })
 
+  it('getRewardCatalog: returns active merchant offers with lock status and points needed', async () => {
+    setTableData('client_points', [createMockClientPoints({ client_id: 'client-1', fournisseur_id: 'fournisseur-1', solde: 80 })])
+    setTableData('fournisseurs', [{ id: 'fournisseur-1', nom_commerce: 'Coffee Loyal', adresse: 'Paris' }])
+    setTableData('reward_rules', [createMockRewardRule({ id: 'rule-1', fournisseur_id: 'fournisseur-1', points_required: 100, actif: true })])
+    setTableData('client_rewards', [])
+
+    const rewards = await getRewardCatalog('client-1')
+
+    expect(rewards).toHaveLength(1)
+    expect(rewards[0]).toMatchObject({
+      fournisseur_nom: 'Coffee Loyal',
+      status: 'locked',
+      current_points: 80,
+      points_needed: 20,
+    })
+  })
+
   it('useReward: success → deducts points + marks used', async () => {
     setFunctionResult('unlock-reward', { success: true, points_deducted: 50, new_balance: 150 })
     const result = await useReward('reward-1')
@@ -90,6 +109,11 @@ describe('loyaltyService', () => {
   it('useReward: insufficient points → throws error', async () => {
     setFunctionError('unlock-reward', 'INSUFFICIENT_POINTS')
     await expect(useReward('insufficient')).rejects.toThrow('INSUFFICIENT_POINTS')
+  })
+
+  it('useReward: without session → throws authentication error', async () => {
+    setAuthSession(null)
+    await expect(useReward('reward-1')).rejects.toThrow('Vous devez être connecté pour utiliser une récompense.')
   })
 
   it('subscribeToPoints: callback fires on Realtime update', () => {
@@ -115,6 +139,7 @@ describe('loyaltyService', () => {
 
     expect(result).toEqual({
       partner_balance: 275,
+      partner_balances_by_provider: [],
       updated_at: '2026-03-13T10:00:00.000Z',
     })
   })

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Button } from '../../components/ui'
 import { useMerchantOffers, type MerchantOffer, type MerchantOfferStatus } from '../../hooks/useMerchantOffers'
+import { ConfirmModal } from '../../shared/components/ConfirmModal'
 import { supabase } from '../../shared/lib/supabaseClient'
 
 export interface MerchantOffersProps {
@@ -79,12 +80,30 @@ function categoryMeta(category: string | null): OfferCategoryStyle {
   return categoryStyles[category.toLowerCase()] ?? categoryStyles.default
 }
 
+function categoryValue(category: string | null): string {
+  if (!category) return initialFormState.category
+
+  const normalized = category.toLowerCase()
+  if (categoryStyles[normalized]) {
+    return normalized
+  }
+
+  const match = Object.entries(categoryStyles).find(([, style]) => style.emoji === category)
+  return match?.[0] ?? initialFormState.category
+}
+
 function formatStatus(status: MerchantOfferStatus) {
   return statusMeta[status]
 }
 
 function toLocalDateInput(dateIso: string | null): string {
   if (!dateIso) return ''
+
+  // Keep date-only values stable across timezones.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateIso)) {
+    return dateIso
+  }
+
   const date = new Date(dateIso)
   if (Number.isNaN(date.getTime())) return ''
   return date.toISOString().slice(0, 10)
@@ -95,6 +114,10 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
   const [offers, setOffers] = useState<MerchantOffer[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editingOfferId, setEditingOfferId] = useState<string | null>(null)
+  const [deletingOfferId, setDeletingOfferId] = useState<string | null>(null)
+  const [offerToDelete, setOfferToDelete] = useState<MerchantOffer | null>(null)
+  const [duplicatingOfferId, setDuplicatingOfferId] = useState<string | null>(null)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [networks, setNetworks] = useState<NetworkOption[]>([])
   const [form, setForm] = useState<OfferFormState>(initialFormState)
@@ -134,7 +157,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
 
         return {
           id: row.network_id,
-          name: name?.trim() || 'Reseau LoyalUp',
+          name: (typeof name === 'string' ? name.trim() : '') || 'Reseau LoyalUp',
         }
       })
 
@@ -150,6 +173,21 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
 
   const openModal = () => {
     setForm(initialFormState)
+    setEditingOfferId(null)
+    setSubmitError(null)
+    setModalOpen(true)
+  }
+
+  const openEditModal = (offer: MerchantOffer) => {
+    setForm({
+      name: offer.name,
+      description: offer.description ?? '',
+      points_required: offer.points_required,
+      expiry_date: toLocalDateInput(offer.expiry_date),
+      category: categoryValue(offer.category),
+      network_ids: [...offer.network_ids],
+    })
+    setEditingOfferId(offer.id)
     setSubmitError(null)
     setModalOpen(true)
   }
@@ -157,6 +195,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
   const closeModal = () => {
     if (saving) return
     setModalOpen(false)
+    setEditingOfferId(null)
     setSubmitError(null)
   }
 
@@ -171,6 +210,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
   }
 
   const canSubmit = useMemo(() => form.name.trim().length > 0 && form.points_required > 0 && !saving, [form.name, form.points_required, saving])
+  const isEditing = editingOfferId !== null
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -181,7 +221,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
     setSaving(true)
     setSubmitError(null)
 
-    const tempId = `temp-${Date.now()}`
+    const tempId = editingOfferId ?? `temp-${Date.now()}`
     const optimisticOffer: MerchantOffer = {
       id: tempId,
       merchant_id: merchantId,
@@ -196,27 +236,46 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       created_at: new Date().toISOString(),
     }
 
-    setOffers((prev) => [optimisticOffer, ...prev])
+    const previousOffers = offers
+    setOffers((prev) => {
+      if (editingOfferId) {
+        return prev.map((offer) => (offer.id === editingOfferId ? { ...offer, ...optimisticOffer } : offer))
+      }
+
+      return [optimisticOffer, ...prev]
+    })
 
     const payload = {
-      fournisseur_id: merchantId,
       nom: optimisticOffer.name,
       description: optimisticOffer.description ?? 'Offre recompense',
       points_required: optimisticOffer.points_required,
       emoji: categoryMeta(optimisticOffer.category).emoji,
+      expiry_date: optimisticOffer.expiry_date || null,
       actif: true,
     }
 
-    const { data, error: insertError } = await supabase
-      .from('reward_rules')
-      .insert(payload)
-      .select('*')
-      .single()
+    const query = editingOfferId
+      ? supabase
+          .from('reward_rules')
+          .update(payload)
+          .eq('id', editingOfferId)
+          .select('*')
+          .single()
+      : supabase
+          .from('reward_rules')
+          .insert({
+            fournisseur_id: merchantId,
+            ...payload,
+          })
+          .select('*')
+          .single()
 
-    if (insertError || !data) {
-      setOffers((prev) => prev.filter((offer) => offer.id !== tempId))
+    const { data, error: submitQueryError } = await query
+
+    if (submitQueryError || !data) {
+      setOffers(previousOffers)
       setSaving(false)
-      setSubmitError(insertError?.message || 'Impossible de creer cette offre pour le moment.')
+      setSubmitError(submitQueryError?.message || `Impossible de ${editingOfferId ? 'modifier' : 'creer'} cette offre pour le moment.`)
       return
     }
 
@@ -227,6 +286,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       description: string | null
       points_required: number | null
       emoji: string | null
+      expiry_date: string | null
       actif: boolean | null
       created_at: string
     }
@@ -237,7 +297,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       name: inserted.nom,
       description: inserted.description,
       points_required: Number(inserted.points_required ?? 0),
-      expiry_date: null,
+      expiry_date: inserted.expiry_date,
       category: inserted.emoji,
       status: inserted.actif === false ? 'paused' : 'active',
       redemptions_this_month: 0,
@@ -245,10 +305,154 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       created_at: inserted.created_at,
     }
 
-    setOffers((prev) => [finalOffer, ...prev.filter((offer) => offer.id !== tempId)])
+    setOffers((prev) => {
+      if (editingOfferId) {
+        return prev.map((offer) => (offer.id === editingOfferId ? finalOffer : offer))
+      }
+
+      return [finalOffer, ...prev.filter((offer) => offer.id !== tempId)]
+    })
     setSaving(false)
     setModalOpen(false)
+    setEditingOfferId(null)
     setForm(initialFormState)
+  }
+
+  const handleToggleStatus = async (offer: MerchantOffer) => {
+    const nextStatus: MerchantOfferStatus = offer.status === 'active' ? 'paused' : 'active'
+    const previousOffers = offers
+    setSubmitError(null)
+    setOffers((prev) => prev.map((item) => (item.id === offer.id ? { ...item, status: nextStatus } : item)))
+
+    const { data, error: updateError } = await supabase
+      .from('reward_rules')
+      .update({ actif: nextStatus === 'active' })
+      .eq('id', offer.id)
+      .select('*')
+      .single()
+
+    if (updateError || !data) {
+      setOffers(previousOffers)
+      setSubmitError(updateError?.message || 'Impossible de mettre à jour le statut de cette offre.')
+      return
+    }
+
+    const updated = data as {
+      id: string
+      fournisseur_id: string
+      nom: string
+      description: string | null
+      points_required: number | null
+      emoji: string | null
+      expiry_date: string | null
+      actif: boolean | null
+      created_at: string
+    }
+
+    setOffers((prev) => prev.map((item) => (
+      item.id === offer.id
+        ? {
+            ...item,
+            name: updated.nom,
+            description: updated.description,
+            points_required: Number(updated.points_required ?? 0),
+            expiry_date: updated.expiry_date,
+            category: updated.emoji,
+            status: updated.actif === false ? 'paused' : 'active',
+          }
+        : item
+    )))
+  }
+
+  const handleDelete = async (offer: MerchantOffer) => {
+    const previousOffers = offers
+    setDeletingOfferId(offer.id)
+    setSubmitError(null)
+    setOffers((prev) => prev.filter((item) => item.id !== offer.id))
+
+    const { error: deleteError } = await supabase
+      .from('reward_rules')
+      .delete()
+      .eq('id', offer.id)
+
+    if (deleteError) {
+      setOffers(previousOffers)
+      setSubmitError(deleteError.message || 'Impossible de supprimer cette offre.')
+    }
+
+    setDeletingOfferId(null)
+    setOfferToDelete(null)
+  }
+
+  const handleDuplicate = async (offer: MerchantOffer) => {
+    if (!merchantId) {
+      return
+    }
+
+    const tempId = `temp-duplicate-${Date.now()}`
+    const previousOffers = offers
+    const duplicatedName = `${offer.name} (copie)`
+    setDuplicatingOfferId(offer.id)
+    setSubmitError(null)
+
+    const optimisticOffer: MerchantOffer = {
+      ...offer,
+      id: tempId,
+      name: duplicatedName,
+      created_at: new Date().toISOString(),
+    }
+
+    setOffers((prev) => [optimisticOffer, ...prev])
+
+    const { data, error: duplicateError } = await supabase
+      .from('reward_rules')
+      .insert({
+        fournisseur_id: merchantId,
+        nom: duplicatedName,
+        description: offer.description ?? 'Offre recompense',
+        points_required: offer.points_required,
+        emoji: categoryMeta(offer.category).emoji,
+        expiry_date: offer.expiry_date || null,
+        actif: offer.status === 'active',
+      })
+      .select('*')
+      .single()
+
+    if (duplicateError || !data) {
+      setOffers(previousOffers)
+      setSubmitError(duplicateError?.message || 'Impossible de dupliquer cette offre.')
+      setDuplicatingOfferId(null)
+      return
+    }
+
+    const inserted = data as {
+      id: string
+      fournisseur_id: string
+      nom: string
+      description: string | null
+      points_required: number | null
+      emoji: string | null
+      expiry_date: string | null
+      actif: boolean | null
+      created_at: string
+    }
+
+    const finalOffer: MerchantOffer = {
+      id: inserted.id,
+      merchant_id: inserted.fournisseur_id,
+      name: inserted.nom,
+      description: inserted.description,
+      points_required: Number(inserted.points_required ?? 0),
+      expiry_date: inserted.expiry_date,
+      category: inserted.emoji,
+      status: inserted.actif === false ? 'paused' : 'active',
+      redemptions_this_month: 0,
+      network_ids: [],
+      created_at: inserted.created_at,
+    }
+
+    setOffers((prev) => [finalOffer, ...prev.filter((item) => item.id !== tempId)])
+    setDuplicatingOfferId(null)
   }
 
   return (
@@ -262,7 +466,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
 
       {modalOpen ? (
         <div className="mb-4 min-h-[260px] rounded-lg border border-violet-200 bg-violet-50/45 p-4">
-          <h3 className="font-display text-lg font-bold text-dark">Creer une offre</h3>
+          <h3 className="font-display text-lg font-bold text-dark">{isEditing ? 'Modifier une offre' : 'Creer une offre'}</h3>
           <form className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2" onSubmit={handleSubmit}>
             <label className="block md:col-span-2">
               <span className="mb-1 block font-body text-xs text-gray-600">Nom</span>
@@ -348,7 +552,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
 
             <div className="flex items-center gap-2 md:col-span-2">
               <Button type="submit" size="sm" loading={saving} disabled={!canSubmit}>
-                Creer
+                {isEditing ? 'Enregistrer' : 'Creer'}
               </Button>
               <Button type="button" variant="soft" size="sm" onClick={closeModal}>
                 Annuler
@@ -380,6 +584,21 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
                 </p>
               </div>
 
+              <div className="flex shrink-0 items-center gap-2">
+                <Button type="button" variant="soft" size="sm" onClick={() => openEditModal(offer)}>
+                  Editer
+                </Button>
+                <Button type="button" variant="soft" size="sm" loading={duplicatingOfferId === offer.id} onClick={() => { void handleDuplicate(offer) }}>
+                  Dupliquer
+                </Button>
+                <Button type="button" variant="soft" size="sm" onClick={() => { void handleToggleStatus(offer) }}>
+                  {offer.status === 'active' ? 'Pause' : 'Activer'}
+                </Button>
+                <Button type="button" variant="soft" size="sm" loading={deletingOfferId === offer.id} onClick={() => setOfferToDelete(offer)}>
+                  Supprimer
+                </Button>
+              </div>
+
               <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${status.badgeClass}`}>{status.label}</span>
             </article>
           )
@@ -390,6 +609,26 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
 
       {loading ? <p className="pt-3 font-body text-xs text-gray-500">Chargement...</p> : null}
       {error ? <p className="pt-3 font-body text-xs text-rose-600">{error}</p> : null}
+
+      <ConfirmModal
+        open={offerToDelete !== null}
+        title="Supprimer cette offre"
+        description={offerToDelete ? `L'offre "${offerToDelete.name}" sera supprimée définitivement.` : ''}
+        onClose={() => {
+          if (!deletingOfferId) {
+            setOfferToDelete(null)
+          }
+        }}
+        onConfirm={() => {
+          if (offerToDelete) {
+            void handleDelete(offerToDelete)
+          }
+        }}
+        confirmLabel="Supprimer"
+        loading={Boolean(deletingOfferId)}
+        destructive
+        theme="light"
+      />
     </section>
   )
 }
