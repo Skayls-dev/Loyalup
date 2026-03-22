@@ -349,6 +349,57 @@ type ReferralRow = {
   points_awarded_referrer: number
 }
 
+function toFriendlyReferralError(status: number, fallback: string, mode: 'generate' | 'activate'): Error {
+  if (status === 401 || status === 403) {
+    return new Error('Votre session a expire. Reconnectez-vous pour acceder au parrainage.')
+  }
+
+  if (mode === 'generate') {
+    return new Error(fallback || 'Impossible de generer votre lien de parrainage pour le moment.')
+  }
+
+  return new Error(fallback || 'Impossible d\'activer ce code de parrainage.')
+}
+
+async function resolveAccessToken(): Promise<string | null> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) {
+    return null
+  }
+
+  let accessToken = sessionData.session?.access_token ?? null
+
+  if (!accessToken) {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      return null
+    }
+
+    accessToken = refreshData.session?.access_token ?? null
+  }
+
+  if (!accessToken) {
+    return null
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (!userError && userData.user?.id) {
+    const { data: latestSessionData, error: latestSessionError } = await supabase.auth.getSession()
+    if (!latestSessionError && latestSessionData.session?.access_token) {
+      return latestSessionData.session.access_token
+    }
+
+    return accessToken
+  }
+
+  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+  if (refreshError) {
+    return null
+  }
+
+  return refreshData.session?.access_token ?? null
+}
+
 function getReferralBaseUrl(): string {
   if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin
@@ -405,11 +456,10 @@ export async function getReferralStats(): Promise<ReferralStats | null> {
 }
 
 export async function activateReferralByCode(referralCode: string): Promise<{ activated: boolean; message: string }> {
-  const session = (await supabase.auth.getSession()).data.session
-  const accessToken = session?.access_token
+  const accessToken = await resolveAccessToken()
 
   if (!accessToken) {
-    throw new Error('Session invalide. Veuillez vous reconnecter.')
+    throw new Error('Votre session a expire. Reconnectez-vous pour acceder au parrainage.')
   }
 
   const response = await fetch(
@@ -426,7 +476,7 @@ export async function activateReferralByCode(referralCode: string): Promise<{ ac
 
   if (!response.ok) {
     const payload = (await response.json().catch(() => ({}))) as { error?: string }
-    throw new Error(payload.error || 'Impossible d\'activer ce code de parrainage.')
+    throw toFriendlyReferralError(response.status, payload.error || '', 'activate')
   }
 
   const payload = (await response.json()) as { activated: boolean; message: string }
@@ -434,12 +484,18 @@ export async function activateReferralByCode(referralCode: string): Promise<{ ac
 }
 
 export async function generateReferralLink(fournisseurId?: string): Promise<ReferralStats> {
+  const accessToken = await resolveAccessToken()
+
+  if (!accessToken) {
+    throw new Error('Votre session a expire. Reconnectez-vous pour acceder au parrainage.')
+  }
+
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-referral`,
     {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ fournisseur_id: fournisseurId }),
@@ -447,7 +503,8 @@ export async function generateReferralLink(fournisseurId?: string): Promise<Refe
   )
 
   if (!response.ok) {
-    throw new Error('Failed to generate referral link')
+    const payload = (await response.json().catch(() => ({}))) as { error?: string }
+    throw toFriendlyReferralError(response.status, payload.error || '', 'generate')
   }
 
   const stats = await getReferralStats()

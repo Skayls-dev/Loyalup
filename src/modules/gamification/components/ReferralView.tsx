@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useReferral } from '../hooks'
 
 interface ReferralViewProps {
@@ -128,7 +129,12 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
 
       {error && (
         <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-700">
-          {error.message}
+          <p>{error.message}</p>
+          {error.message.toLowerCase().includes('session') ? (
+            <Link to="/auth" className="mt-2 inline-flex text-sm font-semibold text-rose-800 underline underline-offset-2">
+              Se reconnecter
+            </Link>
+          ) : null}
         </div>
       )}
     </div>

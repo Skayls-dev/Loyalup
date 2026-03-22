@@ -11,6 +11,7 @@ import {
   QrCode,
   Settings,
   Swords,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '../modules/auth/hooks/useAuth'
 
@@ -37,6 +38,7 @@ const primaryNav: NavItem[] = [
 const activityNav: NavItem[] = [
   { key: 'transactions', label: 'Transactions', to: '/transactions', icon: ArrowLeftRight },
   { key: 'challenges', label: 'Defis', to: '/challenges', icon: Swords, badgeCount: 3 },
+  { key: 'referral', label: 'Parrainage', to: '/dashboard/referral', icon: Users },
   { key: 'rewards', label: 'Recompenses', to: '/rewards', icon: Gift },
 ]
 

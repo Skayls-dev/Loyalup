@@ -1,4 +1,5 @@
-import { TrendingUp } from 'lucide-react'
+import { TrendingUp, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { PointsActivityChart } from '../../components/dashboard/PointsActivityChart'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
 import { LoyaltyCardList } from '../../modules/loyalty/components/LoyaltyCardList'
@@ -23,6 +24,24 @@ export default function ClientPointsPage() {
           <p className="text-sm text-slate-600">Connectez-vous pour consulter votre activité points.</p>
         </SectionCard>
       )}
+
+      <SectionCard className="flex flex-wrap items-center justify-between gap-3 border-indigo-100 bg-gradient-to-r from-indigo-50 to-white">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+            <Users className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Parrainez un ami</h2>
+            <p className="text-sm text-slate-600">Partagez votre lien perso et gagnez un bonus quand votre ami realise son premier achat valide.</p>
+          </div>
+        </div>
+        <Link
+          to="/dashboard/referral"
+          className="inline-flex h-10 items-center justify-center rounded-lg bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-700"
+        >
+          Ouvrir le parrainage
+        </Link>
+      </SectionCard>
 
       <SectionCard className="space-y-3">
         <div className="flex items-center gap-2">
