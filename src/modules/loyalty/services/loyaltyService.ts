@@ -400,12 +400,7 @@ export async function getRewardRules(fournisseur_id: string): Promise<RewardRule
 export async function useReward(client_reward_id: string): Promise<UseRewardResponse> {
   requireOnlineForWrite()
 
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-  if (sessionError) {
-    throw new Error(sessionError.message)
-  }
-
-  const accessToken = sessionData?.session?.access_token
+  const accessToken = await resolveAccessToken()
   if (!accessToken) {
     throw new Error('Vous devez être connecté pour utiliser une récompense.')
   }
@@ -427,6 +422,46 @@ export async function useReward(client_reward_id: string): Promise<UseRewardResp
   }
 
   return data
+}
+
+async function resolveAccessToken(): Promise<string | null> {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  if (sessionError) {
+    return null
+  }
+
+  let accessToken = sessionData.session?.access_token ?? null
+
+  if (!accessToken) {
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      return null
+    }
+
+    accessToken = refreshData.session?.access_token ?? null
+  }
+
+  if (!accessToken) {
+    return null
+  }
+
+  const { data: userData, error: userError } = await supabase.auth.getUser()
+  if (!userError && userData.user?.id) {
+    // getUser may have refreshed the session under the hood; return the freshest token.
+    const { data: latestSessionData, error: latestSessionError } = await supabase.auth.getSession()
+    if (!latestSessionError && latestSessionData.session?.access_token) {
+      return latestSessionData.session.access_token
+    }
+
+    return accessToken
+  }
+
+  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+  if (refreshError) {
+    return null
+  }
+
+  return refreshData.session?.access_token ?? null
 }
 
 export async function getClientPointsBalance(client_id: string, fournisseur_id: string): Promise<number> {

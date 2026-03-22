@@ -157,6 +157,7 @@ class QueryBuilder {
 
   delete = vi.fn(() => this)
   eq = vi.fn(() => this)
+  or = vi.fn(() => this)
   order = vi.fn(() => this)
   limit = vi.fn(() => this)
   range = vi.fn(() => this)
@@ -286,6 +287,7 @@ export const mockSupabase = {
     }),
 
     getSession: vi.fn(async () => ({ data: { session: state.authSession }, error: state.authError })),
+    refreshSession: vi.fn(async () => ({ data: { session: state.authSession }, error: state.authError })),
     getUser: vi.fn(async () => ({ data: { user: state.authUser }, error: state.authError })),
   },
 
