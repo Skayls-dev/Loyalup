@@ -15,7 +15,7 @@ type UseServiceManagerResult = {
   services: ServiceItem[]
   loading: boolean
   fournisseurId: string | null
-  createItem: (data: Omit<CreateServiceParams, 'fournisseur_id'>) => Promise<void>
+  createItem: (data: Omit<CreateServiceParams, 'fournisseur_id'>) => Promise<ServiceItem>
   updateItem: (id: string, updates: UpdateServiceParams) => Promise<void>
   toggleItem: (id: string, actif: boolean) => Promise<void>
   refresh: () => Promise<void>
@@ -91,6 +91,7 @@ export function useServiceManager(): UseServiceManagerResult {
     try {
       const created = await createService({ ...data, fournisseur_id: fournisseurId })
       setServices((prev) => [...prev.filter((item) => item.id !== optimisticId), created])
+      return created
     } catch (error) {
       setServices((prev) => prev.filter((item) => item.id !== optimisticId))
       throw error
