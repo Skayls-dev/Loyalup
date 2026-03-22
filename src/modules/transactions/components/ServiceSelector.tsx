@@ -28,7 +28,7 @@ export function ServiceSelector({ services, selectedService, onSelect }: Service
   })
 
   return (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-3">
       {sortedServices.map((service) => {
         const isSelected = selectedService?.id === service.id
         const isCustom = service.nom === 'Personnalisé'
@@ -38,14 +38,14 @@ export function ServiceSelector({ services, selectedService, onSelect }: Service
             key={service.id}
             type="button"
             onClick={() => onSelect(service)}
-            className={`rounded-xl border p-3 text-left transition-all duration-200 ${
+            className={`min-h-[132px] rounded-xl border p-3 text-left transition-all duration-200 ${
               isSelected
                 ? 'border-teal-400 bg-teal-500/15 shadow-[0_0_0_1px_rgba(45,212,191,0.35)]'
                 : 'border-zinc-700 bg-zinc-900 hover:border-zinc-500 hover:bg-zinc-800'
             }`}
           >
             <p className="text-2xl leading-none">{service.emoji}</p>
-            <p className="mt-2 text-sm font-semibold text-zinc-100">{service.nom}</p>
+            <p className="mt-2 text-base font-semibold leading-tight text-zinc-100">{service.nom}</p>
             {!isCustom && service.prix_defaut != null ? (
               <p className="mt-1 text-xs text-zinc-400">{formatPrice(service.prix_defaut)}</p>
             ) : null}

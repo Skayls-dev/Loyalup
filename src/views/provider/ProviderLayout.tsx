@@ -101,11 +101,11 @@ export function ProviderLayout() {
             .eq('id', payload.client_id)
             .maybeSingle(),
           supabase
-            .from('pending_transactions')
-            .select('id', { count: 'exact', head: true })
+            .from('client_points')
+            .select('solde')
             .eq('client_id', payload.client_id)
             .eq('fournisseur_id', payload.fournisseur_id)
-            .eq('status', 'validated'),
+            .maybeSingle<{ solde: number | string | null }>(),
         ])
 
         const resolvedProfile =
@@ -128,7 +128,7 @@ export function ProviderLayout() {
         setIncomingValidation({
           pendingTransaction: payload,
           clientProfile: resolvedProfile,
-          clientPoints: pointsResult.count ?? 0,
+          clientPoints: Number(pointsResult.data?.solde ?? 0),
         })
       }
 

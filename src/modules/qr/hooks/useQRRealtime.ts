@@ -87,8 +87,6 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
         return
       }
 
-      setPendingTransaction(payload)
-
       const { data } = await supabase
         .from('profiles')
         .select('id, email, role, nom, prenom, created_at')
@@ -99,15 +97,17 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
         setClientProfile(buildFallbackProfile(payload, (data as Partial<Profile> | null) ?? null))
       }
 
-      const { count } = await supabase
-        .from('pending_transactions')
-        .select('id', { count: 'exact', head: true })
+      const { data: pointsData } = await supabase
+        .from('client_points')
+        .select('solde')
         .eq('client_id', payload.client_id)
         .eq('fournisseur_id', payload.fournisseur_id)
-        .eq('status', 'validated')
+        .maybeSingle<{ solde: number | string | null }>()
 
       if (!cancelled) {
-        setClientPoints(count ?? 0)
+        const balance = Number(pointsData?.solde ?? 0)
+        setClientPoints(Number.isFinite(balance) ? balance : 0)
+        setPendingTransaction(payload)
       }
     }
 

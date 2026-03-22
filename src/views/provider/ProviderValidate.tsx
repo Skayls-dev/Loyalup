@@ -91,20 +91,19 @@ export function ProviderValidate() {
       }
     }
 
-    const pointsEntries = await Promise.all(
-      clientIds.map(async (clientId) => {
-        const { count } = await supabase
-          .from('pending_transactions')
-          .select('id', { count: 'exact', head: true })
-          .eq('fournisseur_id', providerId)
-          .eq('client_id', clientId)
-          .eq('status', 'validated')
+    const pointsMap = new Map<string, number>()
+    if (clientIds.length > 0) {
+      const { data: pointsData } = await supabase
+        .from('client_points')
+        .select('client_id, solde')
+        .eq('fournisseur_id', providerId)
+        .in('client_id', clientIds)
 
-        return [clientId, count ?? 0] as const
-      }),
-    )
-
-    const pointsMap = new Map<string, number>(pointsEntries)
+      for (const row of (pointsData ?? []) as Array<{ client_id: string; solde: number | string | null }>) {
+        const balance = Number(row.solde ?? 0)
+        pointsMap.set(row.client_id, Number.isFinite(balance) ? balance : 0)
+      }
+    }
 
     const nextItems =
       transactions.map((transaction) => {
@@ -178,12 +177,14 @@ export function ProviderValidate() {
         .eq('id', payload.client_id)
         .maybeSingle()
 
-      const { count } = await supabase
-        .from('pending_transactions')
-        .select('id', { count: 'exact', head: true })
+      const { data: pointsData } = await supabase
+        .from('client_points')
+        .select('solde')
         .eq('fournisseur_id', payload.fournisseur_id)
         .eq('client_id', payload.client_id)
-        .eq('status', 'validated')
+        .maybeSingle<{ solde: number | string | null }>()
+
+      const balance = Number(pointsData?.solde ?? 0)
 
       setItems((prev) => [
         {
@@ -195,7 +196,7 @@ export function ProviderValidate() {
             payload.client_id,
           ),
           clientEmail: (profileData?.email as string | undefined) ?? '',
-          clientPoints: count ?? 0,
+          clientPoints: Number.isFinite(balance) ? balance : 0,
         },
         ...prev.filter((item) => item.id !== payload.id),
       ])

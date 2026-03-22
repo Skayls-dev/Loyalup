@@ -246,8 +246,8 @@ export function ValidationPanel({
   }
 
   return (
-    <section className="relative w-full max-w-6xl rounded-2xl border border-zinc-800 bg-zinc-900 p-4 text-zinc-100 shadow-2xl md:p-6">
-      <div className="grid gap-4 md:grid-cols-2">
+    <section className="relative w-full max-w-6xl rounded-2xl border border-zinc-800 bg-zinc-900 p-3 text-zinc-100 shadow-2xl sm:p-4 md:p-5">
+      <div className="grid gap-4 xl:grid-cols-2">
         <div className="space-y-4">
           <ClientPreview
             clientProfile={clientProfile}
@@ -264,40 +264,40 @@ export function ValidationPanel({
           ) : null}
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
             <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
               Mode de validation
             </p>
-            <div className="grid md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
               <button
                 type="button"
                 onClick={() => handleModeChange('service')}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`min-h-[124px] rounded-xl border px-4 py-3 text-left transition ${
                   validationMode === 'service'
                     ? 'border-teal-400 bg-teal-500/10 text-teal-300'
                     : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
                 }`}
               >
-                <p className="text-sm font-semibold">Par service</p>
-                <p className="mt-1 text-xs text-zinc-400">Choisir un produit ou une prestation</p>
+                <p className="text-sm font-semibold leading-tight">Par service</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Choisir un produit ou une prestation</p>
               </button>
               <button
                 type="button"
                 onClick={() => handleModeChange('amount')}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`min-h-[124px] rounded-xl border px-4 py-3 text-left transition ${
                   validationMode === 'amount'
                     ? 'border-amber-400 bg-amber-500/10 text-amber-300'
                     : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
                 }`}
               >
-                <p className="text-sm font-semibold">Montant libre</p>
-                <p className="mt-1 text-xs text-zinc-400">Saisir directement le prix de l'achat</p>
+                <p className="text-sm font-semibold leading-tight">Montant libre</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Saisir directement le prix de l'achat</p>
               </button>
               <button
                 type="button"
                 onClick={() => handleModeChange('redemption')}
-                className={`rounded-xl border px-4 py-3 text-left transition ${
+                className={`min-h-[124px] rounded-xl border px-4 py-3 text-left transition ${
                   validationMode === 'redemption'
                     ? 'border-teal-400 bg-teal-500/10 text-teal-300'
                     : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
@@ -305,9 +305,9 @@ export function ValidationPanel({
               >
                 <div className="flex items-center gap-2">
                   <Gift className="h-4 w-4" />
-                  <p className="text-sm font-semibold">Rédemption points</p>
+                  <p className="text-sm font-semibold leading-tight">Rédemption points</p>
                 </div>
-                <p className="mt-1 text-xs text-zinc-400">Appliquer une réduction avec les points</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Appliquer une réduction avec les points</p>
               </button>
             </div>
           </div>
@@ -419,7 +419,7 @@ export function ValidationPanel({
               />
             </div>
 
-            <div className="mt-3 flex items-center justify-between gap-2">
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <p className="text-xs text-zinc-500">Solde client actuel: {clientPoints.toLocaleString('fr-FR')} pts</p>
               <button
                 type="button"
@@ -427,7 +427,7 @@ export function ValidationPanel({
                   void handleRedeem()
                 }}
                 disabled={!canRedeem || redemptionSubmitting}
-                className="rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {redemptionSubmitting ? 'Application...' : 'Appliquer réduction'}
               </button>
@@ -450,12 +450,12 @@ export function ValidationPanel({
       </div>
 
       {validationMode !== 'redemption' ? (
-        <div className="mt-5 flex flex-col gap-2 md:flex-row">
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="inline-flex items-center justify-center rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
         >
           ✗ Annuler
         </button>

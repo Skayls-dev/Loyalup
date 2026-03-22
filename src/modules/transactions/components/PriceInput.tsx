@@ -37,7 +37,7 @@ export function PriceInput({
           value={montant}
           onChange={(event) => onMontantChange(event.target.value)}
           placeholder="0.00"
-          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-10 text-2xl font-semibold text-zinc-100 outline-none transition focus:border-teal-400"
+          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 pr-10 text-xl font-semibold text-zinc-100 outline-none transition focus:border-teal-400 sm:text-2xl"
         />
         <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400">
           €
