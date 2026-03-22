@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Gift } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
 import { supabase } from '../../../shared/lib/supabaseClient'
 import { useServices } from '../hooks/useServices'
 import { useValidation } from '../hooks/useValidation'
-import { fetchRedemptionRules, redeemPoints, type RedemptionRule } from '../services/redemptionService'
 import { ClientPreview } from './ClientPreview'
 import { PriceInput } from './PriceInput'
 import { RedemptionPanel } from './RedemptionPanel'
@@ -50,18 +48,7 @@ export function ValidationPanel({
   } = useValidation()
   const [validationMode, setValidationMode] = useState<ValidationMode>('service')
   const [customServiceName, setCustomServiceName] = useState('')
-  const [redemptionRules, setRedemptionRules] = useState<RedemptionRule[]>([])
-  const [redemptionRulesLoading, setRedemptionRulesLoading] = useState(false)
-  const [redemptionPoints, setRedemptionPoints] = useState('')
-  const [selectedRedemptionRuleId, setSelectedRedemptionRuleId] = useState('')
-  const [redemptionSubmitting, setRedemptionSubmitting] = useState(false)
-  const [redemptionError, setRedemptionError] = useState<string | null>(null)
   const [availableRewardsCount, setAvailableRewardsCount] = useState(0)
-  const [redemptionSuccess, setRedemptionSuccess] = useState<{
-    pointsDeducted: number
-    discountApplied: number
-    newBalance: number
-  } | null>(null)
 
   // Auto-select first non-custom service when services load
   useEffect(() => {
@@ -69,37 +56,6 @@ export function ValidationPanel({
     const first = services.find((s) => s.nom !== 'Personnalisé') ?? services[0]
     if (first) selectService(first)
   }, [services, servicesLoading, selectedService, selectService, validationMode])
-
-  useEffect(() => {
-    let cancelled = false
-
-    const loadRules = async () => {
-      setRedemptionRulesLoading(true)
-      setRedemptionError(null)
-
-      try {
-        const rules = await fetchRedemptionRules(pendingTransaction.fournisseur_id)
-        if (!cancelled) {
-          setRedemptionRules(rules)
-        }
-      } catch (caughtError) {
-        if (!cancelled) {
-          const message = caughtError instanceof Error ? caughtError.message : 'Impossible de charger les règles de redemption'
-          setRedemptionError(message)
-        }
-      } finally {
-        if (!cancelled) {
-          setRedemptionRulesLoading(false)
-        }
-      }
-    }
-
-    void loadRules()
-
-    return () => {
-      cancelled = true
-    }
-  }, [pendingTransaction.fournisseur_id])
 
   useEffect(() => {
     let cancelled = false
@@ -202,43 +158,6 @@ export function ValidationPanel({
     }
   }
 
-  const parsedRedemptionPoints = Number.parseInt(redemptionPoints, 10)
-  const canRedeem = Number.isInteger(parsedRedemptionPoints) && parsedRedemptionPoints > 0
-
-  const selectedRule = redemptionRules.find((rule) => rule.id === selectedRedemptionRuleId) ?? null
-  const redemptionRulesConfigPath = '/merchant/offers#redemption-rules'
-
-  const handleRedeem = async () => {
-    if (!canRedeem || redemptionSubmitting) {
-      return
-    }
-
-    setRedemptionSubmitting(true)
-    setRedemptionError(null)
-    setRedemptionSuccess(null)
-
-    try {
-      const result = await redeemPoints({
-        pending_transaction_id: pendingTransaction.id,
-        points_to_redeem: parsedRedemptionPoints,
-        redemption_rule_id: selectedRedemptionRuleId || undefined,
-      })
-
-      setRedemptionSuccess({
-        pointsDeducted: result.points_deducted,
-        discountApplied: result.discount_applied,
-        newBalance: result.new_balance,
-      })
-      setRedemptionPoints('')
-      setSelectedRedemptionRuleId('')
-    } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Réduction impossible'
-      setRedemptionError(message)
-    } finally {
-      setRedemptionSubmitting(false)
-    }
-  }
-
   const handleSuccessDismiss = () => {
     reset()
     setSuccessData(null)
@@ -305,9 +224,9 @@ export function ValidationPanel({
               >
                 <div className="flex items-center gap-2">
                   <Gift className="h-4 w-4" />
-                  <p className="text-sm font-semibold leading-tight">Rédemption points</p>
+                  <p className="text-sm font-semibold leading-tight">Offres disponibles</p>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Appliquer une réduction avec les points</p>
+                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Consommer une récompense déjà débloquée</p>
               </button>
             </div>
           </div>
@@ -366,87 +285,6 @@ export function ValidationPanel({
             />
           ) : null}
 
-          {validationMode !== 'redemption' ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-            <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-              Réduction par points
-            </h3>
-            <p className="mb-2 text-xs text-zinc-500">
-              Cette section applique une remise en caisse avec les points du client.
-            </p>
-            <p className="mb-3 text-xs text-zinc-500">
-              Configuration : <Link to={redemptionRulesConfigPath} className="text-teal-300 underline hover:text-teal-200">Redemption rules marchand</Link> pour les regles et le taux de conversion points/euro.
-            </p>
-
-            {redemptionRulesLoading ? (
-              <div className="mb-3 flex min-h-10 items-center">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
-              </div>
-            ) : (
-              <div className="mb-3 space-y-2">
-                <label className="block text-xs text-zinc-400">Règle (optionnelle)</label>
-                <select
-                  value={selectedRedemptionRuleId}
-                  onChange={(event) => setSelectedRedemptionRuleId(event.target.value)}
-                  className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-teal-400"
-                >
-                  <option value="">Aucune règle (conversion fournisseur)</option>
-                  {redemptionRules.map((rule) => (
-                    <option key={rule.id} value={rule.id}>
-                      {rule.label} - {rule.points_cost} pts
-                    </option>
-                  ))}
-                </select>
-                {selectedRule ? (
-                  <p className="text-xs text-zinc-500">
-                    {selectedRule.discount_type === 'fixed'
-                      ? `Fixe: ${selectedRule.discount_value.toLocaleString('fr-FR')} EUR`
-                      : `Pourcentage: ${selectedRule.discount_value.toLocaleString('fr-FR')}%${selectedRule.max_discount_eur != null ? ` (max ${selectedRule.max_discount_eur.toLocaleString('fr-FR')} EUR)` : ''}`}
-                  </p>
-                ) : null}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <label htmlFor="redeem-points" className="block text-xs text-zinc-400">Points à utiliser</label>
-              <input
-                id="redeem-points"
-                type="number"
-                min={1}
-                value={redemptionPoints}
-                onChange={(event) => setRedemptionPoints(event.target.value.replace(/[^0-9]/g, ''))}
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-teal-400"
-                placeholder="Ex: 100"
-              />
-            </div>
-
-            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-xs text-zinc-500">Solde client actuel: {clientPoints.toLocaleString('fr-FR')} pts</p>
-              <button
-                type="button"
-                onClick={() => {
-                  void handleRedeem()
-                }}
-                disabled={!canRedeem || redemptionSubmitting}
-                className="w-full rounded-xl bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                {redemptionSubmitting ? 'Application...' : 'Appliquer réduction'}
-              </button>
-            </div>
-
-            {redemptionError ? (
-              <p className="mt-2 rounded-lg border border-red-900 bg-red-950/50 px-3 py-2 text-xs text-red-300">
-                {redemptionError}
-              </p>
-            ) : null}
-
-            {redemptionSuccess ? (
-              <p className="mt-2 rounded-lg border border-emerald-900 bg-emerald-950/40 px-3 py-2 text-xs text-emerald-300">
-                Réduction appliquée: -{redemptionSuccess.pointsDeducted.toLocaleString('fr-FR')} pts, remise {redemptionSuccess.discountApplied.toLocaleString('fr-FR')} EUR, nouveau solde {redemptionSuccess.newBalance.toLocaleString('fr-FR')} pts.
-              </p>
-            ) : null}
-            </div>
-          ) : null}
         </div>
       </div>
 

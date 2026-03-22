@@ -116,8 +116,11 @@ export default function MerchantSettingsPage() {
             <Button variant="soft" className={shortcutButtonClass} onClick={() => navigate('/merchant/qr')}>
               Ouvrir le générateur QR
             </Button>
+            <Button variant="soft" className={shortcutButtonClass} onClick={() => navigate('/merchant/catalog')}>
+              Gérer le catalogue
+            </Button>
             <Button variant="soft" className={shortcutButtonClass} onClick={() => navigate('/merchant/offers')}>
-              Gérer les offres
+              Gérer les offres points
             </Button>
             <Button variant="soft" className={shortcutButtonClass} onClick={() => navigate('/merchant/networks')}>
               Voir les réseaux

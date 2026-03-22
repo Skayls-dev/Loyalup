@@ -11,6 +11,7 @@ import { MerchantRedemptionRules } from '../components/merchant/MerchantRedempti
 import { MerchantRevenueChart } from '../components/merchant/MerchantRevenueChart'
 import { MerchantTransactions } from '../components/merchant/MerchantTransactions'
 import { TopCustomers } from '../components/merchant/TopCustomers'
+import { ServiceManager } from '../modules/providers/components/ServiceManager'
 import type { SocialRole, UserRole } from '../modules/auth/services/authService'
 import { useEventTracker } from '../shared/hooks/useEventTracker'
 import { supabase } from '../shared/lib/supabaseClient'
@@ -584,11 +585,29 @@ function MerchantOffersWrapper() {
   return (
     <section className="space-y-6">
       <header className="rounded-lg border border-gray-200 bg-white p-5">
-        <h1 className="font-display text-3xl font-extrabold text-dark">Mes offres</h1>
-        <p className="mt-2 font-body text-sm text-gray-600">Gerez vos recompenses, redemption rules et taux de conversion points/euro.</p>
+        <h1 className="font-display text-3xl font-extrabold text-dark">Offres de redemption</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Gerez vos offres consommables avec des points et les regles de redemption.</p>
       </header>
       <MerchantOffers merchantId={merchantId} />
       <MerchantRedemptionRules merchantId={merchantId} />
+    </section>
+  )
+}
+
+function MerchantCatalogWrapper() {
+  const { loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
+
+  return (
+    <section className="space-y-6">
+      <header className="rounded-lg border border-gray-200 bg-white p-5">
+        <h1 className="font-display text-3xl font-extrabold text-dark">Catalogue services et produits</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Gerez votre catalogue vendu en caisse: services, tarifs et points attribues.</p>
+      </header>
+      <ServiceManager />
     </section>
   )
 }
@@ -741,6 +760,7 @@ export function Router() {
           <Route element={<MerchantLayoutRoute />}>
             <Route path="/merchant" element={<MerchantHomeWrapper />} />
             <Route path="/merchant/qr" element={<MerchantQrPage />} />
+            <Route path="/merchant/catalog" element={<MerchantCatalogWrapper />} />
             <Route path="/merchant/offers" element={<MerchantOffersWrapper />} />
             <Route path="/merchant/clients" element={<MerchantClientsWrapper />} />
             <Route path="/merchant/clients/:clientId" element={<MerchantClientDetailWrapper />} />

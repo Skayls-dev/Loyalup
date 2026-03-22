@@ -17,7 +17,7 @@ type ServiceFormProps = {
 }
 
 const secondaryButtonClass =
-  'rounded-xl border border-zinc-700/80 bg-zinc-900/70 px-2.5 py-1.5 text-xs font-semibold text-zinc-100 transition hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400/60'
+  'rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 transition hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
 
 export function ServiceForm({ initialData, onSubmit, onCancel }: ServiceFormProps) {
   const [nom, setNom] = useState(initialData?.nom ?? '')
@@ -86,40 +86,89 @@ export function ServiceForm({ initialData, onSubmit, onCancel }: ServiceFormProp
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div ref={modalRef} role="dialog" aria-modal="true" className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-        <h3 className="text-sm font-semibold text-zinc-100">{initialData ? 'Modifier service' : 'Ajouter un service'}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 p-4 backdrop-blur-[2px]">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 shadow-[0_20px_60px_rgba(15,23,42,0.22)]"
+      >
+        <h3 className="font-display text-xl font-extrabold text-dark">{initialData ? 'Modifier service' : 'Ajouter un service'}</h3>
+        <p className="mt-1 text-xs text-gray-500">Mettez à jour les infos de votre catalogue marchand.</p>
 
-        <form className="mt-3 space-y-3" onSubmit={handleSubmit}>
+        <form className="mt-4 space-y-3" onSubmit={handleSubmit}>
           <div className="space-y-1">
-            <label htmlFor="service-nom" className="text-xs font-medium text-zinc-300">Nom du service</label>
-            <input id="service-nom" ref={firstRef} value={nom} onChange={(e) => setNom(e.target.value)} placeholder="Ex: Soin Premium" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+            <label htmlFor="service-nom" className="text-xs font-medium text-gray-700">Nom du service</label>
+            <input
+              id="service-nom"
+              ref={firstRef}
+              value={nom}
+              onChange={(e) => setNom(e.target.value)}
+              placeholder="Ex: Soin Premium"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="service-emoji" className="text-xs font-medium text-zinc-300">Emoji</label>
-            <input id="service-emoji" value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="Ex: ✨" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+            <label htmlFor="service-emoji" className="text-xs font-medium text-gray-700">Emoji</label>
+            <input
+              id="service-emoji"
+              value={emoji}
+              onChange={(e) => setEmoji(e.target.value)}
+              placeholder="Ex: ✨"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label htmlFor="service-prix" className="text-xs font-medium text-gray-700">Prix par défaut (€) <span className="text-gray-400">(optionnel)</span></label>
+              <input
+                id="service-prix"
+                type="number"
+                step="0.01"
+                value={prix}
+                onChange={(e) => setPrix(e.target.value)}
+                placeholder="Ex: 29"
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label htmlFor="service-points-defaut" className="text-xs font-medium text-gray-700">Points fixes accordés <span className="text-gray-400">(optionnel)</span></label>
+              <input
+                id="service-points-defaut"
+                type="number"
+                value={pointsDefaut}
+                onChange={(e) => setPointsDefaut(e.target.value)}
+                placeholder="Ex: 55"
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+              />
+            </div>
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="service-prix" className="text-xs font-medium text-zinc-300">Prix par défaut (€) <span className="text-zinc-500">(optionnel)</span></label>
-            <input id="service-prix" type="number" step="0.01" value={prix} onChange={(e) => setPrix(e.target.value)} placeholder="Ex: 29" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="service-points-defaut" className="text-xs font-medium text-zinc-300">Points fixes accordés <span className="text-zinc-500">(optionnel)</span></label>
-            <input id="service-points-defaut" type="number" value={pointsDefaut} onChange={(e) => setPointsDefaut(e.target.value)} placeholder="Ex: 55" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-          </div>
-
-          <div className="space-y-1">
-            <label htmlFor="service-points-per-euro" className="text-xs font-medium text-zinc-300">Points par euro (€)</label>
-            <input id="service-points-per-euro" type="number" value={pointsPerEuro} onChange={(e) => setPointsPerEuro(e.target.value)} placeholder="Ex: 8" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
-            <p className="text-[11px] text-zinc-500">Utilisé quand "Points fixes accordés" est vide.</p>
+            <label htmlFor="service-points-per-euro" className="text-xs font-medium text-gray-700">Points par euro (€)</label>
+            <input
+              id="service-points-per-euro"
+              type="number"
+              value={pointsPerEuro}
+              onChange={(e) => setPointsPerEuro(e.target.value)}
+              placeholder="Ex: 8"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+            <p className="text-[11px] text-gray-500">Utilisé quand "Points fixes accordés" est vide.</p>
           </div>
 
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onCancel} className={secondaryButtonClass}>Annuler</button>
-            <button type="submit" disabled={saving} className="rounded-lg bg-zinc-100 px-3 py-2 text-xs font-semibold text-zinc-900">{saving ? '...' : initialData ? 'Modifier' : 'Créer'}</button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-[#FF6B35] px-3 py-2 text-xs font-semibold text-white transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {saving ? '...' : initialData ? 'Modifier' : 'Créer'}
+            </button>
           </div>
         </form>
       </div>

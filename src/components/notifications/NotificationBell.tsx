@@ -30,7 +30,7 @@ const TYPE_STYLES: Record<string, TypeStyle> = {
 
 function normalizeType(rawType: string): string {
   const value = rawType.toLowerCase()
-  if (value.includes('point') || value.includes('xp')) return 'points'
+  if (value.includes('point') || value.includes('xp') || value.includes('reward')) return 'points'
   if (value.includes('challenge') || value.includes('defi') || value.includes('défi')) return 'challenge'
   if (value.includes('tier') || value.includes('level') || value.includes('niveau')) return 'tier_upgrade'
   if (value.includes('badge')) return 'badge'
@@ -47,7 +47,7 @@ function extractTitle(raw: Record<string, unknown>): string {
   if (typeof raw.title === 'string' && raw.title.trim()) return raw.title.trim()
 
   const type = String(raw.type ?? '')
-  if (type.includes('points')) return 'Points crédités'
+  if (type.includes('point') || type.includes('xp') || type.includes('reward')) return 'Points crédités'
   if (type.includes('challenge')) return 'Progression défi'
   if (type.includes('tier')) return 'Niveau amélioré'
   if (type.includes('badge')) return 'Badge débloqué'

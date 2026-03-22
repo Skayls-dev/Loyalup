@@ -362,12 +362,15 @@ export async function completeSocialProfile(role: SocialRole, nom: string): Prom
     throw new Error('Session invalide. Veuillez vous reconnecter.')
   }
 
-  const { error: profileError } = await supabase.from('profiles').upsert({
-    id: user.id,
-    email: user.email ?? '',
-    role,
-    nom: normalizedName,
-  })
+  const { error: profileError } = await supabase.from('profiles').upsert(
+    {
+      id: user.id,
+      email: user.email ?? '',
+      role,
+      nom: normalizedName,
+    },
+    { onConflict: 'id' },
+  )
 
   if (profileError) {
     throw profileError

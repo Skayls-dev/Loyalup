@@ -30,7 +30,8 @@ type NavItem = {
 const topNav: NavItem[] = [
   { key: 'overview', label: "Vue d'ensemble", to: '/merchant', icon: LayoutDashboard },
   { key: 'qr', label: 'Générer QR', to: '/merchant/qr', icon: QrCode, badge: '!' },
-  { key: 'offers', label: 'Mes offres', to: '/merchant/offers', icon: Tags },
+  { key: 'catalog', label: 'Catalogue', to: '/merchant/catalog', icon: ShoppingBag },
+  { key: 'offers', label: 'Offres points', to: '/merchant/offers', icon: Tags },
   { key: 'clients', label: 'Clients fidèles', to: '/merchant/clients', icon: Users },
 ]
 
@@ -88,7 +89,7 @@ function MobileBottomNav({
   const mobileNav: NavItem[] = [
     { key: 'overview', label: 'Accueil', to: '/merchant', icon: LayoutDashboard },
     { key: 'qr', label: 'QR', to: '/merchant/qr', icon: QrCode },
-    { key: 'transactions', label: 'Ventes', to: '/merchant/transactions', icon: CreditCard },
+    { key: 'catalog', label: 'Catalogue', to: '/merchant/catalog', icon: ShoppingBag },
     { key: 'clients', label: 'Clients', to: '/merchant/clients', icon: Users },
     { key: 'settings', label: 'Profil', to: '/merchant/settings', icon: Settings },
   ]
