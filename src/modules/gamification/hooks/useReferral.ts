@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useAuthStore } from '../../auth/store/authStore'
 import {
   generateReferralLink,
+  getReferralStats,
   getTransferOptions,
   transferPoints,
 } from '../services/gamificationService'
@@ -38,6 +39,24 @@ export function useReferral(): UseReferralReturn {
   const [transferOptionsLoading, setTransferOptionsLoading] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    const loadReferralStats = async () => {
+      if (!clientId) {
+        setReferralStats(null)
+        return
+      }
+
+      try {
+        const stats = await getReferralStats()
+        setReferralStats(stats)
+      } catch (err) {
+        setError(err instanceof Error ? err : new Error('Failed to load referral stats'))
+      }
+    }
+
+    loadReferralStats().catch(() => null)
+  }, [clientId])
 
   useEffect(() => {
     const loadSources = async () => {

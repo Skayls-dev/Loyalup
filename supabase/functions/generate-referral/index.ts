@@ -5,6 +5,11 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 )
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 interface GenerateReferralRequest {
   fournisseur_id?: string
 }
@@ -26,8 +31,15 @@ function generateCode(length: number): string {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {
@@ -37,6 +49,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
         status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -48,7 +61,10 @@ Deno.serve(async (req) => {
     } = await supabase.auth.getUser(token)
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), { status: 401 })
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const referrer_id = user.id
@@ -64,6 +80,7 @@ Deno.serve(async (req) => {
     if (profileError || profile?.role !== 'client') {
       return new Response(JSON.stringify({ error: 'Only clients can generate referral codes' }), {
         status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -90,6 +107,7 @@ Deno.serve(async (req) => {
     if (codeExists) {
       return new Response(JSON.stringify({ error: 'Failed to generate unique code' }), {
         status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -108,7 +126,10 @@ Deno.serve(async (req) => {
 
     if (createError) {
       console.error('Create referral error:', createError)
-      return new Response(JSON.stringify({ error: createError.message }), { status: 500 })
+      return new Response(JSON.stringify({ error: createError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const baseUrl = Deno.env.get('PUBLIC_URL') ?? 'https://loyalup.app'
@@ -120,10 +141,13 @@ Deno.serve(async (req) => {
         expires_at: expires_at.toISOString(),
         share_url,
       } as GenerateReferralResponse),
-      { status: 200 },
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (error) {
     console.error('Unexpected error in generate-referral:', error)
-    return new Response(JSON.stringify({ error: String(error) }), { status: 500 })
+    return new Response(JSON.stringify({ error: String(error) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 })

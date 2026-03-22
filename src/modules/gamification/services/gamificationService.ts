@@ -333,10 +333,104 @@ export async function getLeaderboard(
 export interface ReferralStats {
   code: string
   url: string
+  expires_at: string
   total_generated: number
   activated: number
   rewarded: number
   points_earned: number
+}
+
+type ReferralStatus = 'pending' | 'activated' | 'rewarded' | 'expired'
+
+type ReferralRow = {
+  referral_code: string
+  expires_at: string
+  status: ReferralStatus
+  points_awarded_referrer: number
+}
+
+function getReferralBaseUrl(): string {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin
+  }
+
+  return import.meta.env.VITE_APP_URL || 'https://loyalup.app'
+}
+
+export async function getReferralStats(): Promise<ReferralStats | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) {
+    return null
+  }
+
+  const { data: latestRows, error: latestError } = await supabase
+    .from('client_referrals')
+    .select('referral_code, expires_at, status, points_awarded_referrer')
+    .eq('referrer_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+
+  if (latestError) {
+    throw latestError
+  }
+
+  const latest = (latestRows?.[0] as ReferralRow | undefined) ?? null
+  if (!latest) {
+    return null
+  }
+
+  const { data: rows, error: rowsError } = await supabase
+    .from('client_referrals')
+    .select('status, points_awarded_referrer')
+    .eq('referrer_id', user.id)
+
+  if (rowsError) {
+    throw rowsError
+  }
+
+  const summary = (rows ?? []) as Array<{ status: ReferralStatus; points_awarded_referrer: number }>
+
+  return {
+    code: latest.referral_code,
+    url: `${getReferralBaseUrl()}/join/${latest.referral_code}`,
+    expires_at: latest.expires_at,
+    total_generated: summary.length,
+    activated: summary.filter((row) => row.status === 'activated' || row.status === 'rewarded').length,
+    rewarded: summary.filter((row) => row.status === 'rewarded').length,
+    points_earned: summary.reduce((sum, row) => sum + Number(row.points_awarded_referrer ?? 0), 0),
+  }
+}
+
+export async function activateReferralByCode(referralCode: string): Promise<{ activated: boolean; message: string }> {
+  const session = (await supabase.auth.getSession()).data.session
+  const accessToken = session?.access_token
+
+  if (!accessToken) {
+    throw new Error('Session invalide. Veuillez vous reconnecter.')
+  }
+
+  const response = await fetch(
+    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/activate-referral`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ referral_code: referralCode.trim() }),
+    },
+  )
+
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { error?: string }
+    throw new Error(payload.error || 'Impossible d\'activer ce code de parrainage.')
+  }
+
+  const payload = (await response.json()) as { activated: boolean; message: string }
+  return payload
 }
 
 export async function generateReferralLink(fournisseurId?: string): Promise<ReferralStats> {
@@ -356,16 +450,22 @@ export async function generateReferralLink(fournisseurId?: string): Promise<Refe
     throw new Error('Failed to generate referral link')
   }
 
-  const data = (await response.json()) as any
+  const stats = await getReferralStats()
+  if (!stats) {
+    const data = (await response.json()) as { referral_code: string; share_url: string; expires_at: string }
 
-  return {
-    code: data.referral_code,
-    url: data.share_url,
-    total_generated: 1,
-    activated: 0,
-    rewarded: 0,
-    points_earned: 0,
+    return {
+      code: data.referral_code,
+      url: data.share_url,
+      expires_at: data.expires_at,
+      total_generated: 1,
+      activated: 0,
+      rewarded: 0,
+      points_earned: 0,
+    }
   }
+
+  return stats
 }
 
 // ============================================================================

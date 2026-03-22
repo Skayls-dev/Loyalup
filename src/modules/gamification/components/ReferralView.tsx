@@ -43,7 +43,7 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
       <div className="rounded-2xl border border-white/70 bg-white/85 p-4 shadow-sm shadow-slate-900/5">
         <h3 className="mb-2 text-lg font-bold text-slate-900">👥 Parrainez vos amis</h3>
         <p className="text-sm text-slate-600">
-          Partagez votre code de parrainage et gagnez 200 XP + des points bonus pour chaque ami qui s'inscrit!
+          Partagez votre lien perso: votre ami gagne un bonus a son premier achat valide, et vous aussi.
         </p>
       </div>
 
@@ -72,7 +72,7 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
               </button>
             </div>
             <p className="mt-2 text-xs text-slate-500">
-              Expire le {new Date(referralStats.url).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}
+              Expire le {new Date(referralStats.expires_at).toLocaleDateString(language === 'fr' ? 'fr-FR' : 'en-US')}
             </p>
           </div>
 

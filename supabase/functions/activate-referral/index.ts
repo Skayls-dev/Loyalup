@@ -5,6 +5,11 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
 )
 
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
 interface ActivateReferralRequest {
   referral_code: string
 }
@@ -17,8 +22,15 @@ interface ActivateReferralResponse {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405 })
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {
@@ -28,6 +40,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
         status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -39,7 +52,10 @@ Deno.serve(async (req) => {
     } = await supabase.auth.getUser(token)
 
     if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), { status: 401 })
+      return new Response(JSON.stringify({ error: 'Invalid or expired token' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const referred_id = user.id
@@ -52,25 +68,57 @@ Deno.serve(async (req) => {
       .single()
 
     if (referralError || !referral) {
-      return new Response(JSON.stringify({ error: 'Referral code not found' }), { status: 404 })
+      return new Response(JSON.stringify({ error: 'Referral code not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // 2. Validate referral status
     if (new Date(referral.expires_at) < new Date()) {
-      return new Response(JSON.stringify({ error: 'Referral code expired' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'Referral code expired' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (
+      referral.referred_id === referred_id &&
+      (referral.status === 'activated' || referral.status === 'rewarded')
+    ) {
+      return new Response(
+        JSON.stringify({
+          activated: true,
+          message: referral.status === 'rewarded'
+            ? 'Parrainage deja recompense.'
+            : 'Parrainage deja active. Finalisez votre premier achat valide pour recevoir vos bonus.',
+          referrer_id: referral.referrer_id,
+        } as ActivateReferralResponse),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
     }
 
     if (referral.status !== 'pending') {
-      return new Response(JSON.stringify({ error: 'Referral code already used' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'Referral code already used' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     if (referral.referrer_id === referred_id) {
-      return new Response(JSON.stringify({ error: 'Cannot refer yourself' }), { status: 400 })
+      return new Response(JSON.stringify({ error: 'Cannot refer yourself' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     if (referral.referred_id && referral.referred_id !== referred_id) {
       return new Response(JSON.stringify({ error: 'This referral has already been claimed' }), {
         status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
@@ -86,7 +134,10 @@ Deno.serve(async (req) => {
 
     if (updateError) {
       console.error('Update referral error:', updateError)
-      return new Response(JSON.stringify({ error: updateError.message }), { status: 500 })
+      return new Response(JSON.stringify({ error: updateError.message }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     // 4. Wait for first scan by referred user before final reward
@@ -98,10 +149,13 @@ Deno.serve(async (req) => {
         message: 'Referral activated! Complete your first scan to earn rewards.',
         referrer_id: referral.referrer_id,
       } as ActivateReferralResponse),
-      { status: 200 },
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   } catch (error) {
     console.error('Unexpected error in activate-referral:', error)
-    return new Response(JSON.stringify({ error: String(error) }), { status: 500 })
+    return new Response(JSON.stringify({ error: String(error) }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 })

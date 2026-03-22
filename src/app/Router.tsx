@@ -40,6 +40,9 @@ const InstitutionDashboard = lazy(() =>
 const LandingPage = lazy(() =>
   import('../pages/LandingPage').then((module) => ({ default: module.default })),
 )
+const ReferralJoinPage = lazy(() =>
+  import('../pages/ReferralJoinPage').then((module) => ({ default: module.default })),
+)
 const UnauthorizedPage = lazy(() =>
   import('../pages/UnauthorizedPage').then((module) => ({ default: module.default })),
 )
@@ -103,6 +106,21 @@ const MerchantClientDetailPage = lazy(() =>
   import('../pages/merchant/MerchantClientDetailPage').then((module) => ({ default: module.default })),
 )
 
+const PENDING_REFERRAL_STORAGE_KEY = 'loyalup_pending_referral_code'
+
+function getPendingReferralPath(): string | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const code = window.localStorage.getItem(PENDING_REFERRAL_STORAGE_KEY)?.trim()
+  if (!code) {
+    return null
+  }
+
+  return `/join/${encodeURIComponent(code)}`
+}
+
 function RouteFallback() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-950 text-zinc-100">
@@ -154,7 +172,7 @@ function AuthRoute() {
   }
 
   if (user && role === 'client') {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={getPendingReferralPath() ?? '/dashboard'} replace />
   }
 
   if (user && role === 'fournisseur') {
@@ -413,7 +431,7 @@ function AuthCallbackRoute() {
     }
 
     if (role === 'client') {
-      return '/dashboard'
+      return getPendingReferralPath() ?? '/dashboard'
     }
 
     if (role === 'fournisseur') {
@@ -730,6 +748,7 @@ export function Router() {
         <Route path="/auth" element={<AuthRoute />} />
         <Route path="/login" element={<AuthRoute />} />
         <Route path="/signup" element={<AuthRoute />} />
+        <Route path="/join/:referralCode" element={<ReferralJoinPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/auth/callback" element={<AuthCallbackRoute />} />
         <Route path="/admin/auth" element={<AdminAuthRoute />} />
