@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Gift } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
 import { supabase } from '../../../shared/lib/supabaseClient'
@@ -205,6 +206,7 @@ export function ValidationPanel({
   const canRedeem = Number.isInteger(parsedRedemptionPoints) && parsedRedemptionPoints > 0
 
   const selectedRule = redemptionRules.find((rule) => rule.id === selectedRedemptionRuleId) ?? null
+  const redemptionRulesConfigPath = '/merchant/offers#redemption-rules'
 
   const handleRedeem = async () => {
     if (!canRedeem || redemptionSubmitting) {
@@ -368,6 +370,12 @@ export function ValidationPanel({
             <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
               Réduction par points
             </h3>
+            <p className="mb-2 text-xs text-zinc-500">
+              Cette section applique une remise en caisse avec les points du client.
+            </p>
+            <p className="mb-3 text-xs text-zinc-500">
+              Configuration : <Link to={redemptionRulesConfigPath} className="text-teal-300 underline hover:text-teal-200">Redemption rules marchand</Link> pour les regles et le taux de conversion points/euro.
+            </p>
 
             {redemptionRulesLoading ? (
               <div className="mb-3 flex min-h-10 items-center">

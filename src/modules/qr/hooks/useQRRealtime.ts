@@ -14,14 +14,50 @@ type UseQRRealtimeResult = {
   clearPending: () => void
 }
 
+function resolveClientName(
+  rawNom: string | null | undefined,
+  rawPrenom: string | null | undefined,
+  rawEmail: string | null | undefined,
+  clientId: string,
+): string {
+  const nom = (rawNom ?? '').trim()
+  const prenom = (rawPrenom ?? '').trim()
+
+  const fullName = [prenom, nom].filter(Boolean).join(' ').trim()
+  if (fullName) {
+    return fullName
+  }
+
+  if (nom) {
+    return nom
+  }
+
+  if (prenom) {
+    return prenom
+  }
+
+  const emailPrefix = (rawEmail ?? '').split('@')[0]?.trim()
+  if (emailPrefix) {
+    return emailPrefix
+  }
+
+  return `Client ${clientId.slice(0, 6)}`
+}
+
 function buildFallbackProfile(payload: PendingTransactionPayload, rawProfile?: Partial<Profile> | null): Profile {
-  const rawName = typeof rawProfile?.nom === 'string' ? rawProfile.nom.trim() : ''
+  const resolvedName = resolveClientName(
+    rawProfile?.nom,
+    rawProfile?.prenom,
+    rawProfile?.email,
+    payload.client_id,
+  )
 
   return {
     id: String(rawProfile?.id ?? payload.client_id),
     email: typeof rawProfile?.email === 'string' ? rawProfile.email : '',
     role: (rawProfile?.role as Profile['role'] | undefined) ?? 'client',
-    nom: rawName || `Client ${payload.client_id.slice(0, 6)}`,
+    nom: resolvedName,
+    prenom: typeof rawProfile?.prenom === 'string' ? rawProfile.prenom : null,
     created_at:
       typeof rawProfile?.created_at === 'string' && rawProfile.created_at
         ? rawProfile.created_at
@@ -55,7 +91,7 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
 
       const { data } = await supabase
         .from('profiles')
-        .select('id, email, role, nom, created_at')
+        .select('id, email, role, nom, prenom, created_at')
         .eq('id', payload.client_id)
         .maybeSingle()
 

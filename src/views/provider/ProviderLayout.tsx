@@ -23,6 +23,36 @@ const providerMenu = [
   { label: 'Validations', to: '/provider/validate' },
 ]
 
+function resolveClientName(
+  rawNom: string | null | undefined,
+  rawPrenom: string | null | undefined,
+  rawEmail: string | null | undefined,
+  clientId: string,
+): string {
+  const nom = (rawNom ?? '').trim()
+  const prenom = (rawPrenom ?? '').trim()
+
+  const fullName = [prenom, nom].filter(Boolean).join(' ').trim()
+  if (fullName) {
+    return fullName
+  }
+
+  if (nom) {
+    return nom
+  }
+
+  if (prenom) {
+    return prenom
+  }
+
+  const emailPrefix = (rawEmail ?? '').split('@')[0]?.trim()
+  if (emailPrefix) {
+    return emailPrefix
+  }
+
+  return `Client ${clientId.slice(0, 6)}`
+}
+
 export function ProviderLayout() {
   const { user, profile, logout, loading } = useAuth()
   const location = useLocation()
@@ -67,7 +97,7 @@ export function ProviderLayout() {
         const [profileResult, pointsResult] = await Promise.all([
           supabase
             .from('profiles')
-            .select('id, email, role, nom, created_at')
+            .select('id, email, role, nom, prenom, created_at')
             .eq('id', payload.client_id)
             .maybeSingle(),
           supabase
@@ -84,7 +114,13 @@ export function ProviderLayout() {
                 id: profileResult.data.id as string,
                 email: (profileResult.data.email as string | undefined) ?? 'email non disponible',
                 role: (profileResult.data.role as 'client' | 'fournisseur' | 'admin' | undefined) ?? 'client',
-                nom: (profileResult.data.nom as string | undefined) ?? 'Client inconnu',
+                nom: resolveClientName(
+                  profileResult.data.nom as string | undefined,
+                  profileResult.data.prenom as string | undefined,
+                  profileResult.data.email as string | undefined,
+                  payload.client_id,
+                ),
+                prenom: (profileResult.data.prenom as string | undefined) ?? null,
                 created_at: (profileResult.data.created_at as string | undefined) ?? payload.created_at,
               }
             : null

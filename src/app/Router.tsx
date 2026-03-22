@@ -7,6 +7,7 @@ import { useAuth } from '../modules/auth/hooks/useAuth'
 import { MerchantNetworks } from '../components/merchant/MerchantNetworks'
 import { MerchantConsumedServicesCard } from '../components/merchant/MerchantConsumedServicesCard'
 import { MerchantOffers } from '../components/merchant/MerchantOffers'
+import { MerchantRedemptionRules } from '../components/merchant/MerchantRedemptionRules'
 import { MerchantRevenueChart } from '../components/merchant/MerchantRevenueChart'
 import { MerchantTransactions } from '../components/merchant/MerchantTransactions'
 import { TopCustomers } from '../components/merchant/TopCustomers'
@@ -517,9 +518,10 @@ function MerchantOffersWrapper() {
     <section className="space-y-6">
       <header className="rounded-lg border border-gray-200 bg-white p-5">
         <h1 className="font-display text-3xl font-extrabold text-dark">Mes offres</h1>
-        <p className="mt-2 font-body text-sm text-gray-600">Gérez vos récompenses, points requis et réseaux associés.</p>
+        <p className="mt-2 font-body text-sm text-gray-600">Gerez vos recompenses, redemption rules et taux de conversion points/euro.</p>
       </header>
       <MerchantOffers merchantId={merchantId} />
+      <MerchantRedemptionRules merchantId={merchantId} />
     </section>
   )
 }
