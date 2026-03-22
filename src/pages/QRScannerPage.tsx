@@ -33,6 +33,7 @@ interface ScanSuccessProps {
   shareUrl?: string
   shareMessage?: string
   shareLoading?: boolean
+  onRetryShare?: () => Promise<void>
   onReset: () => void
 }
 
@@ -219,7 +220,14 @@ function PendingCountdown({ onTimeout }: { onTimeout: () => void }) {
   )
 }
 
-function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoading = false, onReset }: ScanSuccessProps) {
+function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoading = false, onRetryShare, onReset }: ScanSuccessProps) {
+    const toggleShareActions = () => {
+      if (!showShareActions && !shareUrl && onRetryShare) {
+        void onRetryShare()
+      }
+      setShowShareActions((open) => !open)
+    }
+
   const [showShareActions, setShowShareActions] = useState(false)
   const [copyNotice, setCopyNotice] = useState<string | null>(null)
 
@@ -303,8 +311,8 @@ function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoad
 
         <button
           type="button"
-          onClick={() => setShowShareActions((open) => !open)}
-          disabled={shareLoading || !shareUrl}
+          onClick={toggleShareActions}
+          disabled={shareLoading}
           className="mt-3 h-10 w-full rounded-md bg-emerald-600 px-3 font-body text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {shareLoading ? 'Preparation du lien...' : 'Partage maintenant'}
@@ -312,39 +320,59 @@ function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoad
 
         {showShareActions ? (
           <div className="mt-3 space-y-3">
-            <p className="font-body text-xs text-gray-600">Message pre-rempli avec votre lien d'invitation:</p>
-            <p className="rounded-md border border-gray-200 bg-gray-50 p-2 font-body text-xs text-gray-700">
-              {shareText}
-            </p>
+            {!shareUrl ? (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-2">
+                <p className="font-body text-xs text-amber-800">Lien d'invitation indisponible pour le moment.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onRetryShare) {
+                      void onRetryShare()
+                    }
+                  }}
+                  disabled={shareLoading}
+                  className="mt-2 h-8 rounded-md border border-amber-300 bg-white px-2 font-body text-xs font-semibold text-amber-800 transition hover:bg-amber-100 disabled:opacity-60"
+                >
+                  Reessayer de charger le lien
+                </button>
+              </div>
+            ) : (
+              <>
+                <p className="font-body text-xs text-gray-600">Message pre-rempli avec votre lien d'invitation:</p>
+                <p className="rounded-md border border-gray-200 bg-gray-50 p-2 font-body text-xs text-gray-700">
+                  {shareText}
+                </p>
 
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-              <button
-                type="button"
-                onClick={shareToWhatsApp}
-                disabled={!shareUrl}
-                className="h-9 rounded-md border border-emerald-200 bg-emerald-50 px-2 font-body text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
-              >
-                WhatsApp
-              </button>
-              <button
-                type="button"
-                onClick={shareBySms}
-                disabled={!shareUrl}
-                className="h-9 rounded-md border border-blue-200 bg-blue-50 px-2 font-body text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
-              >
-                SMS
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  void copyLink()
-                }}
-                disabled={!shareUrl}
-                className="h-9 rounded-md border border-slate-200 bg-slate-50 px-2 font-body text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
-              >
-                Copier le lien
-              </button>
-            </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  <button
+                    type="button"
+                    onClick={shareToWhatsApp}
+                    disabled={!shareUrl}
+                    className="h-9 rounded-md border border-emerald-200 bg-emerald-50 px-2 font-body text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50"
+                  >
+                    WhatsApp
+                  </button>
+                  <button
+                    type="button"
+                    onClick={shareBySms}
+                    disabled={!shareUrl}
+                    className="h-9 rounded-md border border-blue-200 bg-blue-50 px-2 font-body text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:opacity-50"
+                  >
+                    SMS
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void copyLink()
+                    }}
+                    disabled={!shareUrl}
+                    className="h-9 rounded-md border border-slate-200 bg-slate-50 px-2 font-body text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:opacity-50"
+                  >
+                    Copier le lien
+                  </button>
+                </div>
+              </>
+            )}
 
             {copyNotice ? <p className="font-body text-xs text-emerald-700">{copyNotice}</p> : null}
           </div>
@@ -481,6 +509,28 @@ export default function QRScannerPage() {
   const [shareMessage, setShareMessage] = useState<string>('')
   const [shareLoading, setShareLoading] = useState(false)
 
+  const loadShareLink = useCallback(async () => {
+    setShareLoading(true)
+
+    try {
+      const stats = await getReferralStats()
+      const withLink = stats?.url ? stats : await generateReferralLink()
+
+      const url = withLink?.url ?? ''
+      const pointsPart =
+        typeof validatedPoints === 'number'
+          ? `Je viens de gagner ${validatedPoints} points sur LoyalUp.`
+          : 'Je viens de valider une transaction sur LoyalUp.'
+      setShareUrl(url || undefined)
+      setShareMessage(`${pointsPart} Rejoignez-moi et gagnez un bonus de bienvenue.`)
+    } catch {
+      setShareUrl(undefined)
+      setShareMessage('Rejoignez-moi sur LoyalUp et gagnez un bonus de bienvenue.')
+    } finally {
+      setShareLoading(false)
+    }
+  }, [validatedPoints])
+
   const handleSuccess = useCallback((result: ScanResult) => {
     setPendingTxId(result.pending_transaction_id)
     setState('pending')
@@ -505,40 +555,8 @@ export default function QRScannerPage() {
 
   useEffect(() => {
     if (state !== 'validated') return
-
-    let cancelled = false
-
-    async function loadShareLink() {
-      setShareLoading(true)
-
-      try {
-        const stats = await getReferralStats()
-        const withLink = stats?.url ? stats : await generateReferralLink()
-
-        if (cancelled) return
-
-        const url = withLink?.url ?? ''
-        const pointsPart = typeof validatedPoints === 'number' ? `Je viens de gagner ${validatedPoints} points sur LoyalUp.` : 'Je viens de valider une transaction sur LoyalUp.'
-        setShareUrl(url || undefined)
-        setShareMessage(`${pointsPart} Rejoignez-moi et gagnez un bonus de bienvenue.`)
-      } catch {
-        if (!cancelled) {
-          setShareUrl(undefined)
-          setShareMessage('Rejoignez-moi sur LoyalUp et gagnez un bonus de bienvenue.')
-        }
-      } finally {
-        if (!cancelled) {
-          setShareLoading(false)
-        }
-      }
-    }
-
     void loadShareLink()
-
-    return () => {
-      cancelled = true
-    }
-  }, [state, validatedPoints])
+  }, [loadShareLink, state])
 
   // When a pending transaction exists, subscribe to status updates and poll
   useEffect(() => {
@@ -602,6 +620,7 @@ export default function QRScannerPage() {
           shareUrl={shareUrl}
           shareMessage={shareMessage}
           shareLoading={shareLoading}
+          onRetryShare={loadShareLink}
           onReset={resetScanner}
         />
       )
