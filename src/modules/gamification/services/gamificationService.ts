@@ -361,6 +361,53 @@ function toFriendlyReferralError(status: number, fallback: string, mode: 'genera
   return new Error(fallback || 'Impossible d\'activer ce code de parrainage.')
 }
 
+async function callReferralFunction<TResponse>(
+  functionName: 'generate-referral' | 'activate-referral',
+  body: Record<string, unknown>,
+  mode: 'generate' | 'activate',
+): Promise<TResponse> {
+  let accessToken = await resolveAccessToken()
+
+  if (!accessToken) {
+    throw new Error('Votre session a expire. Reconnectez-vous pour acceder au parrainage.')
+  }
+
+  let lastStatus = 0
+  let lastMessage = ''
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${functionName}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    if (response.ok) {
+      return (await response.json()) as TResponse
+    }
+
+    const payload = (await response.json().catch(() => ({}))) as { error?: string }
+    lastStatus = response.status
+    lastMessage = payload.error || ''
+
+    if (response.status !== 401 || attempt > 0) {
+      break
+    }
+
+    const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError || !refreshData.session?.access_token) {
+      break
+    }
+
+    accessToken = refreshData.session.access_token
+  }
+
+  throw toFriendlyReferralError(lastStatus, lastMessage, mode)
+}
+
 async function resolveAccessToken(): Promise<string | null> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
   if (sessionError) {
@@ -456,61 +503,22 @@ export async function getReferralStats(): Promise<ReferralStats | null> {
 }
 
 export async function activateReferralByCode(referralCode: string): Promise<{ activated: boolean; message: string }> {
-  const accessToken = await resolveAccessToken()
-
-  if (!accessToken) {
-    throw new Error('Votre session a expire. Reconnectez-vous pour acceder au parrainage.')
-  }
-
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/activate-referral`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ referral_code: referralCode.trim() }),
-    },
+  return callReferralFunction<{ activated: boolean; message: string }>(
+    'activate-referral',
+    { referral_code: referralCode.trim() },
+    'activate',
   )
-
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as { error?: string }
-    throw toFriendlyReferralError(response.status, payload.error || '', 'activate')
-  }
-
-  const payload = (await response.json()) as { activated: boolean; message: string }
-  return payload
 }
 
 export async function generateReferralLink(fournisseurId?: string): Promise<ReferralStats> {
-  const accessToken = await resolveAccessToken()
-
-  if (!accessToken) {
-    throw new Error('Votre session a expire. Reconnectez-vous pour acceder au parrainage.')
-  }
-
-  const response = await fetch(
-    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-referral`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ fournisseur_id: fournisseurId }),
-    },
+  const data = await callReferralFunction<{ referral_code: string; share_url: string; expires_at: string }>(
+    'generate-referral',
+    { fournisseur_id: fournisseurId },
+    'generate',
   )
-
-  if (!response.ok) {
-    const payload = (await response.json().catch(() => ({}))) as { error?: string }
-    throw toFriendlyReferralError(response.status, payload.error || '', 'generate')
-  }
 
   const stats = await getReferralStats()
   if (!stats) {
-    const data = (await response.json()) as { referral_code: string; share_url: string; expires_at: string }
-
     return {
       code: data.referral_code,
       url: data.share_url,
