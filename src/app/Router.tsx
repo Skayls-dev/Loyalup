@@ -257,70 +257,137 @@ function AuthRoute() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-[#F5F7FF] via-[#F8FAFF] to-white px-4 py-10">
-      <span className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
-      <span className="pointer-events-none absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-accent-green/10 blur-3xl" />
+    <div className="flex min-h-screen">
+      {/* ── Brand panel ──────────────────────────────────────────────── */}
+      <div className="relative hidden lg:flex lg:w-[460px] xl:w-[500px] shrink-0 flex-col justify-between overflow-hidden bg-[#0b0715] px-10 py-12">
+        {/* Ambient blobs */}
+        <div className="pointer-events-none absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-violet-700/25 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-20 right-0 h-80 w-80 rounded-full bg-indigo-600/20 blur-3xl" />
+        <div className="pointer-events-none absolute left-1/3 top-1/2 h-52 w-52 -translate-y-1/2 rounded-full bg-fuchsia-700/15 blur-2xl" />
+        {/* Dot-grid texture */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-[0.035]"
+          style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '28px 28px' }}
+        />
 
-      <div className="relative z-10 w-full max-w-md space-y-4">
-        <div className="flex items-center justify-center gap-2 pb-2">
-          <span className="font-display text-4xl font-black text-dark">LoyalUp</span>
-          <span className="inline-flex h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
+        {/* Wordmark */}
+        <div className="relative z-10 flex items-center gap-2">
+          <span className="text-2xl font-black tracking-tight text-white">LoyalUp</span>
+          <span className="h-2 w-2 rounded-full bg-violet-400" aria-hidden="true" />
         </div>
 
-        <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-gray-100 p-1">
-          <button
-            type="button"
-            onClick={() => setAuthMode('login')}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              authMode === 'login' ? 'bg-white text-primary shadow-sm' : 'text-gray-600 hover:text-primary'
-            }`}
-          >
-            Login
-          </button>
-          <button
-            type="button"
-            onClick={() => setAuthMode('signup')}
-            className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-              authMode === 'signup'
-                ? 'bg-white text-primary shadow-sm'
-                : 'text-gray-600 hover:text-primary'
-            }`}
-          >
-            Sign up
-          </button>
+        {/* Headline + bullets */}
+        <div className="relative z-10 space-y-8">
+          <div className="space-y-3">
+            <h1 className="text-[2.5rem] font-extrabold leading-[1.15] text-white">
+              La fidélité<br />
+              <span className="bg-gradient-to-r from-violet-300 to-indigo-300 bg-clip-text text-transparent">
+                réinventée.
+              </span>
+            </h1>
+            <p className="text-[0.9375rem] leading-relaxed text-zinc-400">
+              Rejoignez des milliers de clients et commerçants qui font vivre la fidélité autrement.
+            </p>
+          </div>
+
+          <ul className="space-y-3.5">
+            {(
+              [
+                { symbol: '✦', text: 'Points de fidélité en temps réel' },
+                { symbol: '◈', text: 'Récompenses et badges exclusifs' },
+                { symbol: '⬡', text: 'Réseau de partenaires unifié' },
+              ] as const
+            ).map(({ symbol, text }) => (
+              <li key={text} className="flex items-center gap-3 text-sm text-zinc-300">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-violet-300">
+                  {symbol}
+                </span>
+                {text}
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {authMode === 'signup' ? (
-          <>
-            <div className="grid grid-cols-2 rounded-xl border border-gray-200 bg-gray-100 p-1">
-              <button
-                type="button"
-                onClick={() => setSelectedRole('client')}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                  selectedRole === 'client'
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-600 hover:text-primary'
-                }`}
-              >
-                Client
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedRole('fournisseur')}
-                className={`rounded-md px-3 py-2 text-sm font-medium transition ${
-                  selectedRole === 'fournisseur'
-                    ? 'bg-white text-primary shadow-sm'
-                    : 'text-gray-600 hover:text-primary'
-                }`}
-              >
-                Fournisseur
-              </button>
+        <p className="relative z-10 text-xs text-zinc-700">© 2026 LoyalUp · Tous droits réservés</p>
+      </div>
+
+      {/* ── Form panel ───────────────────────────────────────────────── */}
+      <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto bg-white px-6 py-12">
+        {/* Mobile-only logo */}
+        <div className="mb-8 flex items-center gap-1.5 lg:hidden">
+          <span className="text-2xl font-black tracking-tight text-zinc-900">LoyalUp</span>
+          <span className="h-2 w-2 rounded-full bg-violet-500" aria-hidden="true" />
+        </div>
+
+        <div className="w-full max-w-sm">
+          {/* Login / Signup animated tab switcher */}
+          <div className="relative mb-7 flex rounded-xl bg-zinc-100 p-1">
+            <span
+              className={`absolute inset-y-1 w-[calc(50%-2px)] rounded-lg bg-white shadow-sm transition-all duration-200 ease-out ${
+                authMode === 'signup' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
+              }`}
+              aria-hidden="true"
+            />
+            <button
+              type="button"
+              onClick={() => setAuthMode('login')}
+              className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
+                authMode === 'login' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+              }`}
+            >
+              Connexion
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMode('signup')}
+              className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
+                authMode === 'signup' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+              }`}
+            >
+              Inscription
+            </button>
+          </div>
+
+          {authMode === 'signup' ? (
+            <div className="space-y-5">
+              {/* Role picker */}
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-400">
+                  Je suis
+                </p>
+                <div className="relative flex rounded-xl bg-zinc-100 p-1">
+                  <span
+                    className={`absolute inset-y-1 w-[calc(50%-2px)] rounded-lg bg-white shadow-sm transition-all duration-200 ease-out ${
+                      selectedRole === 'fournisseur' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
+                    }`}
+                    aria-hidden="true"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRole('client')}
+                    className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
+                      selectedRole === 'client' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+                    }`}
+                  >
+                    Client
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRole('fournisseur')}
+                    className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
+                      selectedRole === 'fournisseur' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+                    }`}
+                  >
+                    Fournisseur
+                  </button>
+                </div>
+              </div>
+              <RegisterForm role={selectedRole} bare />
             </div>
-            <RegisterForm role={selectedRole} />
-          </>
-        ) : (
-          <LoginForm />
-        )}
+          ) : (
+            <LoginForm bare />
+          )}
+        </div>
       </div>
     </div>
   )

@@ -4,6 +4,8 @@ import { Eye, EyeOff } from 'lucide-react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useAuth } from '../../modules/auth/hooks/useAuth'
+import type { SocialProvider } from '../../modules/auth/services/authService'
 import { supabase } from '../../shared/lib/supabaseClient'
 import { useOnboarding } from '../../contexts/OnboardingContext'
 
@@ -22,8 +24,9 @@ type FormValues = z.infer<typeof schema>
 
 export default function Step1Account() {
   const { goNext, setAccount } = useOnboarding()
+  const { loginWithOAuth } = useAuth()
   const [showPassword, setShowPassword] = useState(false)
-  const [oauthLoading, setOauthLoading] = useState<'google' | 'facebook' | null>(null)
+  const [oauthLoading, setOauthLoading] = useState<SocialProvider | null>(null)
 
   const {
     register,
@@ -41,21 +44,16 @@ export default function Step1Account() {
     mode: 'onBlur',
   })
 
-  const handleOAuth = async (provider: 'google' | 'facebook') => {
+  const handleOAuth = async (provider: SocialProvider) => {
     setOauthLoading(provider)
 
-    const { error } = await supabase.auth.signInWithOAuth({ provider })
-
-    setOauthLoading(null)
-
-    if (error) {
-      setError('email', { type: 'manual', message: error.message })
-      return
+    try {
+      await loginWithOAuth(provider)
+      // loginWithOAuth redirects to /auth/callback — no further navigation needed.
+    } catch (error) {
+      setOauthLoading(null)
+      setError('email', { type: 'manual', message: error instanceof Error ? error.message : 'Erreur OAuth' })
     }
-
-    // Step 1 -> Step 3 (skip step 2) when OAuth profile is already filled.
-    goNext()
-    goNext()
   }
 
   const onSubmit = async (values: FormValues) => {
@@ -127,17 +125,6 @@ export default function Step1Account() {
           className="flex h-11 w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 font-body text-sm font-semibold text-gray-700 transition hover:border-[#5B4FE8] hover:bg-[#F1EEFF] disabled:cursor-not-allowed disabled:opacity-70"
         >
           {oauthLoading === 'google' ? 'Connexion Google...' : 'Continuer avec Google'}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            void handleOAuth('facebook')
-          }}
-          disabled={Boolean(oauthLoading) || isSubmitting}
-          className="flex h-11 w-full items-center justify-center rounded-xl border border-gray-300 bg-white px-4 font-body text-sm font-semibold text-gray-700 transition hover:border-[#5B4FE8] hover:bg-[#F1EEFF] disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          {oauthLoading === 'facebook' ? 'Connexion Facebook...' : 'Continuer avec Facebook'}
         </button>
       </div>
 
