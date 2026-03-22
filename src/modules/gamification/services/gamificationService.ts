@@ -408,6 +408,69 @@ async function callReferralFunction<TResponse>(
   throw toFriendlyReferralError(lastStatus, lastMessage, mode)
 }
 
+function generateCode(length: number): string {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  let code = ''
+
+  for (let i = 0; i < length; i += 1) {
+    const index = Math.floor(Math.random() * chars.length)
+    code += chars.charAt(index)
+  }
+
+  return code
+}
+
+async function createReferralDirect(fournisseurId?: string): Promise<{ referral_code: string; share_url: string; expires_at: string }> {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser()
+
+  if (userError || !user?.id) {
+    throw new Error('Votre session a expire. Reconnectez-vous pour acceder au parrainage.')
+  }
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle<{ role: string }>()
+
+  if (profileError || profile?.role !== 'client') {
+    throw new Error('Le parrainage est reserve aux comptes client.')
+  }
+
+  const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  const prefix = fournisseurId ? fournisseurId.substring(0, 4).toUpperCase() : 'LU'
+
+  for (let attempt = 0; attempt < 8; attempt += 1) {
+    const referralCode = `${prefix}-${generateCode(6)}`
+
+    const { error: insertError } = await supabase.from('client_referrals').insert({
+      referrer_id: user.id,
+      referred_id: null,
+      referral_code: referralCode,
+      status: 'pending',
+      fournisseur_id: fournisseurId ?? null,
+      expires_at: expiresAt,
+    })
+
+    if (!insertError) {
+      return {
+        referral_code: referralCode,
+        share_url: `${getReferralBaseUrl()}/join/${referralCode}`,
+        expires_at: expiresAt,
+      }
+    }
+
+    if (insertError.code !== '23505') {
+      throw new Error(insertError.message)
+    }
+  }
+
+  throw new Error('Impossible de generer un code unique. Reessayez.')
+}
+
 async function resolveAccessToken(): Promise<string | null> {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
   if (sessionError) {
@@ -511,11 +574,23 @@ export async function activateReferralByCode(referralCode: string): Promise<{ ac
 }
 
 export async function generateReferralLink(fournisseurId?: string): Promise<ReferralStats> {
-  const data = await callReferralFunction<{ referral_code: string; share_url: string; expires_at: string }>(
-    'generate-referral',
-    { fournisseur_id: fournisseurId },
-    'generate',
-  )
+  let data: { referral_code: string; share_url: string; expires_at: string }
+
+  try {
+    data = await callReferralFunction<{ referral_code: string; share_url: string; expires_at: string }>(
+      'generate-referral',
+      { fournisseur_id: fournisseurId },
+      'generate',
+    )
+  } catch (error) {
+    const message = error instanceof Error ? error.message.toLowerCase() : ''
+
+    if (!message.includes('session')) {
+      throw error
+    }
+
+    data = await createReferralDirect(fournisseurId)
+  }
 
   const stats = await getReferralStats()
   if (!stats) {
