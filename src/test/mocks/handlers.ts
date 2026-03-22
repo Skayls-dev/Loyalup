@@ -69,6 +69,10 @@ export const handlers = [
       return HttpResponse.json({ error: 'INVALID_PENDING_TRANSACTION' }, { status: 403 })
     }
 
+    if (body.client_reward_id === 'digital-not-supported') {
+      return HttpResponse.json({ error: 'DIGITAL_CODE_NOT_SUPPORTED' }, { status: 400 })
+    }
+
     if (body.client_reward_id === 'insufficient') {
       return HttpResponse.json({ error: 'INSUFFICIENT_POINTS' }, { status: 400 })
     }

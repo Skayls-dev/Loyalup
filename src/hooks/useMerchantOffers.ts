@@ -11,6 +11,7 @@ export interface MerchantOffer {
   points_required: number
   expiry_date: string | null
   category: string | null
+  reward_delivery_type: 'in_store' | 'digital_code'
   status: MerchantOfferStatus
   redemptions_this_month: number
   network_ids: string[]
@@ -31,6 +32,7 @@ type OfferRow = {
   points_required: number | null
   emoji: string | null
   expiry_date: string | null
+  reward_delivery_type: 'in_store' | 'digital_code' | null
   actif: boolean | null
   created_at: string
 }
@@ -48,6 +50,7 @@ function toOffer(row: OfferRow, redemptionsByRuleId: Map<string, number>): Merch
     points_required: Number(row.points_required ?? 0),
     expiry_date: row.expiry_date,
     category: row.emoji,
+    reward_delivery_type: row.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store',
     status: isExpiredByDate ? 'expired' : row.actif === false ? 'paused' : 'active',
     redemptions_this_month: redemptions,
     network_ids: [],

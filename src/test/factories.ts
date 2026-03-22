@@ -85,6 +85,7 @@ export function createMockRewardRule(overrides: Override<RewardRule> = {}): Rewa
     emoji: '🎁',
     expiry_date: expiry_date ?? null,
     actif: true,
+    reward_delivery_type: 'in_store',
     requires_physical_presence: false,
     created_at: new Date().toISOString(),
     ...restOverrides,

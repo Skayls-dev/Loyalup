@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Gift } from 'lucide-react'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
 
@@ -7,6 +8,7 @@ type ClientPreviewProps = {
   clientPoints: number
   totalVisites: number
   pendingTransaction: PendingTransactionPayload | null
+  availableRewardsCount?: number
 }
 
 function formatCountdown(totalSeconds: number): string {
@@ -21,6 +23,7 @@ export function ClientPreview({
   clientPoints,
   totalVisites,
   pendingTransaction,
+  availableRewardsCount = 0,
 }: ClientPreviewProps) {
   const [secondsLeft, setSecondsLeft] = useState(0)
 
@@ -84,6 +87,15 @@ export function ClientPreview({
           </p>
         </div>
       </div>
+
+      {availableRewardsCount > 0 ? (
+        <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-700 bg-amber-900/30 px-3 py-2">
+          <Gift className="h-4 w-4 shrink-0 text-amber-400" />
+          <p className="text-xs font-semibold text-amber-300">
+            {availableRewardsCount} recompense{availableRewardsCount > 1 ? 's' : ''} disponible{availableRewardsCount > 1 ? 's' : ''} a utiliser
+          </p>
+        </div>
+      ) : null}
 
       <div className="mt-4 rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2">
         <p className={`text-sm font-medium ${countdownClass}`}>

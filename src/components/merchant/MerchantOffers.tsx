@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { Globe, MapPin } from 'lucide-react'
 import { Button } from '../../components/ui'
 import { useMerchantOffers, type MerchantOffer, type MerchantOfferStatus } from '../../hooks/useMerchantOffers'
 import { ConfirmModal } from '../../shared/components/ConfirmModal'
@@ -24,6 +25,7 @@ type OfferFormState = {
   description: string
   points_required: number
   expiry_date: string
+  reward_delivery_type: 'in_store' | 'digital_code'
   category: string
   network_ids: string[]
 }
@@ -71,6 +73,7 @@ const initialFormState: OfferFormState = {
   description: '',
   points_required: 100,
   expiry_date: '',
+  reward_delivery_type: 'in_store',
   category: 'food',
   network_ids: [],
 }
@@ -184,6 +187,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       description: offer.description ?? '',
       points_required: offer.points_required,
       expiry_date: toLocalDateInput(offer.expiry_date),
+      reward_delivery_type: offer.reward_delivery_type,
       category: categoryValue(offer.category),
       network_ids: [...offer.network_ids],
     })
@@ -230,6 +234,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       points_required: Number(form.points_required),
       expiry_date: form.expiry_date || null,
       category: form.category,
+      reward_delivery_type: form.reward_delivery_type,
       status: 'active',
       redemptions_this_month: 0,
       network_ids: [...form.network_ids],
@@ -251,6 +256,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       points_required: optimisticOffer.points_required,
       emoji: categoryMeta(optimisticOffer.category).emoji,
       expiry_date: optimisticOffer.expiry_date || null,
+      reward_delivery_type: optimisticOffer.reward_delivery_type,
       actif: true,
     }
 
@@ -287,6 +293,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       points_required: number | null
       emoji: string | null
       expiry_date: string | null
+      reward_delivery_type: 'in_store' | 'digital_code' | null
       actif: boolean | null
       created_at: string
     }
@@ -299,6 +306,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       points_required: Number(inserted.points_required ?? 0),
       expiry_date: inserted.expiry_date,
       category: inserted.emoji,
+      reward_delivery_type: inserted.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store',
       status: inserted.actif === false ? 'paused' : 'active',
       redemptions_this_month: 0,
       network_ids: [],
@@ -345,6 +353,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       points_required: number | null
       emoji: string | null
       expiry_date: string | null
+      reward_delivery_type: 'in_store' | 'digital_code' | null
       actif: boolean | null
       created_at: string
     }
@@ -358,6 +367,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
             points_required: Number(updated.points_required ?? 0),
             expiry_date: updated.expiry_date,
             category: updated.emoji,
+            reward_delivery_type: updated.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store',
             status: updated.actif === false ? 'paused' : 'active',
           }
         : item
@@ -413,6 +423,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
         points_required: offer.points_required,
         emoji: categoryMeta(offer.category).emoji,
         expiry_date: offer.expiry_date || null,
+        reward_delivery_type: offer.reward_delivery_type,
         actif: offer.status === 'active',
       })
       .select('*')
@@ -433,6 +444,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       points_required: number | null
       emoji: string | null
       expiry_date: string | null
+      reward_delivery_type: 'in_store' | 'digital_code' | null
       actif: boolean | null
       created_at: string
     }
@@ -445,6 +457,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
       points_required: Number(inserted.points_required ?? 0),
       expiry_date: inserted.expiry_date,
       category: inserted.emoji,
+      reward_delivery_type: inserted.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store',
       status: inserted.actif === false ? 'paused' : 'active',
       redemptions_this_month: 0,
       network_ids: [],
@@ -489,6 +502,49 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
                 placeholder="Details de l'offre"
               />
             </label>
+
+            <fieldset className="md:col-span-2">
+              <legend className="mb-1 block font-body text-xs text-gray-600">Mode d'utilisation</legend>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <label className={`rounded-md border px-3 py-3 transition ${form.reward_delivery_type === 'in_store' ? 'border-violet-400 bg-violet-50' : 'border-gray-200 bg-white'}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="reward_delivery_type"
+                      value="in_store"
+                      checked={form.reward_delivery_type === 'in_store'}
+                      onChange={() => setForm((prev) => ({ ...prev, reward_delivery_type: 'in_store' }))}
+                      className="mt-0.5 h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500"
+                    />
+                    <div>
+                      <p className="font-body text-sm font-semibold text-dark">En boutique (présence physique)</p>
+                      <p className="mt-1 font-body text-xs text-gray-500">Utilisation déclenchée par le marchand en caisse.</p>
+                    </div>
+                  </div>
+                </label>
+
+                <label className="rounded-md border border-gray-200 bg-gray-50 px-3 py-3 opacity-70">
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="radio"
+                      name="reward_delivery_type"
+                      value="digital_code"
+                      checked={form.reward_delivery_type === 'digital_code'}
+                      disabled
+                      readOnly
+                      className="mt-0.5 h-4 w-4 border-gray-300 text-violet-600 focus:ring-violet-500"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-body text-sm font-semibold text-gray-600">Code digital (e-commerce)</p>
+                        <span className="inline-flex rounded-full bg-gray-200 px-2 py-0.5 font-body text-[11px] font-semibold text-gray-500">Bientôt disponible</span>
+                      </div>
+                      <p className="mt-1 font-body text-xs text-gray-500">Réservé au futur parcours e-commerce.</p>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </fieldset>
 
             <label className="block">
               <span className="mb-1 block font-body text-xs text-gray-600">Points requis</span>
@@ -581,6 +637,19 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
                 <p className="truncate font-body text-sm font-semibold text-dark">{offer.name}</p>
                 <p className="mt-0.5 truncate font-body text-xs text-gray-500">
                   {offer.points_required.toLocaleString('fr-FR')} pts requis · {offer.redemptions_this_month.toLocaleString('fr-FR')} rachats ce mois
+                </p>
+                <p className="mt-1 inline-flex items-center gap-1.5 font-body text-xs text-gray-500">
+                  {offer.reward_delivery_type === 'digital_code' ? (
+                    <>
+                      <Globe className="h-3.5 w-3.5" />
+                      Code digital
+                    </>
+                  ) : (
+                    <>
+                      <MapPin className="h-3.5 w-3.5" />
+                      En boutique
+                    </>
+                  )}
                 </p>
               </div>
 

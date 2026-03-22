@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { LoyaltyCard } from './LoyaltyCard'
+import type { LoyaltyCard as LoyaltyCardModel } from '../hooks/useLoyalty'
 
 const navigateMock = vi.fn()
 
@@ -21,7 +22,7 @@ vi.mock('../hooks/usePointsRealtime', () => ({
 }))
 
 describe('LoyaltyCard', () => {
-  const card = {
+  const card: LoyaltyCardModel = {
     fournisseur: {
       id: 'fournisseur-1',
       nom_commerce: 'Coffee Loyal',
@@ -40,6 +41,7 @@ describe('LoyaltyCard', () => {
       emoji: '🎁',
       expiry_date: null,
       actif: true,
+      reward_delivery_type: 'in_store',
       requires_physical_presence: false,
       created_at: new Date().toISOString(),
     },

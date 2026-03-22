@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Gift } from 'lucide-react'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
+import { supabase } from '../../../shared/lib/supabaseClient'
 import { useServices } from '../hooks/useServices'
 import { useValidation } from '../hooks/useValidation'
 import { fetchRedemptionRules, redeemPoints, type RedemptionRule } from '../services/redemptionService'
@@ -54,6 +55,7 @@ export function ValidationPanel({
   const [selectedRedemptionRuleId, setSelectedRedemptionRuleId] = useState('')
   const [redemptionSubmitting, setRedemptionSubmitting] = useState(false)
   const [redemptionError, setRedemptionError] = useState<string | null>(null)
+  const [availableRewardsCount, setAvailableRewardsCount] = useState(0)
   const [redemptionSuccess, setRedemptionSuccess] = useState<{
     pointsDeducted: number
     discountApplied: number
@@ -97,6 +99,36 @@ export function ValidationPanel({
       cancelled = true
     }
   }, [pendingTransaction.fournisseur_id])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadAvailableRewardsCount = async () => {
+      const { count, error: availableRewardsError } = await supabase
+        .from('client_rewards')
+        .select('id', { count: 'exact', head: true })
+        .eq('client_id', pendingTransaction.client_id)
+        .eq('fournisseur_id', pendingTransaction.fournisseur_id)
+        .eq('status', 'available')
+
+      if (availableRewardsError) {
+        if (!cancelled) {
+          setAvailableRewardsCount(0)
+        }
+        return
+      }
+
+      if (!cancelled) {
+        setAvailableRewardsCount(Number(count ?? 0))
+      }
+    }
+
+    void loadAvailableRewardsCount()
+
+    return () => {
+      cancelled = true
+    }
+  }, [pendingTransaction.client_id, pendingTransaction.fournisseur_id])
 
   const [successData, setSuccessData] = useState<{
     serviceName: string
@@ -220,6 +252,7 @@ export function ValidationPanel({
             clientPoints={clientPoints}
             totalVisites={totalVisites}
             pendingTransaction={pendingTransaction}
+            availableRewardsCount={availableRewardsCount}
           />
 
           {displayError ? (

@@ -11,7 +11,7 @@ export function RewardCard({ reward, onUse }: RewardCardProps) {
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isAvailable = reward.status === 'available'
-  const requiresPhysicalPresence = reward.reward_rule.requires_physical_presence === true
+  const rewardDeliveryType = reward.reward_rule.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store'
   const isNew = reward.unlocked_at ? Date.now() - new Date(reward.unlocked_at).getTime() < 15000 : false
   const isCloseToUnlock = !isAvailable && reward.points_needed > 0 && reward.points_needed <= 25
 
@@ -75,12 +75,15 @@ export function RewardCard({ reward, onUse }: RewardCardProps) {
 
       <div className="mt-3">
         {isAvailable ? (
-          requiresPhysicalPresence ? (
-            <p className="inline-flex items-center gap-2 text-xs text-amber-600">
-              <MapPin className="h-4 w-4" />
-              À utiliser en boutique lors de votre prochain achat
-            </p>
+          rewardDeliveryType === 'in_store' ? (
+            <div className="mt-3 flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2">
+              <MapPin className="h-4 w-4 shrink-0 text-emerald-600" />
+              <p className="text-xs font-medium text-emerald-700">
+                Récompense prête — présentez votre app en boutique lors de votre prochain achat
+              </p>
+            </div>
           ) : (
+            // TODO V2: digital_code flow — generate and display promo code instead of consuming directly
             <button
               type="button"
               onClick={() => {
@@ -115,7 +118,7 @@ export function RewardCard({ reward, onUse }: RewardCardProps) {
         )}
       </div>
 
-      {confirmOpen ? (
+      {confirmOpen && rewardDeliveryType === 'digital_code' ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 p-4 backdrop-blur-sm">
           <div
             role="dialog"

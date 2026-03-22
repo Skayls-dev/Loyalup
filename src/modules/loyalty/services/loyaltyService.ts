@@ -36,6 +36,7 @@ export type RewardRule = {
   emoji: string
   expiry_date: string | null
   actif: boolean
+  reward_delivery_type: 'in_store' | 'digital_code'
   requires_physical_presence: boolean
   created_at: string
 }
@@ -209,7 +210,7 @@ export async function getAvailableRewards(
     let query = supabase
       .from('client_rewards')
       .select(
-        'id, client_id, fournisseur_id, reward_rule_id, status, unlocked_at, used_at, created_at, reward_rule:reward_rules(id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, requires_physical_presence, created_at)',
+        'id, client_id, fournisseur_id, reward_rule_id, status, unlocked_at, used_at, created_at, reward_rule:reward_rules(id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, reward_delivery_type, requires_physical_presence, created_at)',
       )
       .eq('client_id', client_id)
       .eq('status', 'available')
@@ -248,6 +249,7 @@ export async function getAvailableRewards(
           ...rewardRule,
           points_required: Number(rewardRule.points_required),
           actif: Boolean(rewardRule.actif),
+          reward_delivery_type: (rewardRule.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store') as 'in_store' | 'digital_code',
           requires_physical_presence: Boolean(rewardRule.requires_physical_presence),
         },
       } satisfies ClientReward
@@ -306,7 +308,7 @@ export async function getRewardCatalog(
         .in('id', providerIds),
       supabase
         .from('reward_rules')
-        .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, requires_physical_presence, created_at')
+        .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, reward_delivery_type, requires_physical_presence, created_at')
         .in('fournisseur_id', providerIds)
         .eq('actif', true)
         .or('expiry_date.is.null,expiry_date.gte.' + new Date().toISOString().slice(0, 10))
@@ -360,6 +362,7 @@ export async function getRewardCatalog(
             ...rule,
             points_required: Number(rule.points_required),
             actif: Boolean(rule.actif),
+            reward_delivery_type: (rule.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store') as 'in_store' | 'digital_code',
             requires_physical_presence: Boolean(rule.requires_physical_presence),
           },
         } satisfies RewardCatalogItem
@@ -382,7 +385,7 @@ export async function getRewardRules(fournisseur_id: string): Promise<RewardRule
   return withCachedRead(`loyalty:reward-rules:${fournisseur_id}`, async () => {
     const { data, error } = await supabase
       .from('reward_rules')
-      .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, requires_physical_presence, created_at')
+      .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, reward_delivery_type, requires_physical_presence, created_at')
       .eq('fournisseur_id', fournisseur_id)
       .eq('actif', true)
       .or('expiry_date.is.null,expiry_date.gte.' + new Date().toISOString().slice(0, 10))
@@ -396,6 +399,7 @@ export async function getRewardRules(fournisseur_id: string): Promise<RewardRule
       ...row,
       points_required: Number(row.points_required),
       actif: Boolean(row.actif),
+      reward_delivery_type: (row.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store') as 'in_store' | 'digital_code',
       requires_physical_presence: Boolean(row.requires_physical_presence),
     }))
   })

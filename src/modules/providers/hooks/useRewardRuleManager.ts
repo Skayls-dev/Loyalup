@@ -85,6 +85,7 @@ export function useRewardRuleManager(): UseRewardRuleManagerResult {
       points_required: data.points_required,
       expiry_date: data.expiry_date ?? null,
       actif: true,
+      reward_delivery_type: data.reward_delivery_type ?? 'in_store',
       created_at: new Date().toISOString(),
     }
 
