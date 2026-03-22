@@ -35,7 +35,7 @@ export function DashboardHome() {
     activeNetworkName,
     loading,
   } = useDashboardStats()
-  const { networks, rewards, tier: tierData } = useDashboard(userId)
+  const { networks, tier: tierData } = useDashboard(userId)
 
   const userName = profile?.nom?.trim() || 'Membre LoyalUp'
   const today = formatFrenchDate(new Date())
@@ -144,7 +144,7 @@ export function DashboardHome() {
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <UserNetworksList networks={networks} />
-        <RewardsList rewards={rewards} />
+        <RewardsList />
       </div>
     </section>
   )

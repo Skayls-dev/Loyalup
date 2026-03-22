@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { LoginForm } from '../modules/auth/components/LoginForm'
 import { RegisterForm } from '../modules/auth/components/RegisterForm'
@@ -96,6 +96,9 @@ const MerchantSettingsPage = lazy(() =>
 )
 const MerchantSubscriptionPage = lazy(() =>
   import('../pages/merchant/MerchantSubscriptionPage').then((module) => ({ default: module.default })),
+)
+const MerchantClientDetailPage = lazy(() =>
+  import('../pages/merchant/MerchantClientDetailPage').then((module) => ({ default: module.default })),
 )
 
 function RouteFallback() {
@@ -539,6 +542,21 @@ function MerchantClientsWrapper() {
   )
 }
 
+function MerchantClientDetailWrapper() {
+  const { merchantId, loading } = useMerchantRouteData()
+  const { clientId } = useParams<{ clientId: string }>()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
+
+  if (!clientId) {
+    return <Navigate to="/merchant/clients" replace />
+  }
+
+  return <MerchantClientDetailPage merchantId={merchantId} clientId={clientId} />
+}
+
 function MerchantTransactionsWrapper() {
   const { merchantId, loading } = useMerchantRouteData()
 
@@ -656,6 +674,7 @@ export function Router() {
             <Route path="/merchant/qr" element={<MerchantQrPage />} />
             <Route path="/merchant/offers" element={<MerchantOffersWrapper />} />
             <Route path="/merchant/clients" element={<MerchantClientsWrapper />} />
+            <Route path="/merchant/clients/:clientId" element={<MerchantClientDetailWrapper />} />
             <Route path="/merchant/transactions" element={<MerchantTransactionsWrapper />} />
             <Route path="/merchant/performance" element={<MerchantPerformanceWrapper />} />
             <Route path="/merchant/consumption" element={<MerchantConsumptionWrapper />} />

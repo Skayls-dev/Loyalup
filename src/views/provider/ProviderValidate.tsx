@@ -15,6 +15,15 @@ type PendingItem = PendingTransactionPayload & {
   clientPoints: number
 }
 
+function resolveClientName(rawName: string | null | undefined, clientId: string): string {
+  const trimmed = (rawName ?? '').trim()
+  if (trimmed) {
+    return trimmed
+  }
+
+  return `Client ${clientId.slice(0, 6)}`
+}
+
 export function ProviderValidate() {
   const { user } = useAuth()
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
@@ -50,7 +59,7 @@ export function ProviderValidate() {
 
       for (const profile of profileData ?? []) {
         profileMap.set(profile.id as string, {
-          nom: (profile.nom as string | undefined) ?? 'Client inconnu',
+          nom: resolveClientName(profile.nom as string | undefined, String(profile.id)),
           email: (profile.email as string | undefined) ?? '',
         })
       }
@@ -77,7 +86,7 @@ export function ProviderValidate() {
 
         return {
           ...transaction,
-          clientName: profile?.nom ?? 'Client inconnu',
+          clientName: profile?.nom ?? resolveClientName(undefined, transaction.client_id),
           clientEmail: profile?.email ?? '',
           clientPoints: pointsMap.get(transaction.client_id) ?? 0,
         }
@@ -153,7 +162,7 @@ export function ProviderValidate() {
       setItems((prev) => [
         {
           ...payload,
-          clientName: (profileData?.nom as string | undefined) ?? 'Client inconnu',
+          clientName: resolveClientName(profileData?.nom as string | undefined, payload.client_id),
           clientEmail: (profileData?.email as string | undefined) ?? '',
           clientPoints: count ?? 0,
         },

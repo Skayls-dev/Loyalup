@@ -1,13 +1,11 @@
 import { useEffect, useMemo } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../shared/lib/supabaseClient'
-import { getRewardCatalog } from '../modules/loyalty/services/loyaltyService'
 import type {
   DashboardChallenge,
   DashboardNetwork,
   DashboardPayload,
   DashboardRecentTransaction,
-  DashboardReward,
   DashboardStats,
   DashboardTier,
   DashboardTierLevel,
@@ -35,7 +33,6 @@ const DEFAULT_PAYLOAD: DashboardPayload = {
   networks: [],
   recentTransactions: [],
   challenges: [],
-  rewards: [],
   tier: DEFAULT_TIER,
 }
 
@@ -287,28 +284,12 @@ async function fetchChallenges(userId: string): Promise<DashboardChallenge[]> {
   })
 }
 
-async function fetchRewards(userId: string): Promise<DashboardReward[]> {
-  const catalog = await getRewardCatalog(userId)
-
-  return catalog
-    .map((item) => ({
-      id: item.id,
-      emoji: item.reward_rule.emoji ?? '🎁',
-      name: item.reward_rule.nom,
-      merchant: item.fournisseur_nom,
-      costPoints: item.reward_rule.points_required,
-      featured: item.status === 'available' || /platinum/i.test(item.reward_rule.nom),
-    }))
-    .sort((a, b) => a.costPoints - b.costPoints)
-}
-
 async function fetchDashboardPayload(userId: string): Promise<DashboardPayload> {
-  const [stats, networks, recentTransactions, challenges, rewards] = await Promise.all([
+  const [stats, networks, recentTransactions, challenges] = await Promise.all([
     fetchStats(userId),
     fetchNetworks(userId),
     fetchRecentTransactions(userId),
     fetchChallenges(userId),
-    fetchRewards(userId),
   ])
 
   const tier = resolveTier(stats.totalPoints)
@@ -318,7 +299,6 @@ async function fetchDashboardPayload(userId: string): Promise<DashboardPayload> 
     networks,
     recentTransactions,
     challenges,
-    rewards,
     tier,
   }
 }

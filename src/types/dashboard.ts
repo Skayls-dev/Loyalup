@@ -41,15 +41,6 @@ export interface DashboardChallenge {
   progressPercent: number
 }
 
-export interface DashboardReward {
-  id: string
-  emoji: string
-  name: string
-  merchant: string
-  costPoints: number
-  featured: boolean
-}
-
 export interface DashboardTier {
   current: DashboardTierLevel
   currentThreshold: number
@@ -64,7 +55,6 @@ export interface DashboardPayload {
   networks: DashboardNetwork[]
   recentTransactions: DashboardRecentTransaction[]
   challenges: DashboardChallenge[]
-  rewards: DashboardReward[]
   tier: DashboardTier
 }
 

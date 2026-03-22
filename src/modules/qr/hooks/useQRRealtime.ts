@@ -14,6 +14,21 @@ type UseQRRealtimeResult = {
   clearPending: () => void
 }
 
+function buildFallbackProfile(payload: PendingTransactionPayload, rawProfile?: Partial<Profile> | null): Profile {
+  const rawName = typeof rawProfile?.nom === 'string' ? rawProfile.nom.trim() : ''
+
+  return {
+    id: String(rawProfile?.id ?? payload.client_id),
+    email: typeof rawProfile?.email === 'string' ? rawProfile.email : '',
+    role: (rawProfile?.role as Profile['role'] | undefined) ?? 'client',
+    nom: rawName || `Client ${payload.client_id.slice(0, 6)}`,
+    created_at:
+      typeof rawProfile?.created_at === 'string' && rawProfile.created_at
+        ? rawProfile.created_at
+        : payload.created_at,
+  }
+}
+
 export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult {
   const [pendingTransaction, setPendingTransaction] =
     useState<PendingTransactionPayload | null>(null)
@@ -44,8 +59,8 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
         .eq('id', payload.client_id)
         .maybeSingle()
 
-      if (!cancelled && data) {
-        setClientProfile(data)
+      if (!cancelled) {
+        setClientProfile(buildFallbackProfile(payload, (data as Partial<Profile> | null) ?? null))
       }
 
       const { count } = await supabase

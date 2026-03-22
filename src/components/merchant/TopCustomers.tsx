@@ -166,7 +166,7 @@ export function TopCustomers({ merchantId, className = '' }: TopCustomersProps) 
             <button
               key={customer.userId}
               type="button"
-              onClick={() => navigate(`/merchant/customers/${customer.userId}`)}
+              onClick={() => navigate(`/merchant/clients/${customer.userId}`)}
               className="flex w-full items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-left transition hover:border-violet-300 hover:bg-violet-50/35"
             >
               <span
