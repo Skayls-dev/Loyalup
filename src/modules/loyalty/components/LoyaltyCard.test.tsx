@@ -40,6 +40,7 @@ describe('LoyaltyCard', () => {
       emoji: '🎁',
       expiry_date: null,
       actif: true,
+      requires_physical_presence: false,
       created_at: new Date().toISOString(),
     },
     progressPercent: 40,
