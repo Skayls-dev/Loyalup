@@ -5,6 +5,7 @@ import { LoginForm } from '../modules/auth/components/LoginForm'
 import { RegisterForm } from '../modules/auth/components/RegisterForm'
 import { useAuth } from '../modules/auth/hooks/useAuth'
 import { MerchantNetworks } from '../components/merchant/MerchantNetworks'
+import { MerchantConsumedServicesCard } from '../components/merchant/MerchantConsumedServicesCard'
 import { MerchantOffers } from '../components/merchant/MerchantOffers'
 import { MerchantRevenueChart } from '../components/merchant/MerchantRevenueChart'
 import { MerchantTransactions } from '../components/merchant/MerchantTransactions'
@@ -471,13 +472,6 @@ function useMerchantRouteData() {
       setLoading(true)
 
       const metadataMerchantId = String(user.user_metadata?.fournisseur_id ?? '').trim()
-      if (metadataMerchantId) {
-        if (!cancelled) {
-          setMerchantId(metadataMerchantId)
-          setLoading(false)
-        }
-        return
-      }
 
       const { data, error } = await supabase
         .from('fournisseurs')
@@ -486,7 +480,8 @@ function useMerchantRouteData() {
         .maybeSingle<{ id: string }>()
 
       if (!cancelled) {
-        setMerchantId(!error && data?.id ? data.id : '')
+        const resolvedMerchantId = !error && data?.id ? data.id : metadataMerchantId
+        setMerchantId(resolvedMerchantId || '')
         setLoading(false)
       }
     }
@@ -583,6 +578,24 @@ function MerchantPerformanceWrapper() {
   )
 }
 
+function MerchantConsumptionWrapper() {
+  const { merchantId, loading } = useMerchantRouteData()
+
+  if (loading) {
+    return <MerchantRouteLoading />
+  }
+
+  return (
+    <section className="space-y-6">
+      <header className="rounded-lg border border-gray-200 bg-white p-5">
+        <h1 className="font-display text-3xl font-extrabold text-dark">Produits ou services consommés</h1>
+        <p className="mt-2 font-body text-sm text-gray-600">Analysez les prestations les plus consommées, les clients associés et exportez vos données.</p>
+      </header>
+      <MerchantConsumedServicesCard merchantId={merchantId} />
+    </section>
+  )
+}
+
 function MerchantNetworksWrapper() {
   const { merchantId, loading } = useMerchantRouteData()
 
@@ -645,6 +658,7 @@ export function Router() {
             <Route path="/merchant/clients" element={<MerchantClientsWrapper />} />
             <Route path="/merchant/transactions" element={<MerchantTransactionsWrapper />} />
             <Route path="/merchant/performance" element={<MerchantPerformanceWrapper />} />
+            <Route path="/merchant/consumption" element={<MerchantConsumptionWrapper />} />
             <Route path="/merchant/networks" element={<MerchantNetworksWrapper />} />
             <Route path="/merchant/settings" element={<MerchantSettingsPage />} />
             <Route path="/merchant/subscription" element={<MerchantSubscriptionPage />} />
