@@ -340,6 +340,28 @@ export interface ReferralStats {
   points_earned: number
 }
 
+export interface ReferrerTierInfo {
+  current_tier: number
+  tier_name: string
+  tier_description: string
+  activated_count: number
+  next_tier: number | null
+  referrals_to_next: number
+  perks: string[]
+  tier_updated_at: string
+}
+
+export interface ReferrerAnalytics {
+  tier: ReferrerTierInfo
+  referral_stats: ReferralStats
+  recent_referrals: Array<{
+    code: string
+    status: string
+    activated_at: string | null
+    rewarded: boolean
+  }>
+}
+
 type ReferralStatus = 'pending' | 'activated' | 'rewarded' | 'expired'
 
 type ReferralRow = {
@@ -562,6 +584,98 @@ export async function getReferralStats(): Promise<ReferralStats | null> {
     activated: summary.filter((row) => row.status === 'activated' || row.status === 'rewarded').length,
     rewarded: summary.filter((row) => row.status === 'rewarded').length,
     points_earned: summary.reduce((sum, row) => sum + Number(row.points_awarded_referrer ?? 0), 0),
+  }
+}
+
+export async function getReferrerTier(userId?: string): Promise<ReferrerTierInfo | null> {
+  const userIdToUse = userId || (await supabase.auth.getUser()).data.user?.id
+  if (!userIdToUse) return null
+
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('referrer_tier, tier_updated_at')
+    .eq('id', userIdToUse)
+    .maybeSingle<{ referrer_tier: number; tier_updated_at: string }>()
+
+  if (profileError || !profile) {
+    return null
+  }
+
+  const { data: tierDef, error: tierError } = await supabase
+    .from('referrer_tiers')
+    .select('id, name, min_referrals, max_referrals, description, perks')
+    .eq('id', profile.referrer_tier)
+    .maybeSingle<{
+      id: number
+      name: string
+      min_referrals: number
+      max_referrals: number | null
+      description: string
+      perks: string[]
+    }>()
+
+  if (tierError || !tierDef) {
+    return null
+  }
+
+  const { data: referrals } = await supabase
+    .from('client_referrals')
+    .select('id')
+    .eq('referrer_id', userIdToUse)
+    .in('status', ['activated', 'rewarded'])
+
+  const activatedCount = referrals?.length ?? 0
+
+  const { data: nextTier } = await supabase
+    .from('referrer_tiers')
+    .select('id, min_referrals')
+    .eq('id', profile.referrer_tier + 1)
+    .maybeSingle<{ id: number; min_referrals: number }>()
+
+  return {
+    current_tier: tierDef.id,
+    tier_name: tierDef.name,
+    tier_description: tierDef.description,
+    activated_count: activatedCount,
+    next_tier: nextTier?.id ?? null,
+    referrals_to_next: nextTier ? Math.max(0, nextTier.min_referrals - activatedCount) : 0,
+    perks: tierDef.perks ?? [],
+    tier_updated_at: profile.tier_updated_at || new Date().toISOString(),
+  }
+}
+
+export async function getReferrerAnalytics(): Promise<ReferrerAnalytics | null> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user?.id) return null
+
+  const stats = await getReferralStats()
+  const tier = await getReferrerTier(user.id)
+
+  if (!stats || !tier) return null
+
+  const { data: recentReferrals, error: recentsError } = await supabase
+    .from('client_referrals')
+    .select('referral_code, status, activated_at')
+    .eq('referrer_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (recentsError) {
+    throw recentsError
+  }
+
+  return {
+    tier,
+    referral_stats: stats,
+    recent_referrals: (recentReferrals ?? []).map((r: any) => ({
+      code: r.referral_code,
+      status: r.status,
+      activated_at: r.activated_at,
+      rewarded: r.status === 'rewarded',
+    })),
   }
 }
 

@@ -14,7 +14,9 @@ export { useLeaderboard } from './useLeaderboard'
 export type { LeaderboardEntry } from '../services/gamificationService'
 
 export { useReferral } from './useReferral'
-export type { ReferralStats, TransferOption } from '../services/gamificationService'
+export type { ReferralStats, TransferOption, ReferrerTierInfo } from '../services/gamificationService'
+
+export { useReferrerTier } from './useReferrerTier'
 
 export { useMarketplace } from './useMarketplace'
 export type { Coalition } from './useMarketplace'
