@@ -64,9 +64,20 @@ export function RewardRuleManager() {
             <div>
               <p className="text-sm text-zinc-100">{rule.emoji} {rule.nom}</p>
               <p className="text-xs text-zinc-500">{rule.points_required} pts</p>
-              <p className="text-[11px] text-zinc-500">
-                {rule.requires_physical_presence ? 'Utilisable uniquement en caisse' : 'Utilisable sans passage en caisse'}
-              </p>
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-300">
+                  {rule.reward_delivery_type === 'digital_code' ? 'Code digital' : 'En boutique'}
+                </span>
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                    rule.requires_physical_presence
+                      ? 'border-amber-700/70 bg-amber-900/20 text-amber-300'
+                      : 'border-emerald-700/70 bg-emerald-900/20 text-emerald-300'
+                  }`}
+                >
+                  {rule.requires_physical_presence ? 'En caisse uniquement' : 'Auto-usage autorisé'}
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">

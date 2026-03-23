@@ -12,6 +12,7 @@ export function RewardCard({ reward, onUse }: RewardCardProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const isAvailable = reward.status === 'available'
   const rewardDeliveryType = reward.reward_rule.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store'
+  const isCashierOnly = reward.reward_rule.requires_physical_presence === true
   const isNew = reward.unlocked_at ? Date.now() - new Date(reward.unlocked_at).getTime() < 15000 : false
   const isCloseToUnlock = !isAvailable && reward.points_needed > 0 && reward.points_needed <= 25
 
@@ -63,6 +64,20 @@ export function RewardCard({ reward, onUse }: RewardCardProps) {
           </p>
           <p className="text-xs text-slate-500">{reward.fournisseur_nom}</p>
           <p className="text-xs text-slate-500">{reward.reward_rule.points_required} pts</p>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              {rewardDeliveryType === 'digital_code' ? 'Code digital' : 'En boutique'}
+            </span>
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                isCashierOnly
+                  ? 'border-amber-200 bg-amber-100 text-amber-700'
+                  : 'border-emerald-200 bg-emerald-100 text-emerald-700'
+              }`}
+            >
+              {isCashierOnly ? 'En caisse uniquement' : 'Auto-usage autorisé'}
+            </span>
+          </div>
           <p className="mt-1 text-xs text-slate-500">{reward.reward_rule.description}</p>
         </div>
 
