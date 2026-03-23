@@ -381,6 +381,66 @@ export async function getRewardCatalog(
   })
 }
 
+export type UsedRewardItem = {
+  id: string
+  fournisseur_id: string
+  fournisseur_nom: string
+  used_at: string
+  reward_rule: Pick<RewardRule, 'nom' | 'emoji' | 'points_required'>
+}
+
+export async function getUsedRewards(
+  client_id: string,
+  fournisseur_id?: string,
+): Promise<UsedRewardItem[]> {
+  let query = supabase
+    .from('client_rewards')
+    .select('id, fournisseur_id, used_at, reward_rules(nom, emoji, points_required)')
+    .eq('client_id', client_id)
+    .eq('status', 'used')
+    .order('used_at', { ascending: false })
+    .limit(50)
+
+  if (fournisseur_id) {
+    query = query.eq('fournisseur_id', fournisseur_id)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const rows = data ?? []
+  const providerIds = [...new Set(rows.map((r) => String(r.fournisseur_id)))]
+
+  const { data: providersData } = providerIds.length > 0
+    ? await supabase.from('fournisseurs').select('id, nom_commerce').in('id', providerIds)
+    : { data: [] }
+
+  const providerMap = new Map((providersData ?? []).map((p) => [p.id, p.nom_commerce as string]))
+
+  return rows
+    .map((row) => {
+      const ruleRaw = row.reward_rules as unknown
+      const rule = Array.isArray(ruleRaw) ? ruleRaw[0] ?? null : ruleRaw as { nom?: string; emoji?: string; points_required?: number } | null
+      if (!rule || !row.used_at) return null
+
+      return {
+        id: String(row.id),
+        fournisseur_id: String(row.fournisseur_id),
+        fournisseur_nom: providerMap.get(String(row.fournisseur_id)) ?? 'Marchand',
+        used_at: String(row.used_at),
+        reward_rule: {
+          nom: (rule.nom as string | undefined)?.trim() || 'Récompense',
+          emoji: (rule.emoji as string | undefined)?.trim() || '🎁',
+          points_required: Number(rule.points_required ?? 0),
+        },
+      } satisfies UsedRewardItem
+    })
+    .filter((r): r is UsedRewardItem => r !== null)
+}
+
 export async function getRewardRules(fournisseur_id: string): Promise<RewardRule[]> {
   return withCachedRead(`loyalty:reward-rules:${fournisseur_id}`, async () => {
     const { data, error } = await supabase

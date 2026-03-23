@@ -9,6 +9,7 @@ import { DataExportButton } from '../../../shared/components/DataExportButton'
 import { useProviderStats } from '../hooks/useProviderStats'
 import { ClientList } from './ClientList'
 import { ConsumedServicesCard } from './ConsumedServicesCard'
+import { ConsumedRewardsCard } from './ConsumedRewardsCard'
 import { RecentTransactions } from './RecentTransactions'
 import { RewardRuleManager } from './RewardRuleManager'
 import { ServiceManager } from './ServiceManager'
@@ -185,6 +186,7 @@ export function ProviderDashboard() {
           <StatsGrid stats={stats} loading={loading} />
           <ProviderAnalytics />
           <ConsumedServicesCard fournisseur_id={fournisseurId} />
+          <ConsumedRewardsCard fournisseur_id={fournisseurId} />
           <RecentTransactions fournisseur_id={fournisseurId} />
           <p className="text-right text-xs text-zinc-500">
             Dernière mise à jour: {lastUpdated ? new Date(lastUpdated).toLocaleTimeString() : '-'}
