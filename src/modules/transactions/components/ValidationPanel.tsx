@@ -79,9 +79,9 @@ export function ValidationPanel({
     let cancelled = false
 
     const loadAvailableRewardsCount = async () => {
-      const { count, error: availableRewardsError } = await supabase
+      const { data, error: availableRewardsError } = await supabase
         .from('client_rewards')
-        .select('id', { count: 'exact', head: true })
+        .select('id, reward_rules(nom, reward_delivery_type, requires_physical_presence)')
         .eq('client_id', pendingTransaction.client_id)
         .eq('fournisseur_id', pendingTransaction.fournisseur_id)
         .eq('status', 'available')
@@ -94,7 +94,22 @@ export function ValidationPanel({
       }
 
       if (!cancelled) {
-        setAvailableRewardsCount(Number(count ?? 0))
+        const eligibleCount = (data ?? []).filter((row) => {
+          const raw = row.reward_rules as unknown
+          const rule = Array.isArray(raw) ? raw[0] ?? null : raw
+          if (!rule || typeof rule !== 'object') {
+            return false
+          }
+
+          const typed = rule as {
+            reward_delivery_type?: 'in_store' | 'digital_code' | null
+            requires_physical_presence?: boolean | null
+          }
+
+          return typed.reward_delivery_type !== 'digital_code' && Boolean(typed.requires_physical_presence)
+        }).length
+
+        setAvailableRewardsCount(eligibleCount)
       }
     }
 

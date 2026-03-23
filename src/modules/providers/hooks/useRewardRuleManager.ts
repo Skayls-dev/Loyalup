@@ -86,6 +86,7 @@ export function useRewardRuleManager(): UseRewardRuleManagerResult {
       expiry_date: data.expiry_date ?? null,
       actif: true,
       reward_delivery_type: data.reward_delivery_type ?? 'in_store',
+      requires_physical_presence: data.requires_physical_presence ?? true,
       created_at: new Date().toISOString(),
     }
 

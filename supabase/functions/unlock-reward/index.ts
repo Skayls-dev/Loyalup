@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const clientId = userData.user.id
+    const callerUserId = userData.user.id
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
     const { data: rewardData, error: rewardError } = await adminClient
@@ -87,12 +87,38 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (rewardData.client_id !== clientId) {
+    const { data: providerData, error: providerError } = await adminClient
+      .from('fournisseurs')
+      .select('id')
+      .eq('user_id', callerUserId)
+      .eq('id', rewardData.fournisseur_id)
+      .maybeSingle()
+
+    if (providerError) {
+      return new Response(JSON.stringify({ error: providerError.message }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const isClientCaller = rewardData.client_id === callerUserId
+    const isProviderCaller = Boolean(providerData?.id)
+
+    if (!isClientCaller && !isProviderCaller) {
       return new Response(JSON.stringify({ error: 'Forbidden' }), {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    if (isProviderCaller && !pendingTransactionId) {
+      return new Response(JSON.stringify({ error: 'PENDING_TRANSACTION_REQUIRED' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const targetClientId = rewardData.client_id
 
     if (rewardData.status !== 'available') {
       return new Response(JSON.stringify({ error: 'Reward is not available' }), {
@@ -121,6 +147,13 @@ Deno.serve(async (req) => {
       })
     }
 
+    if (isProviderCaller && rewardRuleData.requires_physical_presence !== true) {
+      return new Response(JSON.stringify({ error: 'REWARD_NOT_CASHIER_ELIGIBLE' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
     if (rewardRuleData.requires_physical_presence === true) {
       if (!pendingTransactionId) {
         return new Response(JSON.stringify({ error: 'PHYSICAL_PRESENCE_REQUIRED' }), {
@@ -133,7 +166,7 @@ Deno.serve(async (req) => {
         .from('pending_transactions')
         .select('id')
         .eq('id', pendingTransactionId)
-        .eq('client_id', clientId)
+        .eq('client_id', targetClientId)
         .eq('fournisseur_id', rewardData.fournisseur_id)
         .eq('status', 'pending')
         .maybeSingle()
@@ -155,7 +188,7 @@ Deno.serve(async (req) => {
 
     const { data: rpcData, error: rpcError } = await adminClient.rpc('consume_client_reward', {
       p_client_reward_id: payload.client_reward_id,
-      p_client_id: clientId,
+      p_client_id: targetClientId,
     })
 
     if (rpcError) {

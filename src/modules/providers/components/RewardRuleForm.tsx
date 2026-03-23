@@ -7,6 +7,7 @@ type RewardRuleFormData = {
   description: string
   emoji: string
   points_required: number
+  requires_physical_presence: boolean
 }
 
 type RewardRuleFormProps = {
@@ -23,6 +24,9 @@ export function RewardRuleForm({ initialData, onSubmit, onCancel }: RewardRuleFo
   const [description, setDescription] = useState(initialData?.description ?? '')
   const [emoji, setEmoji] = useState(initialData?.emoji ?? '🎁')
   const [pointsRequired, setPointsRequired] = useState(String(initialData?.points_required ?? 50))
+  const [requiresPhysicalPresence, setRequiresPhysicalPresence] = useState(
+    initialData?.requires_physical_presence ?? true,
+  )
   const [saving, setSaving] = useState(false)
   const modalRef = useRef<HTMLDivElement | null>(null)
   const firstRef = useRef<HTMLInputElement | null>(null)
@@ -75,6 +79,7 @@ export function RewardRuleForm({ initialData, onSubmit, onCancel }: RewardRuleFo
         description: description.trim(),
         emoji: emoji.trim() || '🎁',
         points_required: Number(pointsRequired),
+        requires_physical_presence: requiresPhysicalPresence,
       })
       onCancel()
     } finally {
@@ -92,6 +97,21 @@ export function RewardRuleForm({ initialData, onSubmit, onCancel }: RewardRuleFo
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Description" className="min-h-20 w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
           <input value={emoji} onChange={(e) => setEmoji(e.target.value)} placeholder="Emoji" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
           <input type="number" value={pointsRequired} onChange={(e) => setPointsRequired(e.target.value)} placeholder="Points requis" className="w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm" />
+
+          <label className="flex items-start gap-2 rounded-lg border border-zinc-800 bg-zinc-950/60 px-3 py-2.5 text-sm text-zinc-300">
+            <input
+              type="checkbox"
+              checked={requiresPhysicalPresence}
+              onChange={(e) => setRequiresPhysicalPresence(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              <span className="block font-medium text-zinc-100">Consommation uniquement en caisse</span>
+              <span className="block text-xs text-zinc-500">
+                Nécessite une transaction QR active (présence physique du client).
+              </span>
+            </span>
+          </label>
 
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onCancel} className={secondaryButtonClass}>Annuler</button>

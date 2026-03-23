@@ -23,6 +23,8 @@ export function RewardRuleManager() {
         description: rule.description,
         emoji: rule.emoji,
         points_required: rule.points_required,
+        reward_delivery_type: rule.reward_delivery_type,
+        requires_physical_presence: rule.requires_physical_presence,
       })
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Impossible de dupliquer cette récompense.')
@@ -62,6 +64,9 @@ export function RewardRuleManager() {
             <div>
               <p className="text-sm text-zinc-100">{rule.emoji} {rule.nom}</p>
               <p className="text-xs text-zinc-500">{rule.points_required} pts</p>
+              <p className="text-[11px] text-zinc-500">
+                {rule.requires_physical_presence ? 'Utilisable uniquement en caisse' : 'Utilisable sans passage en caisse'}
+              </p>
             </div>
 
             <div className="flex items-center gap-2">

@@ -20,6 +20,7 @@ type AvailableRewardItem = {
     emoji: string
     points_required: number
     reward_delivery_type: 'in_store' | 'digital_code'
+    requires_physical_presence: boolean
   }
 }
 
@@ -46,7 +47,7 @@ export function RedemptionPanel({
       try {
         const availableRewardsResult = await supabase
           .from('client_rewards')
-          .select('id, reward_rule_id, unlocked_at, reward_rules(nom, emoji, points_required, reward_delivery_type)')
+          .select('id, reward_rule_id, unlocked_at, reward_rules(nom, emoji, points_required, reward_delivery_type, requires_physical_presence)')
           .eq('client_id', pendingTransaction.client_id)
           .eq('fournisseur_id', pendingTransaction.fournisseur_id)
           .eq('status', 'available')
@@ -72,6 +73,7 @@ export function RedemptionPanel({
                 emoji?: string | null
                 points_required?: number | null
                 reward_delivery_type?: 'in_store' | 'digital_code' | null
+                requires_physical_presence?: boolean | null
               }
 
               return {
@@ -83,16 +85,19 @@ export function RedemptionPanel({
                   emoji: typedRewardRule.emoji?.trim() || '🎁',
                   points_required: Number(typedRewardRule.points_required ?? 0),
                   reward_delivery_type: typedRewardRule.reward_delivery_type ?? 'in_store',
+                  requires_physical_presence: Boolean(typedRewardRule.requires_physical_presence),
                 },
               } satisfies AvailableRewardItem
             })
             .filter((row): row is AvailableRewardItem => row !== null)
 
-          // TODO V2: digital_code rewards (reward_delivery_type === 'digital_code') are not shown here.
-          // They are self-served by the client and do not require merchant action.
-          // Filter: only show rewards where reward_rule.reward_delivery_type === 'in_store' (or undefined).
+          // Caisse provider: only show rewards that explicitly require physical presence.
           setAvailableRewards(
-            mappedRewards.filter((reward) => reward.reward_rule.reward_delivery_type !== 'digital_code'),
+            mappedRewards.filter(
+              (reward) =>
+                reward.reward_rule.reward_delivery_type !== 'digital_code' &&
+                reward.reward_rule.requires_physical_presence,
+            ),
           )
         }
       } catch (caughtError) {
@@ -130,7 +135,18 @@ export function RedemptionPanel({
     })
 
     try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
+
+      if (!session?.access_token) {
+        throw new Error('Session expirée. Reconnectez-vous pour consommer une récompense.')
+      }
+
       const { error: unlockError } = await supabase.functions.invoke('unlock-reward', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           client_reward_id: reward.id,
           pending_transaction_id: pendingTransaction.id,
@@ -144,7 +160,15 @@ export function RedemptionPanel({
       setAvailableRewards((prev) => prev.filter((item) => item.id !== reward.id))
       setConsumeRewardSuccess('✅ Récompense consommée')
     } catch (caughtError) {
-      const message = caughtError instanceof Error ? caughtError.message : 'Récompense impossible à consommer'
+      const rawMessage = caughtError instanceof Error ? caughtError.message : 'Récompense impossible à consommer'
+      const message =
+        rawMessage.includes('Missing or invalid Authorization header') || rawMessage.includes('401')
+          ? 'Session invalide. Veuillez vous reconnecter.'
+          : rawMessage.includes('Forbidden')
+            ? 'Accès refusé pour cette récompense.'
+            : rawMessage.includes('INVALID_PENDING_TRANSACTION')
+              ? 'Transaction invalide ou expirée. Relancez un scan QR.'
+              : rawMessage
       setConsumeRewardError((prev) => ({
         ...prev,
         [reward.id]: message,
