@@ -10,11 +10,12 @@ import { supabase } from '../../../shared/lib/supabaseClient'
 export function QRDisplay() {
   const { user, profile } = useAuth()
   const isProviderSessionReady = Boolean(user?.id && profile?.role === 'fournisseur')
-  const { token, expiresAt, secondsLeft, isLoading, warning, regenerateNow } = useQRGenerate({
+  const { token, manualCode, expiresAt, secondsLeft, isLoading, warning, regenerateNow } = useQRGenerate({
     enabled: isProviderSessionReady,
   })
   const [fournisseurId, setFournisseurId] = useState<string | null>(null)
   const [providerName, setProviderName] = useState<string>('')
+  const [copyFeedback, setCopyFeedback] = useState<string | null>(null)
   const [networkBadges, setNetworkBadges] = useState<Array<{ id: string; emoji: string; name: string; multiplier: number }>>([])
   const { pendingTransaction, clientProfile, clientPoints, totalVisites, clearPending } = useQRRealtime(fournisseurId)
 
@@ -93,6 +94,22 @@ export function QRDisplay() {
     await regenerateNow().catch(() => null)
   }
 
+  const handleCopyToken = async () => {
+    const codeToCopy = manualCode ?? token
+    if (!codeToCopy) {
+      return
+    }
+
+    try {
+      await navigator.clipboard.writeText(codeToCopy)
+      setCopyFeedback('Code copié')
+    } catch {
+      setCopyFeedback('Copie impossible')
+    }
+
+    window.setTimeout(() => setCopyFeedback(null), 1800)
+  }
+
   return (
     <section className="w-full">
       {!pendingTransaction ? (
@@ -116,6 +133,27 @@ export function QRDisplay() {
               ) : (
                 <div className="h-[min(82vw,340px)] w-[min(82vw,340px)]" />
               )}
+            </div>
+
+            <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-900/70 p-3 text-left">
+              <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">Code manuel</p>
+              <div className="mt-2 flex items-center gap-2">
+                <code className="flex-1 truncate rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-lg font-semibold tracking-[0.08em] text-zinc-100">
+                  {manualCode ?? token ?? 'Code indisponible'}
+                </code>
+                <button
+                  type="button"
+                  onClick={handleCopyToken}
+                  disabled={!manualCode && !token}
+                  className="rounded-lg border border-zinc-600 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Copier
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-zinc-400">
+                Donnez ce code au client si la caméra ne lit pas le QR. {manualCode ? 'Le client peut saisir ces 6 chiffres.' : 'Le client peut aussi saisir le token complet.'}
+                {copyFeedback ? ` ${copyFeedback}.` : ''}
+              </p>
             </div>
 
             <div className="flex flex-col items-center gap-3">

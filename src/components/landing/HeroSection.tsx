@@ -1,17 +1,19 @@
 import { useNavigate } from 'react-router-dom'
-import { Badge, Button, FloatingCard, ProgressBar } from '../ui'
+import { QRCodeSVG } from 'qrcode.react'
+import { Badge, Button } from '../ui'
 
 interface NetworkPill {
   label: string
 }
 
 const networkPills: NetworkPill[] = [
-  { label: 'Africa Network' },
+  { label: 'Global Network' },
   { label: 'Brussels Local' },
   { label: 'Eco-Reseau' },
 ]
 
 const avatars = ['AK', 'BL', 'CM', 'DN']
+const demoQrValue = 'looyaal-demo-qr-provider-2'
 
 export function HeroSection() {
   const navigate = useNavigate()
@@ -65,44 +67,54 @@ export function HeroSection() {
         </div>
 
         <div className="relative">
-          <article className="relative rounded-xl border border-gray-200 bg-white p-6 shadow-card sm:p-7">
-            <p className="font-body text-xs uppercase tracking-[0.16em] text-gray-400">Dashboard fidelite</p>
+          <article className="mx-auto w-full max-w-[620px]">
+            <div className="relative rounded-[34px] border border-[#D8E1F5] bg-gradient-to-b from-white to-[#EEF3FF] p-3 shadow-[0_34px_54px_rgba(16,24,40,0.22)]">
+              <div className="pointer-events-none absolute inset-x-12 -bottom-5 h-10 rounded-full bg-primary/20 blur-2xl" aria-hidden="true" />
+              <div className="pointer-events-none absolute inset-x-16 bottom-0 h-16 rounded-full bg-white/70 blur-xl" aria-hidden="true" />
 
-            <div className="mt-5">
-              <p className="font-display text-5xl font-extrabold leading-none text-dark">8 450</p>
-              <p className="mt-2 font-body text-sm font-medium text-accent-green">+320 pts cette semaine</p>
-            </div>
+              <div className="relative rounded-2xl border border-[#253356] bg-[#050C1E]/95 p-3 text-white shadow-[0_20px_36px_rgba(2,6,23,0.6)] sm:p-4">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-body text-[10px] uppercase tracking-[0.2em] text-[#8D9DC8]">Affichage caisse</p>
+                    <p className="mt-1 font-body text-xs text-[#D7DFFD]">QR dynamique et campagne active.</p>
+                  </div>
+                  <p className="rounded-full border border-[#2A3A63] bg-[#0E1935] px-2 py-0.5 font-body text-[10px] uppercase tracking-[0.14em] text-[#A5B7E9]">
+                    Publicite
+                  </p>
+                </div>
 
-            <div className="mt-6">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="font-body text-xs uppercase tracking-[0.12em] text-gray-500">Progression vers Gold</p>
-                <p className="font-body text-xs font-medium text-gray-700">68%</p>
+                <div className="mt-3 grid grid-cols-[1.15fr_0.85fr] gap-3">
+                  <div className="rounded-xl bg-white p-2.5">
+                    <QRCodeSVG value={demoQrValue} size={112} includeMargin className="h-auto w-full" />
+                    <p className="mt-1.5 text-center font-body text-[10px] font-semibold tracking-[0.22em] text-[#0F172A]">284 701</p>
+                  </div>
+
+                  <div className="rounded-xl border border-[#2A5A4A] bg-gradient-to-br from-[#113326] to-[#0C221A] p-2.5">
+                    <p className="font-body text-[9px] uppercase tracking-[0.16em] text-[#9CE5CC]">Looyaal Premium</p>
+                    <p className="mt-1 font-body text-xs font-semibold text-[#E6FFF5]">+34% retours clients</p>
+                    <p className="mt-1 font-body text-[10px] text-[#BEEEDC]">Activez une offre flash pendant l&apos;attente du scan.</p>
+                    <button type="button" className="mt-2 rounded-md bg-[#24CB95] px-2 py-1 font-body text-[10px] font-semibold text-[#04281B]">
+                      Activer
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <p className="font-body text-[11px] text-[#AEBDE4]">En attente de scan...</p>
+                  <div className="hidden items-center gap-1 sm:flex">
+                    {networkPills.slice(0, 2).map((pill) => (
+                      <Badge key={pill.label} variant="info" className="border-primary/30 bg-primary-light/10 px-2 py-0.5 text-[9px] text-[#7CA7FF]">
+                        {pill.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
               </div>
-              <ProgressBar value={68} color="primary" />
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {networkPills.map((pill) => (
-                <Badge key={pill.label} variant="info" className="px-3 py-1.5 text-[11px] font-medium">
-                  {pill.label}
-                </Badge>
-              ))}
             </div>
           </article>
 
-          <FloatingCard
-            title="+150 pts"
-            subtitle="Epicerie Kongo Market"
-            className="absolute -bottom-6 left-4 w-[240px]"
-            style={{ animationDelay: '180ms' }}
-            icon={<span className="font-body text-sm font-semibold">+150</span>}
-          />
-
-          <div
-            className="absolute -right-2 -top-4 inline-flex animate-float-card items-center rounded-full border border-primary/20 bg-primary-light px-3 py-2 text-xs font-body font-medium text-primary shadow-floating"
-            style={{ animationDelay: '520ms' }}
-          >
-            Niveau Gold atteint !
+          <div className="absolute -right-2 -top-4 inline-flex animate-float-card items-center rounded-full border border-primary/20 bg-primary-light px-3 py-2 text-xs font-body font-medium text-primary shadow-floating">
+            Simulation tablette fournisseur
           </div>
         </div>
       </div>

@@ -167,7 +167,7 @@ function QRViewport({ onSuccess, onError, disabled = false }: QRViewportProps) {
           type="text"
           value={manualToken}
           onChange={(event) => setManualToken(event.target.value)}
-          placeholder="Entrer un token QR"
+          placeholder="Entrer le code manuel (6 chiffres)"
           className="h-10 flex-1 rounded-md border border-gray-300 px-3 font-body text-sm text-dark outline-none focus:border-primary"
         />
         <button

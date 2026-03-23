@@ -3,6 +3,7 @@ import { generateToken } from '../services/qrService'
 
 type UseQRGenerateResult = {
   token: string | null
+  manualCode: string | null
   expiresAt: string | null
   secondsLeft: number
   isLoading: boolean
@@ -29,6 +30,7 @@ function getSecondsLeft(expiresAt: string | null): number {
 export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerateResult {
   const enabled = options.enabled ?? true
   const [token, setToken] = useState<string | null>(null)
+  const [manualCode, setManualCode] = useState<string | null>(null)
   const [expiresAt, setExpiresAt] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [secondsLeft, setSecondsLeft] = useState(TOKEN_TOTAL_SECONDS)
@@ -59,6 +61,7 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
       const data = await generateToken()
       autoRetryRef.current = true
       setToken(data.token)
+      setManualCode(data.manual_code?.trim() ? data.manual_code.trim() : null)
       setExpiresAt(data.expires_at)
       setSecondsLeft(getSecondsLeft(data.expires_at))
       setWarning(null)
@@ -83,8 +86,9 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
         const cached = localStorage.getItem('qr:last-token')
         if (cached) {
           try {
-            const parsed = JSON.parse(cached) as { token: string; expires_at: string }
+            const parsed = JSON.parse(cached) as { token: string; manual_code?: string | null; expires_at: string }
             setToken(parsed.token)
+            setManualCode(parsed.manual_code?.trim() ? parsed.manual_code.trim() : null)
             setExpiresAt(parsed.expires_at)
             setSecondsLeft(getSecondsLeft(parsed.expires_at))
             setWarning('Mode hors ligne: dernier QR affiché')
@@ -104,6 +108,7 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
   useEffect(() => {
     if (!enabled) {
       setToken(null)
+      setManualCode(null)
       setExpiresAt(null)
       setSecondsLeft(0)
       setIsLoading(false)
@@ -140,6 +145,7 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
   return useMemo(
     () => ({
       token,
+      manualCode,
       expiresAt,
       secondsLeft,
       isLoading,
@@ -149,6 +155,6 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
         await regenerate()
       },
     }),
-    [token, expiresAt, secondsLeft, isLoading, warning, regenerate],
+    [token, manualCode, expiresAt, secondsLeft, isLoading, warning, regenerate],
   )
 }

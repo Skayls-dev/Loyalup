@@ -9,6 +9,14 @@ type ValidateBody = {
   token?: string
 }
 
+type QrTokenRow = {
+  id: string
+  token: string
+  fournisseur_id: string
+  status: 'active' | 'used' | 'expired'
+  expires_at: string
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -44,9 +52,9 @@ Deno.serve(async (req) => {
     const jwt = authHeader.replace('Bearer ', '').trim()
 
     const payload = (await req.json().catch(() => ({}))) as ValidateBody
-    const token = payload.token?.trim()
+    const tokenInput = payload.token?.trim()
 
-    if (!token) {
+    if (!tokenInput) {
       return new Response(JSON.stringify({ error: 'Missing token' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -67,18 +75,7 @@ Deno.serve(async (req) => {
 
     const clientId = userData.user.id
 
-    const { data: qrToken, error: tokenError } = await adminClient
-      .from('qr_tokens')
-      .select('id, token, fournisseur_id, status, expires_at')
-      .eq('token', token)
-      .maybeSingle()
-
-    if (tokenError) {
-      return new Response(JSON.stringify({ error: tokenError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
+    const qrToken = await findQrToken(adminClient, tokenInput)
 
     if (!qrToken) {
       return new Response(JSON.stringify({ error: 'Token not found' }), {
@@ -154,3 +151,62 @@ Deno.serve(async (req) => {
     })
   }
 })
+
+async function findQrToken(adminClient: ReturnType<typeof createClient>, tokenInput: string): Promise<QrTokenRow | null> {
+  const normalized = tokenInput.trim()
+  const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)
+
+  if (uuidLike) {
+    const { data, error } = await adminClient
+      .from('qr_tokens')
+      .select('id, token, fournisseur_id, status, expires_at')
+      .eq('token', normalized)
+      .maybeSingle<QrTokenRow>()
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    return data ?? null
+  }
+
+  const digitsOnly = normalized.replace(/\D/g, '')
+  if (!/^\d{6}$/.test(digitsOnly)) {
+    return null
+  }
+
+  const supportsManualCode = await hasManualCodeColumn(adminClient)
+  if (!supportsManualCode) {
+    return null
+  }
+
+  const { data, error } = await adminClient
+    .from('qr_tokens')
+    .select('id, token, fournisseur_id, status, expires_at')
+    .eq('manual_code', digitsOnly)
+    .eq('status', 'active')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle<QrTokenRow>()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data ?? null
+}
+
+async function hasManualCodeColumn(adminClient: ReturnType<typeof createClient>): Promise<boolean> {
+  const probe = await adminClient.from('qr_tokens').select('manual_code').limit(1)
+
+  if (!probe.error) {
+    return true
+  }
+
+  const message = String(probe.error.message ?? '').toLowerCase()
+  if (message.includes('manual_code')) {
+    return false
+  }
+
+  throw new Error(probe.error.message)
+}

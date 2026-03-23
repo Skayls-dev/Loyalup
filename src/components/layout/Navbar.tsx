@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom'
 
 interface NavbarLink {
   label: string
-  to: string
+  href: string
 }
 
 const navLinks: NavbarLink[] = [
-  { label: 'Reseaux', to: '/' },
-  { label: 'Marchands', to: '/' },
-  { label: 'Solutions', to: '/' },
-  { label: 'Tarifs', to: '/' },
+  { label: 'Reseaux', href: '#reseaux' },
+  { label: 'Marchands', href: '#marchands' },
+  { label: 'Solutions', href: '#solutions' },
+  { label: 'Tarifs', href: '#tarifs' },
 ]
 
 export function Navbar() {
@@ -33,13 +33,13 @@ export function Navbar() {
 
         <nav className="hidden items-center gap-8 md:flex">
           {navLinks.map((item) => (
-            <Link
+            <a
               key={item.label}
-              to={item.to}
+              href={item.href}
               className="font-body text-sm font-medium text-gray-600 transition hover:text-dark"
             >
               {item.label}
-            </Link>
+            </a>
           ))}
         </nav>
 
@@ -83,14 +83,14 @@ export function Navbar() {
       >
         <nav className="space-y-1 px-4 py-4 sm:px-6">
           {navLinks.map((item) => (
-            <Link
+            <a
               key={`mobile-${item.label}`}
-              to={item.to}
+              href={item.href}
               onClick={closeMobile}
               className="block rounded-md px-3 py-2 font-body text-sm font-medium text-gray-700 transition hover:bg-gray-100 hover:text-dark"
             >
               {item.label}
-            </Link>
+            </a>
           ))}
           <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
             <Link

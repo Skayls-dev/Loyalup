@@ -30,7 +30,7 @@ function RevealSection({ children, className = '' }: RevealSectionProps) {
 function LogosBand() {
   const pills = [
     { label: 'Brussels Local', color: 'bg-primary' },
-    { label: 'Africa Network', color: 'bg-accent-green' },
+    { label: 'Global Network', color: 'bg-accent-green' },
     { label: 'Retail Union', color: 'bg-accent-orange' },
     { label: 'Eco-Réseau', color: 'bg-accent-yellow' },
   ]
@@ -141,21 +141,29 @@ export default function LandingPage() {
         <LogosBand />
       </RevealSection>
 
-      <RevealSection>
-        <FeaturesSection />
-      </RevealSection>
+      <section id="solutions">
+        <RevealSection>
+          <FeaturesSection />
+        </RevealSection>
+      </section>
 
-      <RevealSection>
-        <AfricaNetworkSection />
-      </RevealSection>
+      <section id="reseaux">
+        <RevealSection>
+          <AfricaNetworkSection />
+        </RevealSection>
+      </section>
 
-      <RevealSection>
-        <StatsSection />
-      </RevealSection>
+      <section id="marchands">
+        <RevealSection>
+          <StatsSection />
+        </RevealSection>
+      </section>
 
-      <RevealSection>
-        <CTASection />
-      </RevealSection>
+      <section id="tarifs">
+        <RevealSection>
+          <CTASection />
+        </RevealSection>
+      </section>
 
       <Footer />
     </div>

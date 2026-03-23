@@ -93,14 +93,27 @@ Deno.serve(async (req) => {
 		}
 
 		const token = crypto.randomUUID()
+		const supportsManualCode = await hasManualCodeColumn(adminClient)
+		const manualCode = supportsManualCode ? await generateManualCode(adminClient) : null
 		const expiresAt = new Date(Date.now() + 3 * 60 * 1000).toISOString()
-
-		const { error: insertError } = await adminClient.from('qr_tokens').insert({
+		const insertPayload: {
+			fournisseur_id: string
+			token: string
+			status: 'active'
+			expires_at: string
+			manual_code?: string
+		} = {
 			fournisseur_id: fournisseurId,
 			token,
 			status: 'active',
 			expires_at: expiresAt,
-		})
+		}
+
+		if (manualCode) {
+			insertPayload.manual_code = manualCode
+		}
+
+		const { error: insertError } = await adminClient.from('qr_tokens').insert(insertPayload)
 
 		if (insertError) {
 			return new Response(JSON.stringify({ error: insertError.message }), {
@@ -109,7 +122,7 @@ Deno.serve(async (req) => {
 			})
 		}
 
-		return new Response(JSON.stringify({ token, expires_at: expiresAt }), {
+		return new Response(JSON.stringify({ token, manual_code: manualCode, expires_at: expiresAt }), {
 			status: 200,
 			headers: { ...corsHeaders, 'Content-Type': 'application/json' },
 		})
@@ -122,3 +135,41 @@ Deno.serve(async (req) => {
 		})
 	}
 })
+
+async function hasManualCodeColumn(adminClient: ReturnType<typeof createClient>): Promise<boolean> {
+	const probe = await adminClient.from('qr_tokens').select('manual_code').limit(1)
+
+	if (!probe.error) {
+		return true
+	}
+
+	const message = String(probe.error.message ?? '').toLowerCase()
+	if (message.includes('manual_code')) {
+		return false
+	}
+
+	throw new Error(probe.error.message)
+}
+
+async function generateManualCode(adminClient: ReturnType<typeof createClient>): Promise<string> {
+	for (let i = 0; i < 20; i += 1) {
+		const code = String(Math.floor(Math.random() * 1_000_000)).padStart(6, '0')
+		const { data, error } = await adminClient
+			.from('qr_tokens')
+			.select('id')
+			.eq('manual_code', code)
+			.eq('status', 'active')
+			.limit(1)
+			.maybeSingle()
+
+		if (error) {
+			throw new Error(error.message)
+		}
+
+		if (!data) {
+			return code
+		}
+	}
+
+	throw new Error('Unable to generate manual QR code')
+}
