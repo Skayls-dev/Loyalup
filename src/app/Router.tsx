@@ -6,6 +6,7 @@ import { RegisterForm } from '../modules/auth/components/RegisterForm'
 import { useAuth } from '../modules/auth/hooks/useAuth'
 import { MerchantNetworks } from '../components/merchant/MerchantNetworks'
 import { MerchantConsumedServicesCard } from '../components/merchant/MerchantConsumedServicesCard'
+import { MerchantConsumedRewardsCard } from '../components/merchant/MerchantConsumedRewardsCard'
 import { MerchantOffers } from '../components/merchant/MerchantOffers'
 import { MerchantRedemptionRules } from '../components/merchant/MerchantRedemptionRules'
 import { MerchantRevenueChart } from '../components/merchant/MerchantRevenueChart'
@@ -722,9 +723,10 @@ function MerchantConsumptionWrapper() {
     <section className="space-y-6">
       <header className="rounded-lg border border-gray-200 bg-white p-5">
         <h1 className="font-display text-3xl font-extrabold text-dark">Produits ou services consommés</h1>
-        <p className="mt-2 font-body text-sm text-gray-600">Analysez les prestations les plus consommées, les clients associés et exportez vos données.</p>
+        <p className="mt-2 font-body text-sm text-gray-600">Analysez les consommations de services et de récompenses, puis exportez vos données.</p>
       </header>
       <MerchantConsumedServicesCard merchantId={merchantId} />
+      <MerchantConsumedRewardsCard merchantId={merchantId} />
     </section>
   )
 }

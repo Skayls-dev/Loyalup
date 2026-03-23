@@ -29,6 +29,17 @@ export type ProviderServiceTopClient = {
   total_points: number
 }
 
+export type ProviderConsumedReward = {
+  reward_id: string
+  client_id: string
+  client_nom: string
+  client_email: string
+  reward_nom: string
+  reward_emoji: string
+  points_deducted: number
+  used_at: string
+}
+
 export type ProviderConsumptionQueryOptions = {
   periodDays?: number | null
   limit?: number
@@ -504,6 +515,109 @@ export async function getProviderTopClientsByService(
           return b.total_amount - a.total_amount
         })
         .slice(0, Math.max(1, limit))
+    },
+  )
+}
+
+export async function getProviderConsumedRewards(
+  fournisseur_id: string,
+  options: ProviderConsumptionQueryOptions = {},
+): Promise<ProviderConsumedReward[]> {
+  const periodDays = options.periodDays ?? 30
+  const limit = options.limit ?? 20
+
+  return withCachedRead(
+    `provider:consumed-rewards:${fournisseur_id}:${periodDays ?? 'all'}:${limit}`,
+    async () => {
+      const windowStart =
+        typeof periodDays === 'number'
+          ? new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString()
+          : null
+
+      let query = supabase
+        .from('client_rewards')
+        .select('id, client_id, used_at, reward_rules(nom, emoji, points_required)')
+        .eq('fournisseur_id', fournisseur_id)
+        .eq('status', 'used')
+        .order('used_at', { ascending: false })
+        .limit(Math.max(1, limit))
+
+      if (windowStart) {
+        query = query.gte('used_at', windowStart)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      const rows = (data ?? []) as Array<{
+        id: string
+        client_id: string
+        used_at: string | null
+        reward_rules:
+          | {
+              nom?: string | null
+              emoji?: string | null
+              points_required?: number | null
+            }
+          | Array<{
+              nom?: string | null
+              emoji?: string | null
+              points_required?: number | null
+            }>
+          | null
+      }>
+
+      if (rows.length === 0) {
+        return []
+      }
+
+      const clientIds = [...new Set(rows.map((row) => row.client_id))]
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, nom, email')
+        .in('id', clientIds)
+
+      const profileMap = new Map((profilesData ?? []).map((profile) => [profile.id as string, profile]))
+
+      return rows
+        .map((row) => {
+          if (!row.used_at) {
+            return null
+          }
+
+          const rawRule = row.reward_rules as unknown
+          const rewardRule = Array.isArray(rawRule) ? rawRule[0] ?? null : rawRule
+          if (!rewardRule || typeof rewardRule !== 'object') {
+            return null
+          }
+
+          const typedRule = rewardRule as {
+            nom?: string | null
+            emoji?: string | null
+            points_required?: number | null
+          }
+
+          const profile = profileMap.get(row.client_id)
+
+          return {
+            reward_id: String(row.id),
+            client_id: String(row.client_id),
+            client_nom: resolveClientDisplayName(
+              profile?.nom as string | undefined,
+              profile?.email as string | undefined,
+              row.client_id,
+            ),
+            client_email: (profile?.email as string | undefined) ?? '',
+            reward_nom: typedRule.nom?.trim() || 'Récompense',
+            reward_emoji: typedRule.emoji?.trim() || '🎁',
+            points_deducted: Number(typedRule.points_required ?? 0),
+            used_at: String(row.used_at),
+          } satisfies ProviderConsumedReward
+        })
+        .filter((row): row is ProviderConsumedReward => row !== null)
     },
   )
 }

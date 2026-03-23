@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { MerchantNetworks } from '../../components/merchant/MerchantNetworks'
 import { MerchantOffers } from '../../components/merchant/MerchantOffers'
 import { MerchantConsumedServicesCard } from '../../components/merchant/MerchantConsumedServicesCard'
+import { MerchantConsumedRewardsCard } from '../../components/merchant/MerchantConsumedRewardsCard'
 import { MerchantQrShowcase } from '../../components/merchant/MerchantQrShowcase'
 import { MerchantRevenueChart } from '../../components/merchant/MerchantRevenueChart'
 import { MerchantTransactions } from '../../components/merchant/MerchantTransactions'
@@ -112,6 +113,8 @@ export function MerchantHome({
       <MerchantQrShowcase />
 
       <MerchantConsumedServicesCard merchantId={merchantId} />
+
+      <MerchantConsumedRewardsCard merchantId={merchantId} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <MerchantRevenueChart merchantId={merchantId} className="xl:col-span-2" />
