@@ -74,12 +74,6 @@ export function ValidationPanel({
     }
   }, [selectedService, services, showAllServices])
 
-  // Auto-switch to amount mode when catalog is empty
-  useEffect(() => {
-    if (!servicesLoading && services.length === 0 && validationMode === 'service') {
-      setValidationMode('amount')
-    }
-  }, [services, servicesLoading, validationMode])
 
   useEffect(() => {
     let cancelled = false
