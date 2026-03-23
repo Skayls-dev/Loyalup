@@ -83,7 +83,7 @@ export function HeroSection() {
                   </p>
                 </div>
 
-                <div className="mt-3 grid grid-cols-[1.15fr_0.85fr] gap-3">
+                <div className="mt-3 grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-white p-2.5">
                     <QRCodeSVG value={demoQrValue} size={112} includeMargin className="h-auto w-full" />
                     <p className="mt-1.5 text-center font-body text-[10px] font-semibold tracking-[0.22em] text-[#0F172A]">284 701</p>

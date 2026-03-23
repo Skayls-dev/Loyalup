@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { AfricaNetworkSection } from '../components/landing/AfricaNetworkSection'
 import { FeaturesSection } from '../components/landing/FeaturesSection'
 import { HeroSection } from '../components/landing/HeroSection'
+import { PricingSection } from '../components/landing/PricingSection'
 import { Navbar } from '../components/layout/Navbar'
 import { Button, Badge } from '../components/ui'
 import { useScrollReveal } from '../hooks/useScrollReveal'
@@ -161,9 +162,13 @@ export default function LandingPage() {
 
       <section id="tarifs">
         <RevealSection>
-          <CTASection />
+          <PricingSection />
         </RevealSection>
       </section>
+
+      <RevealSection>
+        <CTASection />
+      </RevealSection>
 
       <Footer />
     </div>
