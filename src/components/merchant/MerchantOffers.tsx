@@ -160,7 +160,7 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
 
         return {
           id: row.network_id,
-          name: (typeof name === 'string' ? name.trim() : '') || 'Reseau LoyalUp',
+          name: (typeof name === 'string' ? name.trim() : '') || 'Reseau Looyaal',
         }
       })
 

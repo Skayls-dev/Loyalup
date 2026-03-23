@@ -34,7 +34,7 @@ export function HeroSection() {
           </h1>
 
           <p className="mt-4 max-w-xl font-body text-base leading-relaxed text-gray-600 sm:text-lg">
-            LoyalUp connecte vos marchands, vos clients et vos coalitions dans une experience de points fluide, visible et rentable.
+            Looyaal connecte vos marchands, vos clients et vos coalitions dans une experience de points fluide, visible et rentable.
           </p>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">

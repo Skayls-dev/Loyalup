@@ -137,7 +137,7 @@ export function MerchantLayout({ children, activePage }: MerchantLayoutProps) {
   const navigate = useNavigate()
   const { profile, user, logout, loading } = useAuth()
   const currentActive = activePage?.trim() || detectActivePage(pathname)
-  const merchantName = profile?.nom_commerce?.trim() || profile?.nom?.trim() || user?.email?.split('@')[0] || 'Commerce LoyalUp'
+  const merchantName = profile?.nom_commerce?.trim() || profile?.nom?.trim() || user?.email?.split('@')[0] || 'Commerce Looyaal'
   const merchantInitials = merchantName
     .split(/\s+/)
     .filter(Boolean)
@@ -150,7 +150,7 @@ export function MerchantLayout({ children, activePage }: MerchantLayoutProps) {
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-20 flex-col border-r border-gray-200 bg-white lg:flex lg:w-[220px]">
         <div className="flex h-16 items-center justify-center border-b border-gray-200 px-3 lg:justify-start lg:px-5">
           <Link to="/merchant" className="inline-flex items-center gap-2">
-            <span className="hidden font-display text-2xl font-extrabold text-dark lg:inline">LoyalUp</span>
+            <span className="hidden font-display text-2xl font-extrabold text-dark lg:inline">Looyaal</span>
             <span className="relative inline-flex h-3 w-3" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF6B35]/60" />
               <span className="relative inline-flex h-3 w-3 rounded-full bg-[#FF6B35]" />

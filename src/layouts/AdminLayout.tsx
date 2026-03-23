@@ -125,7 +125,7 @@ export function AdminLayout({ children, activePage, networksCount = 0 }: AdminLa
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#E24B4A]/55" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-[#E24B4A]" />
               </span>
-              <span className="font-display text-2xl font-extrabold text-dark">LoyalUp</span>
+              <span className="font-display text-2xl font-extrabold text-dark">Looyaal</span>
               <span className="rounded-full bg-[#FCEBEB] px-2 py-0.5 text-[11px] font-semibold text-[#A32D2D]">Admin</span>
             </Link>
           </div>

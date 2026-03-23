@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       })
     }
 
-    const baseUrl = Deno.env.get('PUBLIC_URL') ?? 'https://loyalup.app'
+    const baseUrl = Deno.env.get('PUBLIC_URL') ?? 'https://looyaal.com'
     const share_url = `${baseUrl}/join/${referral_code}`
 
     return new Response(

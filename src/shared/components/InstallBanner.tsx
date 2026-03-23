@@ -45,7 +45,7 @@ export function InstallBanner() {
 
   return (
     <section className="fixed inset-x-0 bottom-4 z-50 mx-auto w-[calc(100%-1rem)] max-w-md rounded-2xl border border-zinc-700 bg-zinc-900 p-4 text-zinc-100 shadow-2xl shadow-black/40">
-      <p className="text-sm font-semibold">Installer LoyalUp sur votre écran d'accueil</p>
+      <p className="text-sm font-semibold">Installer Looyaal sur votre écran d'accueil</p>
       <div className="mt-3 flex items-center gap-2">
         <button
           type="button"

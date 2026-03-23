@@ -37,7 +37,7 @@ export function NetworkCard({ network, isMember, clientEligible, onOpen }: Netwo
         <p className="text-lg font-semibold text-slate-900">
           {network.emoji} {networkName}
         </p>
-        <p className="line-clamp-1 text-xs text-slate-500">{tagline || 'Réseau thématique LoyalUp'}</p>
+        <p className="line-clamp-1 text-xs text-slate-500">{tagline || 'Réseau thématique Looyaal'}</p>
 
         <div className="text-xs text-slate-600">
           {network.member_count} commerces · {network.client_count} membres

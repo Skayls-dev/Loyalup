@@ -537,7 +537,7 @@ function getReferralBaseUrl(): string {
     return window.location.origin
   }
 
-  return import.meta.env.VITE_APP_URL || 'https://loyalup.app'
+  return import.meta.env.VITE_APP_URL || 'https://looyaal.com'
 }
 
 export async function getReferralStats(): Promise<ReferralStats | null> {

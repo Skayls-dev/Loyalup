@@ -23,11 +23,11 @@ export const CONSENT_TYPES: Record<ConsentType, ConsentPolicyItem> = {
       nl: 'Essentiële werking',
     },
     description: {
-      fr: 'Nécessaire au fonctionnement de LoyalUp (authentification, sécurité, synchronisation).',
-      en: 'Required for LoyalUp core operation (authentication, security, synchronization).',
-      ar: 'ضروري لعمل LoyalUp الأساسي (المصادقة، الأمان، المزامنة).',
-      es: 'Necesario para el funcionamiento básico de LoyalUp (autenticación, seguridad, sincronización).',
-      nl: 'Nodig voor de kernwerking van LoyalUp (authenticatie, beveiliging, synchronisatie).',
+      fr: 'Nécessaire au fonctionnement de Looyaal (authentification, sécurité, synchronisation).',
+      en: 'Required for Looyaal core operation (authentication, security, synchronization).',
+      ar: 'ضروري لعمل Looyaal الأساسي (المصادقة، الأمان، المزامنة).',
+      es: 'Necesario para el funcionamiento básico de Looyaal (autenticación, seguridad, sincronización).',
+      nl: 'Nodig voor de kernwerking van Looyaal (authenticatie, beveiliging, synchronisatie).',
     },
   },
   analytics: {

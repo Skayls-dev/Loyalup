@@ -140,7 +140,7 @@ export function DashboardLayout({ children, activePage }: DashboardLayoutProps) 
   const { profile, user, logout, loading } = useAuth()
   const routeActive = detectActiveFromPath(pathname)
   const currentActivePage = activePage?.trim() ? activePage : routeActive
-  const displayName = [profile?.prenom?.trim(), profile?.nom?.trim()].filter(Boolean).join(' ').trim() || profile?.nom?.trim() || user?.email?.split('@')[0] || 'Membre LoyalUp'
+  const displayName = [profile?.prenom?.trim(), profile?.nom?.trim()].filter(Boolean).join(' ').trim() || profile?.nom?.trim() || user?.email?.split('@')[0] || 'Membre Looyaal'
   const membership = profile?.role === 'client' ? 'Compte client' : 'Compte actif'
 
   return (
@@ -148,7 +148,7 @@ export function DashboardLayout({ children, activePage }: DashboardLayoutProps) 
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-20 flex-col border-r border-gray-200 bg-white lg:flex lg:w-[220px]">
         <div className="flex h-16 items-center justify-center border-b border-gray-200 px-3 lg:justify-start lg:px-5">
           <Link to="/dashboard" className="inline-flex items-center gap-2">
-            <span className="hidden font-display text-2xl font-extrabold text-dark lg:inline">LoyalUp</span>
+            <span className="hidden font-display text-2xl font-extrabold text-dark lg:inline">Looyaal</span>
             <span className="relative inline-flex h-3 w-3" aria-hidden="true">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/55" />
               <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />

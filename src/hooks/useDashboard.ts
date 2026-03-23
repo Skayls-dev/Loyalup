@@ -222,7 +222,7 @@ async function fetchRecentTransactions(userId: string): Promise<DashboardRecentT
     merchantName: row.fournisseur_id ? providerMap.get(row.fournisseur_id) ?? 'Marchand' : 'Marchand',
     merchantEmoji: '🏪',
     networkId: null,
-    networkName: 'Réseau LoyalUp',
+    networkName: 'Réseau Looyaal',
     networkColor: fallbackColors[index % fallbackColors.length],
     points: Number(row.points_credited ?? 0),
     createdAt: row.created_at,

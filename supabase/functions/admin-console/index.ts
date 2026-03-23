@@ -35,7 +35,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-const LOYALUP_PROD_BASE_URL = 'https://loyalup-pink.vercel.app'
+const LOYALUP_PROD_BASE_URL = 'https://looyaal.com'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -1773,7 +1773,7 @@ function generateTemporaryPassword(length: number) {
 }
 
 function resolveSafeAppBaseUrl() {
-  // Use production LoyalUp URL for user activation/recovery links.
+  // Use production Looyaal URL for user activation/recovery links.
   const configured = String(LOYALUP_PROD_BASE_URL).replace(/\/$/, '')
   const lower = configured.toLowerCase()
 

@@ -24,11 +24,11 @@ describe('authStore', () => {
 
   it('login action: success → sets user, profile, role', async () => {
     const state = useAuthStore.getState()
-    await state.signIn('client@loyalup.app', 'secret')
+    await state.signIn('client@looyaal.com', 'secret')
 
     const next = useAuthStore.getState()
-    expect(next.user?.email).toBe('client@loyalup.app')
-    expect(next.profile?.email).toBe('client@loyalup.app')
+    expect(next.user?.email).toBe('client@looyaal.com')
+    expect(next.profile?.email).toBe('client@looyaal.com')
     expect(next.role).toBe('client')
   })
 
@@ -43,7 +43,7 @@ describe('authStore', () => {
   })
 
   it('logout action: clears all state', async () => {
-    await useAuthStore.getState().signIn('client@loyalup.app', 'secret')
+    await useAuthStore.getState().signIn('client@looyaal.com', 'secret')
     await useAuthStore.getState().signOut()
 
     const next = useAuthStore.getState()
@@ -75,14 +75,14 @@ describe('authStore', () => {
   })
 
   it("isClient computed: true when role is 'client'", async () => {
-    await useAuthStore.getState().signIn('client@loyalup.app', 'secret')
+    await useAuthStore.getState().signIn('client@looyaal.com', 'secret')
     expect(useAuthStore.getState().role === 'client').toBe(true)
   })
 
   it("isProvider computed: true when role is 'fournisseur'", async () => {
     setAuthUser({
       id: 'provider-user',
-      email: 'provider@loyalup.app',
+      email: 'provider@looyaal.com',
       user_metadata: { role: 'fournisseur' },
       app_metadata: { role: 'fournisseur' },
       created_at: new Date().toISOString(),

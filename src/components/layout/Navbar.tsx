@@ -24,7 +24,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 h-16 border-b border-gray-200 bg-white/90 backdrop-blur-md">
       <div className="mx-auto flex h-full w-full max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="inline-flex items-center gap-2" onClick={closeMobile}>
-          <span className="font-display text-2xl font-extrabold text-dark">LoyalUp</span>
+          <span className="font-display text-2xl font-extrabold text-dark">Looyaal</span>
           <span className="relative inline-flex h-3 w-3" aria-hidden="true">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/55" />
             <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />

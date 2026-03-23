@@ -1,4 +1,4 @@
-# LoyalUp SDK Quickstart
+# Looyaal SDK Quickstart
 
 ## Install
 

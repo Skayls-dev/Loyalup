@@ -35,7 +35,7 @@ export default function ClientSettingsPage() {
       return fullName
     }
 
-    return profile?.nom?.trim() || user?.email?.split('@')[0] || 'Membre LoyalUp'
+    return profile?.nom?.trim() || user?.email?.split('@')[0] || 'Membre Looyaal'
   }, [profile?.nom, profile?.prenom, user?.email])
 
   const handlePasswordSubmit = async () => {

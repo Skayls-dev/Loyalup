@@ -481,7 +481,7 @@ async function createShadowLinkedUser(
   })
 
   if (created.error || !created.data.user?.id) {
-    throw new Error(created.error?.message ?? 'Unable to create linked LoyalUp user')
+    throw new Error(created.error?.message ?? 'Unable to create linked Looyaal user')
   }
 
   const loyalupUserId = created.data.user.id

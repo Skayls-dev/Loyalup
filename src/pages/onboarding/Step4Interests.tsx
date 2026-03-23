@@ -108,7 +108,7 @@ export default function Step4Interests() {
 
       <div className="mt-4 rounded-xl border border-violet-200 bg-[#F1EEFF] px-3 py-2">
         <p className="font-body text-sm text-violet-700">
-          LoyalUp va adapter vos défis et récompenses à ces catégories.
+          Looyaal va adapter vos défis et récompenses à ces catégories.
         </p>
       </div>
 

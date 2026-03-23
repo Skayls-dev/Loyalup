@@ -1,7 +1,7 @@
 # Partner Identity Lot 3 Integration
 
 ## Goal
-Implement the partner-side UX flow "I already have a LoyalUp account" using the LoyalUp identity resolver APIs.
+Implement the partner-side UX flow "I already have a Looyaal account" using the Looyaal identity resolver APIs.
 
 ## Endpoints
 - `POST /functions/v1/partner-identity-resolve`
@@ -84,7 +84,7 @@ Before credit/debit operations:
 
 ## Minimal QA Scenarios
 1. New external user, `create_user_if_missing=false` -> pending verification.
-2. Existing LoyalUp email, no conflict -> adopt existing.
-3. Existing LoyalUp user linked to another external id -> conflict.
+2. Existing Looyaal email, no conflict -> adopt existing.
+3. Existing Looyaal user linked to another external id -> conflict.
 4. Resolved identity -> transfer accepted.
 5. Unresolved identity -> transfer blocked with `identity_unresolved`.

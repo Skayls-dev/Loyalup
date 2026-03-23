@@ -1,6 +1,6 @@
-# LoyalUp SDK
+# Looyaal SDK
 
-Lightweight TypeScript SDK for LoyalUp Public API v1.
+Lightweight TypeScript SDK for Looyaal Public API v1.
 
 ## Install
 

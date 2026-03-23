@@ -1,4 +1,4 @@
-# LoyalUp Deployment Runbook
+# Looyaal Deployment Runbook
 
 → Project URL      : https://your-project-ref.supabase.co
 → anon public key  : your-anon-public-key

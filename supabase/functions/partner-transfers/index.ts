@@ -358,7 +358,7 @@ async function getPartnerProviderLinks(
     .filter(Boolean)
 
   if (fournisseurIds.length === 0) {
-    return { ok: false, error: 'Partner provider account is not configured in LoyalUp' }
+    return { ok: false, error: 'Partner provider account is not configured in Looyaal' }
   }
 
   return { ok: true, fournisseurIds }

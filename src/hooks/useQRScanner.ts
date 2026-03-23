@@ -246,7 +246,7 @@ export function useQRScanner(): UseQRScannerResult {
           bonusPoints,
           multiplier: toNumber(row.multiplier, 1),
           merchantName: String(row.merchantName ?? row.merchant_name ?? 'Marchand'),
-          networkName: String(row.networkName ?? row.network_name ?? 'Réseau LoyalUp'),
+          networkName: String(row.networkName ?? row.network_name ?? 'Réseau Looyaal'),
           amount: row.amount !== undefined || row.montant !== undefined ? toNumber(row.amount ?? row.montant, 0) : undefined,
           userTotalPoints: toNumber(row.userTotalPoints ?? row.user_total_points, 0),
           nextTierThreshold: toNumber(row.nextTierThreshold ?? row.next_tier_threshold, 1000),

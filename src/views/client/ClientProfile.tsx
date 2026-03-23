@@ -140,7 +140,7 @@ export function ClientProfile() {
             ) : (
               <>
                 <p className="mb-3 text-sm text-slate-600">
-                  Définissez un mot de passe LoyalUp pour pouvoir vous connecter directement sans repasser par le partenaire.
+                  Définissez un mot de passe Looyaal pour pouvoir vous connecter directement sans repasser par le partenaire.
                 </p>
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

@@ -67,7 +67,7 @@ export function ClientLayout() {
             <div className="h-8 w-8 rounded-lg bg-indigo-600 text-center text-sm font-bold leading-8 text-white shadow-sm shadow-slate-900/5">
               L
             </div>
-            <span className="text-sm font-semibold tracking-wide text-slate-900">LoyalUp</span>
+            <span className="text-sm font-semibold tracking-wide text-slate-900">Looyaal</span>
           </div>
 
           <div className="flex items-center gap-2">

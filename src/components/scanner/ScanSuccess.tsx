@@ -51,7 +51,7 @@ export function ScanSuccess({ result, onReset }: ScanSuccessProps) {
   }, [])
 
   const multiplier = toNumber(result.multiplier, 1)
-  const networkName = result.networkName || result.network_name || 'Réseau LoyalUp'
+  const networkName = result.networkName || result.network_name || 'Réseau Looyaal'
   const merchantName = result.merchantName || result.merchant_name || 'Marchand partenaire'
   const merchantEmoji = result.merchantEmoji || result.merchant_emoji || '🏪'
 

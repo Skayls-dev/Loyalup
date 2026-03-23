@@ -38,7 +38,7 @@ const features: FeatureItem[] = [
   },
   {
     title: 'API & Intégrations',
-    description: 'Connectez LoyalUp à vos outils métiers grâce à des endpoints robustes et documentés.',
+    description: 'Connectez Looyaal à vos outils métiers grâce à des endpoints robustes et documentés.',
     icon: 'API',
     iconBg: '#FBEAF0',
   },

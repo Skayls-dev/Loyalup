@@ -89,10 +89,10 @@ function useBadges(userId: string): UseBadgesResult {
       const mapped = ((badgesRes.data ?? []) as Array<Record<string, unknown>>).map((row) => ({
         id: String(row.id ?? ''),
         name: String(row.name ?? row.title ?? 'Badge'),
-        description: String(row.description ?? 'Badge LoyalUp'),
+        description: String(row.description ?? 'Badge Looyaal'),
         emoji: String(row.emoji ?? '🏅'),
         category: normalizeCategory(row.category),
-        unlockHint: String(row.unlock_hint ?? row.how_to_unlock ?? 'Continuez à utiliser LoyalUp pour le débloquer.'),
+        unlockHint: String(row.unlock_hint ?? row.how_to_unlock ?? 'Continuez à utiliser Looyaal pour le débloquer.'),
         earnedAt: earnedMap.get(String(row.id ?? '')) ?? null,
       }))
 

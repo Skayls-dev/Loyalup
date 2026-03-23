@@ -300,7 +300,7 @@ function AuthRoute() {
 
         {/* Wordmark */}
         <div className="relative z-10 flex items-center gap-2">
-          <span className="text-2xl font-black tracking-tight text-white">LoyalUp</span>
+          <span className="text-2xl font-black tracking-tight text-white">Looyaal</span>
           <span className="h-2 w-2 rounded-full bg-violet-400" aria-hidden="true" />
         </div>
 
@@ -336,14 +336,14 @@ function AuthRoute() {
           </ul>
         </div>
 
-        <p className="relative z-10 text-xs text-zinc-700">© 2026 LoyalUp · Tous droits réservés</p>
+        <p className="relative z-10 text-xs text-zinc-700">© 2026 Looyaal · Tous droits réservés</p>
       </div>
 
       {/* ── Form panel ───────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto bg-white px-6 py-12">
         {/* Mobile-only logo */}
         <div className="mb-8 flex items-center gap-1.5 lg:hidden">
-          <span className="text-2xl font-black tracking-tight text-zinc-900">LoyalUp</span>
+          <span className="text-2xl font-black tracking-tight text-zinc-900">Looyaal</span>
           <span className="h-2 w-2 rounded-full bg-violet-500" aria-hidden="true" />
         </div>
 

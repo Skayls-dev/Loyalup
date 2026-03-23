@@ -225,7 +225,7 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
     const raw = row.networks
     const first = Array.isArray(raw) ? raw[0] : raw
     const name = first && typeof first === 'object' ? (first as { name?: unknown }).name : null
-    const label = typeof name === 'string' ? name : 'Reseau LoyalUp'
+    const label = typeof name === 'string' ? name : 'Reseau Looyaal'
     networkMap.set(row.client_id, { id: row.network_id ?? null, name: label })
   }
 
@@ -239,7 +239,7 @@ async function fetchRecentTransactions(merchantId: string): Promise<MerchantRece
       user_name: profileName(profileMap.get(userId), userId),
       tier: tierMap.get(userId) ?? 'Bronze',
       network_id: network?.id ?? null,
-      network_name: network?.name ?? 'Reseau LoyalUp',
+      network_name: network?.name ?? 'Reseau Looyaal',
       points_given: Number(row.points_credited ?? 0),
       amount: Number(row.montant ?? 0),
       created_at: row.created_at,
@@ -508,7 +508,7 @@ export function useMerchantDashboard(merchantId: string): UseMerchantDashboardRe
                 user_name: `Client ${userId.slice(0, 6)}`,
                 tier: 'Bronze' as const,
                 network_id: null,
-                network_name: 'Reseau LoyalUp',
+                network_name: 'Reseau Looyaal',
                 points_given: Number(row.points_credited ?? 0),
                 amount: Number(row.montant ?? 0),
                 created_at: row.created_at,

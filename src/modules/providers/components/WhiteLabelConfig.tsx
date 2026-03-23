@@ -190,7 +190,7 @@ export function WhiteLabelConfig() {
           onChange={(event) => setForm((prev) => ({ ...prev, hide_loyalup_branding: event.target.checked }))}
           className="h-4 w-4 rounded border-zinc-700 bg-zinc-950"
         />
-        Masquer le branding LoyalUp
+        Masquer le branding Looyaal
       </label>
 
       {domainInfo ? (

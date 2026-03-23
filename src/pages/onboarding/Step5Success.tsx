@@ -161,7 +161,7 @@ export default function Step5Success() {
         🎉
       </div>
 
-      <h1 className="mt-5 font-display text-4xl font-extrabold text-dark">Bienvenue sur LoyalUp !</h1>
+      <h1 className="mt-5 font-display text-4xl font-extrabold text-dark">Bienvenue sur Looyaal !</h1>
       <p className="mt-2 max-w-xl font-body text-sm text-gray-600">
         Votre espace est prêt. Vous pouvez maintenant découvrir vos récompenses personnalisées.
       </p>

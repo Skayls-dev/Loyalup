@@ -112,7 +112,7 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
           const first = Array.isArray(raw) ? raw[0] : raw
           const name = first && typeof first === 'object' ? (first as { name?: string }).name : undefined
           if (!networkMap.has(row.client_id)) {
-            networkMap.set(row.client_id, name?.trim() || 'Réseau LoyalUp')
+            networkMap.set(row.client_id, name?.trim() || 'Réseau Looyaal')
           }
         }
 
@@ -124,7 +124,7 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
             id: row.id,
             customerName: resolveDisplayName(profile, customerId),
             tier: customerId ? tierMap.get(customerId) ?? 'Bronze' : 'Bronze',
-            networkName: customerId ? networkMap.get(customerId) ?? 'Réseau LoyalUp' : 'Réseau LoyalUp',
+            networkName: customerId ? networkMap.get(customerId) ?? 'Réseau Looyaal' : 'Réseau Looyaal',
             pointsGiven: Number(row.points_credited ?? 0),
             amount: Number(row.montant ?? 0),
             createdAt: row.created_at,

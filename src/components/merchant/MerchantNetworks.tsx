@@ -24,7 +24,7 @@ function networkNameFromRecord(name: unknown): string {
     if (typeof fr === 'string' && fr.trim()) return fr
     if (typeof en === 'string' && en.trim()) return en
   }
-  return 'Reseau LoyalUp'
+  return 'Reseau Looyaal'
 }
 
 export function MerchantNetworks({ merchantId, className = '' }: MerchantNetworksProps) {

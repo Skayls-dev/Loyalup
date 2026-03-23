@@ -40,7 +40,7 @@ type InternalState = {
 const state: InternalState = {
   authUser: {
     id: 'user-1',
-    email: 'client@loyalup.app',
+    email: 'client@looyaal.com',
     created_at: new Date().toISOString(),
     user_metadata: { role: 'client' },
     app_metadata: { role: 'client' },
@@ -52,7 +52,7 @@ const state: InternalState = {
     token_type: 'bearer',
     user: {
       id: 'user-1',
-      email: 'client@loyalup.app',
+      email: 'client@looyaal.com',
       user_metadata: { role: 'client' },
       app_metadata: { role: 'client' },
     },
@@ -316,7 +316,7 @@ export function resetSupabaseMockState() {
   state.authError = null
   state.authUser = {
     id: 'user-1',
-    email: 'client@loyalup.app',
+    email: 'client@looyaal.com',
     created_at: new Date().toISOString(),
     user_metadata: { role: 'client' },
     app_metadata: { role: 'client' },
@@ -328,7 +328,7 @@ export function resetSupabaseMockState() {
     token_type: 'bearer',
     user: {
       id: 'user-1',
-      email: 'client@loyalup.app',
+      email: 'client@looyaal.com',
       user_metadata: { role: 'client' },
       app_metadata: { role: 'client' },
     },

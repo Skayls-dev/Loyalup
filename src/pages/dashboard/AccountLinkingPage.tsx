@@ -117,7 +117,7 @@ export default function AccountLinkingPage() {
     <section className="space-y-4">
       <PageHeader
         title="Liaison compte partenaire"
-        subtitle="Suivez l'état de liaison entre votre compte LoyalUp et les identifiants envoyés par un partenaire."
+        subtitle="Suivez l'état de liaison entre votre compte Looyaal et les identifiants envoyés par un partenaire."
         rightActions={<Badge variant="neutral">Identité</Badge>}
       />
 
@@ -210,7 +210,7 @@ export default function AccountLinkingPage() {
             <p className="text-sm font-semibold text-slate-900">Action recommandée</p>
           </div>
           <p className="text-sm text-slate-600">
-            Certaines liaisons nécessitent encore une validation ou une revue manuelle. Si l'état reste bloqué, contactez le support LoyalUp.
+            Certaines liaisons nécessitent encore une validation ou une revue manuelle. Si l'état reste bloqué, contactez le support Looyaal.
           </p>
         </SectionCard>
       ) : null}

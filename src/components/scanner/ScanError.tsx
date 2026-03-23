@@ -25,9 +25,9 @@ const ERROR_CONTENT: Record<ScanErrorReason, ErrorContent> = {
   },
   invalid: {
     title: 'QR code invalide',
-    message: "Ce QR code n'est pas reconnu par LoyalUp.",
+    message: "Ce QR code n'est pas reconnu par Looyaal.",
     tips: [
-      'Assurez-vous de scanner un QR officiel LoyalUp.',
+      'Assurez-vous de scanner un QR officiel Looyaal.',
       'Nettoyez la caméra et essayez sous un meilleur éclairage.',
       'Utilisez la saisie manuelle du code si nécessaire.',
     ],
@@ -102,7 +102,7 @@ export function ScanError({ reason, onReset }: ScanErrorProps) {
             ↩ Réessayer
           </button>
           <a
-            href="mailto:support@loyalup.app?subject=Assistance%20scan%20QR"
+            href="mailto:support@looyaal.com?subject=Assistance%20scan%20QR"
             className="inline-flex h-11 items-center justify-center rounded-md border border-gray-300 bg-transparent font-body text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
           >
             Contacter le support

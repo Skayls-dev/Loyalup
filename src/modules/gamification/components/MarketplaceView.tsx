@@ -306,7 +306,7 @@ export function MarketplaceView({}: MarketplaceViewProps) {
       )}
 
       <div className="bg-yellow-50 p-3 rounded-lg border border-yellow-200 text-xs text-yellow-800">
-        <p>💡 Les points transférés reviennent immédiatement à vous sous forme de points LoyalUp</p>
+        <p>💡 Les points transférés reviennent immédiatement à vous sous forme de points Looyaal</p>
       </div>
     </div>
   )

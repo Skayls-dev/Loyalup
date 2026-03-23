@@ -37,7 +37,7 @@ export function DashboardHome() {
   } = useDashboardStats()
   const { networks, tier: tierData } = useDashboard(userId)
 
-  const userName = profile?.nom?.trim() || 'Membre LoyalUp'
+  const userName = profile?.nom?.trim() || 'Membre Looyaal'
   const today = formatFrenchDate(new Date())
 
   const statCards = [

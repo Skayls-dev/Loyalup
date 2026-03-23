@@ -80,7 +80,7 @@ function CTASection() {
     <section className="bg-white pb-16">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="rounded-xl bg-gradient-to-r from-primary to-accent-orange p-8 text-center shadow-primary-glow sm:p-10 lg:p-12">
-          <h2 className="font-display text-3xl font-extrabold text-white sm:text-4xl">Lancez votre réseau LoyalUp aujourd&apos;hui</h2>
+          <h2 className="font-display text-3xl font-extrabold text-white sm:text-4xl">Lancez votre réseau Looyaal aujourd&apos;hui</h2>
           <p className="mt-3 font-body text-base text-white/90">
             Créez votre espace, connectez vos marchands et démarrez votre croissance fidélité en quelques minutes.
           </p>
@@ -106,11 +106,11 @@ function Footer() {
     <footer className="border-t border-gray-200 bg-white py-8">
       <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 sm:px-6 md:flex-row lg:px-8">
         <div className="inline-flex items-center gap-2">
-          <span className="font-display text-2xl font-extrabold text-dark">LoyalUp</span>
+          <span className="font-display text-2xl font-extrabold text-dark">Looyaal</span>
           <span className="h-2.5 w-2.5 rounded-full bg-primary" aria-hidden="true" />
         </div>
 
-        <p className="font-body text-sm text-gray-500">© {new Date().getFullYear()} LoyalUp. Tous droits reserves.</p>
+        <p className="font-body text-sm text-gray-500">© {new Date().getFullYear()} Looyaal. Tous droits reserves.</p>
 
         <div className="flex items-center gap-5 font-body text-sm text-gray-600">
           <Link to="/" className="transition hover:text-dark">

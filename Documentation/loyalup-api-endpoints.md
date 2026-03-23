@@ -1,9 +1,9 @@
-# LoyalUp API — Spécifications (v1)
+# Looyaal API — Spécifications (v1)
 
 ## 1. Vue d’ensemble
 
 Ce document décrit les APIs publiques exposées via Supabase Edge Functions pour :
-- les fournisseurs LoyalUp (Provider API),
+- les fournisseurs Looyaal (Provider API),
 - les partenaires externes qui créditent/débitent des points (Partner Transfers),
 - le self-service de gestion des clés partenaire (Partner Self-Service).
 
@@ -238,7 +238,7 @@ Body :
 
 Règles métier :
 - `external_user_id` requis (min 2 chars)
-- `email` optionnel (recommandé pour activer ensuite le compte LoyalUp utilisateur)
+- `email` optionnel (recommandé pour activer ensuite le compte Looyaal utilisateur)
 - `transaction_ref` requis (min 4 chars)
 - `points` entier positif
 - `direction` : `credit | debit` (défaut `credit`)
@@ -259,7 +259,7 @@ Headers requis :
 - `Content-Type: application/json`
 
 Alias de compatibilité (même comportement) :
-- `POST /loyalup-account-claim`
+- `POST /Looyaal-account-claim`
 
 Action 1: `GET_STATUS`
 
@@ -277,12 +277,12 @@ Action 2: `START_CLAIM`
   "action": "START_CLAIM",
   "external_user_id": "partner-user-123",
   "email": "client@example.com",
-  "redirect_to": "https://loyalup-pink.vercel.app/auth/callback"
+  "redirect_to": "https://Looyaal-pink.vercel.app/auth/callback"
 }
 ```
 
 Usage :
-- `GET_STATUS` permet au partenaire de savoir si le compte LoyalUp lié nécessite encore activation.
+- `GET_STATUS` permet au partenaire de savoir si le compte Looyaal lié nécessite encore activation.
 - `START_CLAIM` associe l’email réel et génère un magic link (`action_link`) renvoyé dans la réponse API.
 
 Réponse `GET_STATUS` (exemple) :
@@ -314,7 +314,7 @@ Réponse `START_CLAIM` (exemple) :
     "action_link": "https://...",
     "email_otp": "123456",
     "hashed_token": "...",
-    "redirect_to": "https://loyalup-pink.vercel.app/auth/callback"
+    "redirect_to": "https://Looyaal-pink.vercel.app/auth/callback"
   }
 }
 ```
@@ -323,13 +323,13 @@ Notes sécurité :
 - `action_link`, `email_otp` et `hashed_token` sont des secrets de preuve d’authentification : ne jamais les exposer dans un frontend public.
 - Comportement actuel volontaire : aucun envoi email/SMS n’est fait automatiquement côté partenaire backend ; l’UI partenaire affiche `action_link` (open/copy).
 - Envoi serveur (email/SMS) possible plus tard via une edge function dédiée.
-- `redirect_to` doit pointer vers un domaine contrôlé (par défaut: `/auth/callback` côté LoyalUp).
+- `redirect_to` doit pointer vers un domaine contrôlé (par défaut: `/auth/callback` côté Looyaal).
 
 Flow recommandé côté partenaire :
 1. Appeler `GET_STATUS` avec `external_user_id`.
 2. Si `activation_required=true`, appeler `START_CLAIM` avec l’email réel utilisateur.
 3. Récupérer `action_link` et le présenter dans l’UI partenaire (open/copy).
-4. Après callback/magic link, l’utilisateur final peut définir son mot de passe LoyalUp depuis l’écran Profil > Sécurité du compte.
+4. Après callback/magic link, l’utilisateur final peut définir son mot de passe Looyaal depuis l’écran Profil > Sécurité du compte.
 
 ### POST `/partner-activate` (MVP simplifié)
 Headers requis :
@@ -343,15 +343,15 @@ Body :
   "external_user_id": "partner-user-123",
   "email": "client@example.com",
   "display_name": "Jean Martin",
-  "redirect_to": "https://loyalup-pink.vercel.app/auth/callback",
+  "redirect_to": "https://Looyaal-pink.vercel.app/auth/callback",
   "create_user_if_missing": true
 }
 ```
 
 Comportement :
 - Endpoint one-call pour simplifier l’activation côté partner.
-- Si le lien n’existe pas, LoyalUp peut auto-créer le compte + lien (`create_user_if_missing=true` par défaut).
-- Puis LoyalUp génère directement le magic link et renvoie `action_link`.
+- Si le lien n’existe pas, Looyaal peut auto-créer le compte + lien (`create_user_if_missing=true` par défaut).
+- Puis Looyaal génère directement le magic link et renvoie `action_link`.
 
 Réponse (exemple) :
 
@@ -367,7 +367,7 @@ Réponse (exemple) :
     "action_link": "https://...",
     "email_otp": "123456",
     "hashed_token": "...",
-    "redirect_to": "https://loyalup-pink.vercel.app/auth/callback"
+    "redirect_to": "https://Looyaal-pink.vercel.app/auth/callback"
   }
 }
 ```
@@ -448,7 +448,7 @@ Partner Account Claim :
 ## 8. OpenAPI / Swagger
 
 - Fichier spec : `/docs/openapi.yaml`
-- Swagger UI (viewer) : `https://petstore.swagger.io/?url=https://loyalup-pink.vercel.app/docs/openapi.yaml`
+- Swagger UI (viewer) : `https://petstore.swagger.io/?url=https://Looyaal-pink.vercel.app/docs/openapi.yaml`
 
 ---
 

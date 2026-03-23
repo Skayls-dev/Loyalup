@@ -47,7 +47,7 @@ export function AdminLayout() {
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-white">LoyalUp</p>
+              <p className="truncate text-sm font-bold text-white">Looyaal</p>
               <p className="truncate text-[11px] text-slate-400">Admin Portal</p>
             </div>
           )}

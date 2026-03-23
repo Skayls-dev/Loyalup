@@ -89,7 +89,7 @@ export function OnboardingLayout({ currentStep, children }: OnboardingLayoutProp
     >
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-4xl flex-col items-center justify-center">
         <div className="mb-6 text-center">
-          <p className="font-display text-4xl font-extrabold text-dark">LoyalUp</p>
+          <p className="font-display text-4xl font-extrabold text-dark">Looyaal</p>
         </div>
 
         <div className="mb-8 flex w-full max-w-2xl items-center">

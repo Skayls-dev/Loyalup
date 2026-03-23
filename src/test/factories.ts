@@ -8,7 +8,7 @@ type Override<T> = Partial<T>
 export function createMockProfile(overrides: Override<Profile> = {}): Profile {
   return {
     id: 'profile-1',
-    email: 'client@loyalup.app',
+    email: 'client@looyaal.com',
     role: 'client',
     nom: 'Client Test',
     created_at: new Date().toISOString(),

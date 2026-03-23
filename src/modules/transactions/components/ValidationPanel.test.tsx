@@ -82,7 +82,7 @@ describe('ValidationPanel', () => {
     },
     clientProfile: {
       id: 'client-1',
-      email: 'client@loyalup.app',
+      email: 'client@looyaal.com',
       role: 'client' as const,
       nom: 'Client Test',
       created_at: new Date().toISOString(),

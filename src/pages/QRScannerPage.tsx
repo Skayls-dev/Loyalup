@@ -231,7 +231,7 @@ function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoad
   const [showShareActions, setShowShareActions] = useState(false)
   const [copyNotice, setCopyNotice] = useState<string | null>(null)
 
-  const shareText = shareMessage ?? 'Rejoignez-moi sur LoyalUp et gagnez un bonus de bienvenue.'
+  const shareText = shareMessage ?? 'Rejoignez-moi sur Looyaal et gagnez un bonus de bienvenue.'
 
   const shareToWhatsApp = () => {
     if (!shareUrl) return
@@ -519,13 +519,13 @@ export default function QRScannerPage() {
       const url = withLink?.url ?? ''
       const pointsPart =
         typeof validatedPoints === 'number'
-          ? `Je viens de gagner ${validatedPoints} points sur LoyalUp.`
-          : 'Je viens de valider une transaction sur LoyalUp.'
+          ? `Je viens de gagner ${validatedPoints} points sur Looyaal.`
+          : 'Je viens de valider une transaction sur Looyaal.'
       setShareUrl(url || undefined)
       setShareMessage(`${pointsPart} Rejoignez-moi et gagnez un bonus de bienvenue.`)
     } catch {
       setShareUrl(undefined)
-      setShareMessage('Rejoignez-moi sur LoyalUp et gagnez un bonus de bienvenue.')
+      setShareMessage('Rejoignez-moi sur Looyaal et gagnez un bonus de bienvenue.')
     } finally {
       setShareLoading(false)
     }

@@ -302,7 +302,7 @@ async function createLinkedUser(
   })
 
   if (created.error || !created.data.user?.id) {
-    throw created.error ?? new Error('Unable to create linked LoyalUp user')
+    throw created.error ?? new Error('Unable to create linked Looyaal user')
   }
 
   const loyalupUserId = created.data.user.id
@@ -370,7 +370,7 @@ function normalizeEmail(value?: string): string | null {
 }
 
 function resolveSafeRedirectTo(requestedRedirectTo?: string): string {
-  const fallbackBaseUrl = 'https://loyalup-pink.vercel.app'
+  const fallbackBaseUrl = 'https://looyaal.com'
   const configuredBaseUrl = (Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('SITE_URL') || fallbackBaseUrl).replace(/\/$/, '')
   const safeBaseUrl = isLocalUrl(configuredBaseUrl) ? fallbackBaseUrl : configuredBaseUrl
 

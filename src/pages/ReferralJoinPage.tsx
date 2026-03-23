@@ -62,7 +62,7 @@ export default function ReferralJoinPage() {
   return (
     <div className="mx-auto flex min-h-[70vh] w-full max-w-lg items-center px-4 py-10">
       <div className="w-full rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Parrainage LoyalUp</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Parrainage Looyaal</p>
         <h1 className="mt-2 font-display text-2xl font-extrabold text-dark">Invitation recue</h1>
         <p className="mt-2 text-sm text-gray-600">
           Code: <span className="font-semibold text-gray-900">{normalizedCode}</span>

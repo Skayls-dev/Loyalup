@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: createError.message }), { status: 500 })
     }
 
-    const baseUrl = Deno.env.get('PUBLIC_URL') ?? 'https://loyalup.app'
+    const baseUrl = Deno.env.get('PUBLIC_URL') ?? 'https://looyaal.com'
     const share_url = `${baseUrl}/provider/join/${referral_code}`
 
     return new Response(

@@ -8,7 +8,7 @@ type DatasetWidgetElement = HTMLElement & {
   }
 }
 
-class LoyalupWidgetElement extends HTMLElement {
+class LooyaalWidgetElement extends HTMLElement {
   static get observedAttributes() {
     return ['fournisseur-id', 'base-url']
   }
@@ -49,7 +49,7 @@ class LoyalupWidgetElement extends HTMLElement {
     if (!fournisseurId || !baseUrl) {
       this.reactRoot.render(
         <div style={{ fontFamily: 'system-ui, sans-serif', fontSize: 12, color: '#52525b' }}>
-          LoyalUp widget: missing fournisseur-id or base-url attributes
+          Looyaal widget: missing fournisseur-id or base-url attributes
         </div>,
       )
       return
@@ -60,7 +60,7 @@ class LoyalupWidgetElement extends HTMLElement {
 }
 
 if (!customElements.get('loyalup-widget')) {
-  customElements.define('loyalup-widget', LoyalupWidgetElement)
+  customElements.define('loyalup-widget', LooyaalWidgetElement)
 }
 
 for (const element of document.querySelectorAll('[data-loyalup-widget]')) {

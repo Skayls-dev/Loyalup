@@ -101,7 +101,7 @@ export function QRDisplay() {
             <div>
               <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-500">Fournisseur</p>
               <h1 className="mt-1 text-2xl font-semibold text-zinc-100">
-                {providerName || profile?.nom || 'LoyalUp'}
+                {providerName || profile?.nom || 'Looyaal'}
               </h1>
             </div>
 

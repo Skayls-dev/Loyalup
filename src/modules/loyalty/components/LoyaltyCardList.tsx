@@ -56,7 +56,7 @@ export function LoyaltyCardList() {
           <p className="text-xs uppercase tracking-wide text-slate-500">Total points</p>
           <p className="mt-1 text-4xl font-black text-slate-900">{totalPoints}</p>
           <div className="mt-2 space-y-1 text-xs text-slate-500">
-            <p>LoyalUp: {loyaltyPoints}</p>
+            <p>Looyaal: {loyaltyPoints}</p>
             <p>Partner: {partnerPoints}</p>
           </div>
           <div className="mt-3 flex items-center justify-between">

@@ -17,7 +17,7 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
   const { tier } = useReferrerTier()
   const [copied, setCopied] = useState(false)
 
-  const shareText = 'Rejoignez-moi sur LoyalUp et gagnez un bonus de bienvenue.'
+  const shareText = 'Rejoignez-moi sur Looyaal et gagnez un bonus de bienvenue.'
 
   const shareToWhatsApp = () => {
     if (!referralStats?.url) return
@@ -59,7 +59,7 @@ export function ReferralView({ language = 'fr' }: ReferralViewProps) {
 
   const shareByEmail = () => {
     if (!referralStats?.url) return
-    const subject = encodeURIComponent('Invitation LoyalUp')
+    const subject = encodeURIComponent('Invitation Looyaal')
     const body = encodeURIComponent(`${shareText}\n\n${referralStats.url}`)
     window.location.href = `mailto:?subject=${subject}&body=${body}`
   }

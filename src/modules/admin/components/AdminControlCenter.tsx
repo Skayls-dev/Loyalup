@@ -553,10 +553,10 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
 
                       <div className="rounded border border-[#edebe9] bg-[#faf9f8] p-2">
                         <p className="text-xs font-semibold text-[#323130]">
-                          Provider → LoyalUp users ({filteredClients.length}/{relationsData.totals.clients_count})
+                          Provider → Looyaal users ({filteredClients.length}/{relationsData.totals.clients_count})
                         </p>
                         {filteredClients.length === 0 ? (
-                          <p className="mt-1 text-xs text-[#605E5C]">No linked LoyalUp users found.</p>
+                          <p className="mt-1 text-xs text-[#605E5C]">No linked Looyaal users found.</p>
                         ) : (
                           <div className="mt-1 space-y-1">
                             {filteredClients.map((client) => (
@@ -1067,7 +1067,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
               <input
                 value={transferSearch}
                 onChange={(event) => setTransferSearch(event.target.value)}
-                placeholder="Search by external user, tx ref, partner, loyalup user"
+                placeholder="Search by external user, tx ref, partner, Looyaal user"
                 className={inputClass}
               />
               <select
@@ -1100,7 +1100,7 @@ export function AdminControlCenter(props: { initialTab?: AdminTab }) {
                       <p className={row.status === 'accepted' ? 'text-[#0078D4]' : 'text-[#a4262c]'}>{row.status}</p>
                     </div>
                     <p className="text-[#605E5C]">
-                      ext: {row.external_user_id} • loyalup: {row.loyalup_user_id ?? '-'} • email: {row.loyalup_user_email ?? '-'} • partner: {row.partner_id}
+                      ext: {row.external_user_id} • Looyaal: {row.loyalup_user_id ?? '-'} • email: {row.loyalup_user_email ?? '-'} • partner: {row.partner_id}
                     </p>
                     <p className="text-[#605E5C]">
                       balance: {row.resulting_balance ?? '-'} • {new Date(row.created_at).toLocaleString('fr-FR')}

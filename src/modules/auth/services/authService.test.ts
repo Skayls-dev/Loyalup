@@ -6,9 +6,9 @@ import { setAuthError, setAuthSession, setAuthUser, setTableData } from '../../.
 
 describe('authService', () => {
   it('signIn: success → returns user + profile role', async () => {
-    const result = await signIn('client@loyalup.app', 'secret')
+    const result = await signIn('client@looyaal.com', 'secret')
 
-    expect(result.user?.email).toBe('client@loyalup.app')
+    expect(result.user?.email).toBe('client@looyaal.com')
     expect(result.role).toBe('client')
     expect(result.session).not.toBeNull()
   })
@@ -16,26 +16,26 @@ describe('authService', () => {
   it('signIn: wrong password → throws AuthError-like error', async () => {
     setAuthError('Invalid login credentials')
 
-    await expect(signIn('client@loyalup.app', 'wrong')).rejects.toBeInstanceOf(Error)
+    await expect(signIn('client@looyaal.com', 'wrong')).rejects.toBeInstanceOf(Error)
   })
 
   it('signIn: user not found → throws AuthError-like error', async () => {
     setAuthError('User not found')
 
-    await expect(signIn('missing@loyalup.app', 'secret')).rejects.toBeInstanceOf(Error)
+    await expect(signIn('missing@looyaal.com', 'secret')).rejects.toBeInstanceOf(Error)
   })
 
   it('signUp: success → creates user with correct role', async () => {
-    const result = await signUp('new@loyalup.app', 'secret', 'fournisseur')
+    const result = await signUp('new@looyaal.com', 'secret', 'fournisseur')
 
-    expect(result.user?.email).toBe('new@loyalup.app')
+    expect(result.user?.email).toBe('new@looyaal.com')
     expect(result.role).toBe('fournisseur')
   })
 
   it('signUp: email already exists → throws error', async () => {
     setAuthError('User already registered')
 
-    await expect(signUp('existing@loyalup.app', 'secret', 'client')).rejects.toThrow('User already registered')
+    await expect(signUp('existing@looyaal.com', 'secret', 'client')).rejects.toThrow('User already registered')
   })
 
   it('signInWithOAuth: success → resolves without throwing', async () => {
@@ -65,7 +65,7 @@ describe('authService', () => {
   it('signIn: resolves admin role from profile when metadata role is missing', async () => {
     setAuthUser({
       id: 'admin-user-1',
-      email: 'admin1@loyalup.test',
+      email: 'admin1@looyaal.test',
       created_at: new Date().toISOString(),
       user_metadata: {},
       app_metadata: {},
@@ -76,14 +76,14 @@ describe('authService', () => {
       [
         createMockProfile({
           id: 'admin-user-1',
-          email: 'admin1@loyalup.test',
+          email: 'admin1@looyaal.test',
           role: 'admin',
           nom: 'Admin User',
         }),
       ],
     )
 
-    const result = await signIn('admin1@loyalup.test', 'Test1234!')
+    const result = await signIn('admin1@looyaal.test', 'Test1234!')
     expect(result.role).toBe('admin')
   })
 

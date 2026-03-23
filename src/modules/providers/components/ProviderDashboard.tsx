@@ -33,7 +33,7 @@ type ProviderScanAd = {
 const fallbackAds: AdConfig[] = [
   {
     badge: 'Publicite',
-    title: 'Boostez vos visites avec LoyalUp Premium',
+    title: 'Boostez vos visites avec Looyaal Premium',
     description: 'Activez des campagnes intelligentes et transformez chaque passage en retour client mesurable.',
     ctaLabel: 'Activer Premium',
     ctaNote: 'Sans engagement · Essai 14 jours gratuit',

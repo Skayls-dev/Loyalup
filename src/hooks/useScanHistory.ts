@@ -41,7 +41,7 @@ function mapRow(row: QrScanRow): ScanHistoryItem {
     merchant_id: row.merchant_id ? String(row.merchant_id) : null,
     network_id: row.network_id ? String(row.network_id) : null,
     merchant_name: typeof merchantJoin?.name === 'string' ? merchantJoin.name : 'Marchand',
-    network_name: typeof networkJoin?.name === 'string' ? networkJoin.name : 'Réseau LoyalUp',
+    network_name: typeof networkJoin?.name === 'string' ? networkJoin.name : 'Réseau Looyaal',
     status: toStatus(row.status),
     points: Number(row.points ?? row.points_earned ?? row.points_credited ?? 0),
     reason: row.reason ? String(row.reason) : row.failure_reason ? String(row.failure_reason) : null,

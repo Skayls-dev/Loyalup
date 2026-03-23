@@ -163,7 +163,7 @@ export function ConsentModal({ locale = 'fr' }: ConsentModalProps) {
       <div className="relative z-10 flex h-full flex-col items-center justify-center px-4 py-8">
         {/* Wordmark */}
         <div className="mb-8 flex items-center gap-2">
-          <span className="text-3xl font-black tracking-tight text-white">LoyalUp</span>
+          <span className="text-3xl font-black tracking-tight text-white">Looyaal</span>
           <span className="h-2.5 w-2.5 rounded-full bg-violet-400" aria-hidden="true" />
         </div>
 

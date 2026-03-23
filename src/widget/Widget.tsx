@@ -78,7 +78,7 @@ export function Widget(props: { fournisseurId: string; baseUrl: string }) {
           ) : null}
           <strong>{data.provider.name}</strong>
         </div>
-        {data.branding.show_loyalup_branding ? <span style={{ fontSize: 11, opacity: 0.7 }}>Powered by LoyalUp</span> : null}
+        {data.branding.show_loyalup_branding ? <span style={{ fontSize: 11, opacity: 0.7 }}>Powered by Looyaal</span> : null}
       </div>
 
       <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>

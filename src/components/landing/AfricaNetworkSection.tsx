@@ -49,7 +49,7 @@ export function AfricaNetworkSection({ networks = defaultNetworks }: AfricaNetwo
           <p className="font-body text-xs font-semibold uppercase tracking-[0.2em] text-[#8B7FF5]">Reseau africain</p>
           <h2 className="mt-3 font-display text-3xl font-bold text-white sm:text-4xl">Connectez vos marches sur tout le continent</h2>
           <p className="mt-3 font-body text-base leading-relaxed text-[#9098B3]">
-            LoyalUp structure des reseaux interoperables pour renforcer la fidelite locale et la croissance regionale.
+            Looyaal structure des reseaux interoperables pour renforcer la fidelite locale et la croissance regionale.
           </p>
         </div>
 

@@ -32,38 +32,38 @@ const ADS_MEDIA_BUCKET = 'ads-media'
 
 const templates: AdTemplate[] = [
   {
-    advertiser_name: 'LoyalUp',
-    title: 'Boostez vos visites avec LoyalUp Premium',
+    advertiser_name: 'Looyaal',
+    title: 'Boostez vos visites avec Looyaal Premium',
     body: 'Activez des campagnes intelligentes et transformez chaque passage en retour client mesurable.',
     cta_label: 'Activer Premium',
-    cta_url: 'https://loyalup-pink.vercel.app/merchant/subscription',
+    cta_url: 'https://looyaal.com/merchant/subscription',
     media_type: 'image',
     media_url: '/ads/premium-boost.svg',
   },
   {
-    advertiser_name: 'LoyalUp',
+    advertiser_name: 'Looyaal',
     title: 'Activez vos campagnes flash du week-end',
     body: 'Diffusez une offre limitee, captez les retours rapides et suivez les performances en direct sur votre QR.',
     cta_label: 'Creer une campagne',
-    cta_url: 'https://loyalup-pink.vercel.app/merchant/offers',
+    cta_url: 'https://looyaal.com/merchant/offers',
     media_type: 'image',
     media_url: '/ads/flash-campaign.svg',
   },
   {
-    advertiser_name: 'LoyalUp Réseau',
+    advertiser_name: 'Looyaal Réseau',
     title: 'Fidelisez mieux avec vos reseaux partenaires',
     body: 'Mettez en avant vos avantages coalition et augmentez les visites croisees entre commerces membres.',
     cta_label: 'Voir les reseaux',
-    cta_url: 'https://loyalup-pink.vercel.app/merchant/networks',
+    cta_url: 'https://looyaal.com/merchant/networks',
     media_type: 'image',
     media_url: '/ads/coalition-network.svg',
   },
   {
-    advertiser_name: 'LoyalUp Demo',
+    advertiser_name: 'Looyaal Demo',
     title: 'Demo video - Parcours client en 15 secondes',
     body: 'Montrez concretement votre experience fidelite avec une video courte directement sur l\'ecran QR.',
     cta_label: 'Voir la demo',
-    cta_url: 'https://loyalup-pink.vercel.app/merchant',
+    cta_url: 'https://looyaal.com/merchant',
     media_type: 'video',
     media_url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
     poster_url: '/ads/premium-boost.svg',
@@ -73,7 +73,7 @@ const templates: AdTemplate[] = [
     title: 'Produits locaux livrés chaque matin',
     body: 'Fruits, légumes, fromages et charcuterie sélectionnés chaque matin chez nos producteurs partenaires. -15% avec 250 pts.',
     cta_label: 'Commander maintenant',
-    cta_url: 'https://loyalup-pink.vercel.app/dashboard',
+    cta_url: 'https://looyaal.com/dashboard',
     media_type: 'image',
     media_url: '/ads/epicerie-fraiche.svg',
   },
@@ -454,7 +454,7 @@ export function ScanAdsManager({ onStatusChange }: ScanAdsManagerProps) {
           </p>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <input value={advertiserName} onChange={(event) => setAdvertiserName(event.target.value)} placeholder="Nom de l'annonceur (ex: Épicerie Fraîche, LoyalUp…)" className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
+            <input value={advertiserName} onChange={(event) => setAdvertiserName(event.target.value)} placeholder="Nom de l'annonceur (ex: Épicerie Fraîche, Looyaal…)" className="md:col-span-2 h-10 rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100" />
             <input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Titre" className={inputClass} />
             <input value={ctaLabel} onChange={(event) => setCtaLabel(event.target.value)} placeholder="CTA" className={inputClass} />
             <textarea
