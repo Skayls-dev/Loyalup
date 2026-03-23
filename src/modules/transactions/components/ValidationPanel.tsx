@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Gift } from 'lucide-react'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
 import { supabase } from '../../../shared/lib/supabaseClient'
@@ -49,6 +48,15 @@ export function ValidationPanel({
   const [validationMode, setValidationMode] = useState<ValidationMode>('service')
   const [customServiceName, setCustomServiceName] = useState('')
   const [availableRewardsCount, setAvailableRewardsCount] = useState(0)
+  const [showAllServices, setShowAllServices] = useState(false)
+
+  const visibleServices = useMemo(() => {
+    if (showAllServices) {
+      return services
+    }
+
+    return services.slice(0, 3)
+  }, [services, showAllServices])
 
   // Auto-select first non-custom service when services load
   useEffect(() => {
@@ -56,6 +64,22 @@ export function ValidationPanel({
     const first = services.find((s) => s.nom !== 'Personnalisé') ?? services[0]
     if (first) selectService(first)
   }, [services, servicesLoading, selectedService, selectService, validationMode])
+
+  // Ensure selected service remains visible in collapsed mode
+  useEffect(() => {
+    if (!selectedService || showAllServices) return
+    const isVisible = services.slice(0, 3).some((service) => service.id === selectedService.id)
+    if (!isVisible) {
+      setShowAllServices(true)
+    }
+  }, [selectedService, services, showAllServices])
+
+  // Auto-switch to amount mode when catalog is empty
+  useEffect(() => {
+    if (!servicesLoading && services.length === 0 && validationMode === 'service') {
+      setValidationMode('amount')
+    }
+  }, [services, servicesLoading, validationMode])
 
   useEffect(() => {
     let cancelled = false
@@ -124,6 +148,8 @@ export function ValidationPanel({
       return
     }
 
+    setShowAllServices(false)
+
     const first = services.find((service) => service.nom !== 'Personnalisé') ?? services[0] ?? null
     if (first) {
       selectService(first)
@@ -166,7 +192,7 @@ export function ValidationPanel({
 
   return (
     <section className="relative w-full max-w-6xl rounded-2xl border border-zinc-800 bg-zinc-900 p-3 text-zinc-100 shadow-2xl sm:p-4 md:p-5">
-      <div className="grid gap-4 xl:grid-cols-2">
+      <div className={`gap-4 ${validationMode === 'redemption' ? 'flex flex-col' : 'grid xl:grid-cols-2'}`}>
         <div className="space-y-4">
           <ClientPreview
             clientProfile={clientProfile}
@@ -183,109 +209,108 @@ export function ValidationPanel({
           ) : null}
         </div>
 
-        <div className="min-w-0 space-y-4">
-          <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-            <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-              Mode de validation
-            </p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 2xl:grid-cols-3">
-              <button
-                type="button"
-                onClick={() => handleModeChange('service')}
-                className={`min-h-[124px] rounded-xl border px-4 py-3 text-left transition ${
-                  validationMode === 'service'
-                    ? 'border-teal-400 bg-teal-500/10 text-teal-300'
-                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
-                }`}
-              >
-                <p className="text-sm font-semibold leading-tight">Par service</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Choisir un produit ou une prestation</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('amount')}
-                className={`min-h-[124px] rounded-xl border px-4 py-3 text-left transition ${
-                  validationMode === 'amount'
-                    ? 'border-amber-400 bg-amber-500/10 text-amber-300'
-                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
-                }`}
-              >
-                <p className="text-sm font-semibold leading-tight">Montant libre</p>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Saisir directement le prix de l'achat</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('redemption')}
-                className={`min-h-[124px] rounded-xl border px-4 py-3 text-left transition ${
-                  validationMode === 'redemption'
-                    ? 'border-teal-400 bg-teal-500/10 text-teal-300'
-                    : 'border-zinc-700 bg-zinc-950 text-zinc-300 hover:border-zinc-500'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Gift className="h-4 w-4" />
-                  <p className="text-sm font-semibold leading-tight">Offres disponibles</p>
+        {validationMode === 'redemption' ? (
+          <RedemptionPanel
+            pendingTransaction={pendingTransaction}
+            clientProfile={clientProfile}
+            clientPoints={clientPoints}
+            totalVisites={totalVisites}
+            onDismiss={onDismiss}
+          />
+        ) : (
+          <>
+            <div className="order-2 min-w-0 xl:order-3 xl:col-span-2">
+              <div className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+                {validationMode === 'service' ? (
+                  servicesLoading ? (
+                    <div className="flex min-h-32 items-center justify-center">
+                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
+                    </div>
+                  ) : services.length > 0 ? (
+                    <>
+                      <ServiceSelector
+                        services={visibleServices}
+                        selectedService={selectedService}
+                        onSelect={selectService}
+                        density={services.length >= 6 ? 'dense' : ('normal' as const)}
+                      />
+                      {services.length > 2 ? (
+                        <p className="mt-2 text-xs text-zinc-500">Faites glisser horizontalement pour voir les autres services.</p>
+                      ) : null}
+                      {services.length > 3 ? (
+                        <div className="mt-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowAllServices((prev) => !prev)}
+                            className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
+                          >
+                            {showAllServices ? 'Réduire la liste' : `Afficher tout (${services.length})`}
+                          </button>
+                        </div>
+                      ) : null}
+                    </>
+                  ) : (
+                    <p className="py-4 text-center text-sm text-zinc-400">Aucun service configuré. Utilisez le montant libre.</p>
+                  )
+                ) : (
+                  <div>
+                    <label htmlFor="custom-service-name" className="mb-2 block text-sm font-medium text-zinc-300">
+                      Nom du service (optionnel)
+                    </label>
+                    <input
+                      id="custom-service-name"
+                      type="text"
+                      value={customServiceName}
+                      onChange={(event) => setCustomServiceName(event.target.value)}
+                      placeholder="Ex: Achat boutique"
+                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-amber-400"
+                    />
+                  </div>
+                )}
+
+                <div className="flex flex-wrap gap-2 border-t border-zinc-800 pt-3">
+                  {validationMode !== 'amount' ? (
+                    <button
+                      type="button"
+                      onClick={() => handleModeChange('amount')}
+                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-amber-500/50 hover:text-amber-300"
+                    >
+                      Montant libre
+                    </button>
+                  ) : services.length > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => handleModeChange('service')}
+                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-zinc-500 hover:text-zinc-200"
+                    >
+                      ← Retour catalogue
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => handleModeChange('redemption')}
+                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                      availableRewardsCount > 0
+                        ? 'border-teal-500/40 bg-teal-500/10 text-teal-300 hover:border-teal-400 hover:text-teal-200'
+                        : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                    }`}
+                  >
+                    🎁 Offres disponibles ({availableRewardsCount})
+                  </button>
                 </div>
-                <p className="mt-1 text-xs leading-relaxed text-zinc-400">Consommer une récompense déjà débloquée</p>
-              </button>
+              </div>
             </div>
-          </div>
 
-          {validationMode === 'redemption' ? (
-            <RedemptionPanel
-              pendingTransaction={pendingTransaction}
-              clientProfile={clientProfile}
-              clientPoints={clientPoints}
-              totalVisites={totalVisites}
-              onDismiss={onDismiss}
-            />
-          ) : null}
-
-          {validationMode === 'service' ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-              <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-400">
-                Choisir un service
-              </h3>
-              {servicesLoading ? (
-                <div className="flex min-h-32 items-center justify-center">
-                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
-                </div>
-              ) : (
-                <ServiceSelector
-                  services={services}
-                  selectedService={selectedService}
-                  onSelect={selectService}
-                />
-              )}
-            </div>
-          ) : null}
-
-          {validationMode === 'amount' ? (
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-              <label htmlFor="custom-service-name" className="mb-2 block text-sm font-medium text-zinc-300">
-                Nom du service
-              </label>
-              <input
-                id="custom-service-name"
-                type="text"
-                value={customServiceName}
-                onChange={(event) => setCustomServiceName(event.target.value)}
-                placeholder="Ex: Achat boutique"
-                className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-amber-400"
+            <div className="order-3 min-w-0 xl:order-2">
+              <PriceInput
+                montant={montant}
+                onMontantChange={setMontant}
+                pointsPreview={pointsPreview}
+                selectedService={selectedService}
               />
             </div>
-          ) : null}
-
-          {validationMode !== 'redemption' ? (
-            <PriceInput
-              montant={montant}
-              onMontantChange={setMontant}
-              pointsPreview={pointsPreview}
-              selectedService={selectedService}
-            />
-          ) : null}
-
-        </div>
+          </>
+        )}
       </div>
 
       {validationMode !== 'redemption' ? (
