@@ -53,7 +53,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.get-client-partner-balance]
-verify_jwt = true
+verify_jwt = false
 
 [functions.manage-webhooks]
 verify_jwt = false

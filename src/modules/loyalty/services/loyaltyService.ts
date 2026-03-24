@@ -3,6 +3,33 @@ import { supabase } from '../../../shared/lib/supabaseClient'
 import { config } from '../../../shared/lib/env'
 import { requireOnlineForWrite, withCachedRead } from '../../../shared/lib/offlineGuard'
 
+function isTokenAboutToExpire(token: string, bufferSeconds = 60): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    const exp = typeof payload?.exp === 'number' ? payload.exp : 0
+    return exp - Math.floor(Date.now() / 1000) < bufferSeconds
+  } catch {
+    return true
+  }
+}
+
+async function getAccessTokenOrThrow(): Promise<string> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw new Error(error.message)
+
+  let token = data.session?.access_token
+  if (!token) throw new Error('Session expirée, reconnectez-vous.')
+
+  if (isTokenAboutToExpire(token)) {
+    const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession()
+    if (!refreshError && refreshed.session?.access_token) {
+      token = refreshed.session.access_token
+    }
+  }
+
+  return token
+}
+
 export type LoyaltyProvider = {
   id: string
   nom_commerce: string
@@ -616,19 +643,29 @@ export async function getClientPointsBalance(client_id: string, fournisseur_id: 
 
 export async function getClientPartnerBalance(client_id: string): Promise<PartnerBalanceResponse> {
   return withCachedRead(`loyalty:partner-wallet:${client_id}`, async () => {
-    const { data, error } = await supabase.functions.invoke<{
+    const accessToken = await getAccessTokenOrThrow()
+    const url = `${config.supabaseUrl}/functions/v1/get-client-partner-balance`
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: config.supabaseAnonKey,
+      },
+      body: JSON.stringify({}),
+    })
+
+    if (!response.ok) {
+      throw new Error(`get-client-partner-balance: HTTP ${response.status}`)
+    }
+
+    const data = (await response.json()) as {
       success: boolean
       partner_balance: number
       partner_balances_by_provider?: Array<{ fournisseur_id: string; balance: number }>
       updated_at: string | null
       error?: string
-    }>('get-client-partner-balance', {
-      method: 'POST',
-      body: {},
-    })
-
-    if (error) {
-      throw new Error(error.message)
     }
 
     if (!data || data.success !== true) {

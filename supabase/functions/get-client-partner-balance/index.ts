@@ -15,9 +15,10 @@ Deno.serve(async (req) => {
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
+  const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     return json({ error: 'Missing env vars' }, 500)
   }
 
@@ -26,15 +27,19 @@ Deno.serve(async (req) => {
     return json({ error: 'Unauthorized' }, 401)
   }
 
-  const token = authHeader.replace('Bearer ', '').trim()
-  const admin = createClient(supabaseUrl, serviceRoleKey)
+  // Standard Supabase pattern: create a user-scoped client with the caller's JWT
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  })
 
-  const authUser = await resolveAuthenticatedUser(supabaseUrl, serviceRoleKey, token)
-  if (!authUser?.id) {
+  const { data: { user }, error: userError } = await userClient.auth.getUser()
+  if (userError || !user?.id) {
     return json({ error: 'Unauthorized' }, 401)
   }
 
-  const userId = authUser.id
+  const admin = createClient(supabaseUrl, serviceRoleKey)
+  const userId = user.id
 
   const { data: wallet, error: walletError } = await admin
     .from('partner_points_wallets')
@@ -124,25 +129,4 @@ function json(payload: Record<string, unknown>, status = 200) {
       'Content-Type': 'application/json',
     },
   })
-}
-
-async function resolveAuthenticatedUser(supabaseUrl: string, serviceRoleKey: string, token: string) {
-  try {
-    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-      method: 'GET',
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${token}`,
-      },
-    })
-
-    if (!response.ok) {
-      return null
-    }
-
-    const payload = (await response.json()) as { id?: unknown }
-    return typeof payload.id === 'string' && payload.id.length > 0 ? payload : null
-  } catch {
-    return null
-  }
 }
