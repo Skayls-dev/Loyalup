@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
 import { supabase } from '../../../shared/lib/supabaseClient'
+import { config } from '../../../shared/lib/env'
 
 type RedemptionPanelProps = {
   pendingTransaction: PendingTransactionPayload
@@ -21,6 +22,124 @@ type AvailableRewardItem = {
     points_required: number
     reward_delivery_type: 'in_store' | 'digital_code'
     requires_physical_presence: boolean
+  }
+}
+
+function isTokenAboutToExpire(token: string, bufferSeconds = 60): boolean {
+  try {
+    const payloadB64url = token.split('.')[1]
+    if (!payloadB64url) return true
+    const base64 = payloadB64url.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+    const payload = JSON.parse(atob(padded)) as { exp?: unknown }
+    if (typeof payload.exp !== 'number') return true
+    return Date.now() / 1000 > payload.exp - bufferSeconds
+  } catch {
+    return false
+  }
+}
+
+let pendingUnlockRefresh: Promise<string> | null = null
+
+function doRefreshSession(): Promise<string> {
+  if (pendingUnlockRefresh) {
+    return pendingUnlockRefresh
+  }
+
+  const refreshPromise = (async () => {
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    const refreshedToken = data.session?.access_token
+    if (!refreshedToken) {
+      throw new Error('Session expirée. Reconnectez-vous pour consommer une récompense.')
+    }
+
+    return refreshedToken
+  })()
+
+  pendingUnlockRefresh = refreshPromise
+  void refreshPromise.finally(() => {
+    if (pendingUnlockRefresh === refreshPromise) {
+      pendingUnlockRefresh = null
+    }
+  })
+
+  return refreshPromise
+}
+
+async function getAccessTokenOrThrow(forceRefresh = false): Promise<string> {
+  if (forceRefresh) {
+    return doRefreshSession()
+  }
+
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const token = session?.access_token
+  if (!token) {
+    throw new Error('Session expirée. Reconnectez-vous pour consommer une récompense.')
+  }
+
+  if (isTokenAboutToExpire(token)) {
+    return doRefreshSession()
+  }
+
+  return token
+}
+
+async function consumeRewardAtCaisse(input: {
+  clientRewardId: string
+  pendingTransactionId: string
+}): Promise<void> {
+  const invokeOnce = async (accessToken: string): Promise<void> => {
+    const response = await fetch(`${config.supabaseUrl}/functions/v1/unlock-reward`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        apikey: config.supabaseAnonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_reward_id: input.clientRewardId,
+        pending_transaction_id: input.pendingTransactionId,
+      }),
+    })
+
+    if (!response.ok) {
+      let errorMessage = `HTTP ${response.status}`
+      try {
+        const payload = (await response.json()) as { error?: unknown }
+        if (typeof payload.error === 'string' && payload.error.trim()) {
+          errorMessage = payload.error.trim()
+        }
+      } catch {
+      }
+      throw new Error(errorMessage)
+    }
+  }
+
+  let accessToken = await getAccessTokenOrThrow(false)
+
+  try {
+    await invokeOnce(accessToken)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    const isAuthIssue = /401|invalid jwt|unauthorized|authorization/i.test(message)
+    if (!isAuthIssue) {
+      throw error
+    }
+
+    accessToken = await getAccessTokenOrThrow(true)
+    await invokeOnce(accessToken)
   }
 }
 
@@ -133,27 +252,10 @@ export function RedemptionPanel({
     })
 
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
-
-      if (!session?.access_token) {
-        throw new Error('Session expirée. Reconnectez-vous pour consommer une récompense.')
-      }
-
-      const { error: unlockError } = await supabase.functions.invoke('unlock-reward', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: {
-          client_reward_id: reward.id,
-          pending_transaction_id: pendingTransaction.id,
-        },
+      await consumeRewardAtCaisse({
+        clientRewardId: reward.id,
+        pendingTransactionId: pendingTransaction.id,
       })
-
-      if (unlockError) {
-        throw new Error(unlockError.message)
-      }
 
       setAvailableRewards((prev) => prev.filter((item) => item.id !== reward.id))
       setConsumeRewardSuccess('✅ Récompense consommée')
