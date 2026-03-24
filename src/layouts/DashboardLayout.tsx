@@ -45,6 +45,7 @@ const activityNav: NavItem[] = [
 
 const accountNav: NavItem[] = [
   { key: 'history', label: 'Historique', to: '/history', icon: History },
+  { key: 'onboarding', label: 'Onboarding', to: '/onboarding/1', icon: Users },
   { key: 'settings', label: 'Parametres', to: '/settings', icon: Settings },
 ]
 
@@ -93,12 +94,16 @@ function MobileBottomNav({
     { key: 'points', label: 'Points', to: '/points', icon: Coins },
     { key: 'scanner', label: 'Scanner', to: '/scan', icon: QrCode },
     { key: 'networks', label: 'Reseaux', to: '/networks', icon: Network },
+    { key: 'onboarding', label: 'Onboarding', to: '/onboarding/1', icon: Users },
     { key: 'settings', label: 'Profil', to: '/settings', icon: Settings },
   ]
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white/95 backdrop-blur lg:hidden" aria-label="Navigation mobile">
-      <div className="grid grid-cols-5 px-1 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+      <div
+        className="grid px-1 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]"
+        style={{ gridTemplateColumns: `repeat(${mobileNav.length}, minmax(0, 1fr))` }}
+      >
         {mobileNav.map((item) => {
           const Icon = item.icon
           const isActive = currentActivePage === item.key

@@ -102,7 +102,6 @@ export default function Step1Account() {
     setAccount({
       email: values.email,
       firstName: values.firstName,
-      lastName: values.lastName,
     })
 
     goNext()

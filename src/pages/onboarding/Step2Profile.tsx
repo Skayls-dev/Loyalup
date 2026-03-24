@@ -24,8 +24,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 export default function Step2Profile() {
-  const { profile, setProfile, goNext, goPrev } = useOnboarding()
-  const [selectedAvatar, setSelectedAvatar] = useState(profile?.avatarId || avatars[0].id)
+  const { goNext, goPrev } = useOnboarding()
+  const [selectedAvatar, setSelectedAvatar] = useState<(typeof avatars)[number]['id']>(avatars[0].id)
 
   const {
     register,
@@ -35,9 +35,9 @@ export default function Step2Profile() {
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      city: profile?.city ?? '',
-      country: (profile?.country as (typeof countries)[number]) || 'Belgique',
-      language: (profile?.language as (typeof languages)[number]) || 'Français',
+      city: '',
+      country: 'Belgique',
+      language: 'Français',
     },
     mode: 'onBlur',
   })
@@ -55,13 +55,6 @@ export default function Step2Profile() {
     }
 
     const metadata = authData.user.user_metadata ?? {}
-
-    setProfile({
-      avatarId: selectedId,
-      city: values.city,
-      country: values.country,
-      language: values.language,
-    })
 
     const { error: updateError } = await supabase.auth.updateUser({
       data: {

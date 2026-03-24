@@ -66,6 +66,7 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
     }
 
     let cancelled = false
+    let pollTimer: ReturnType<typeof window.setInterval> | null = null
 
     const hydratePending = async (payload: PendingTransactionPayload) => {
       if (payload.status !== 'pending') {
@@ -124,11 +125,20 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
     void loadCurrentPending()
     subscribeToPendingTransactions(fournisseurId, hydratePending)
 
+    if (!pendingTransaction) {
+      pollTimer = window.setInterval(() => {
+        void loadCurrentPending()
+      }, 1000)
+    }
+
     return () => {
       cancelled = true
+      if (pollTimer) {
+        window.clearInterval(pollTimer)
+      }
       unsubscribe()
     }
-  }, [fournisseurId])
+  }, [fournisseurId, pendingTransaction])
 
   const clearPending = () => {
     setPendingTransaction(null)

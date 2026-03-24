@@ -45,6 +45,12 @@ export function Navbar() {
 
         <div className="hidden items-center gap-3 md:flex">
           <Link
+            to="/onboarding/1"
+            className="inline-flex h-10 items-center justify-center rounded-md border border-violet-200 px-4 font-body text-sm font-medium text-violet-700 transition hover:bg-violet-50"
+          >
+            Onboarding
+          </Link>
+          <Link
             to="/login"
             className="inline-flex h-10 items-center justify-center rounded-md border border-transparent px-4 font-body text-sm font-medium text-gray-700 transition hover:bg-gray-100"
           >
@@ -93,6 +99,13 @@ export function Navbar() {
             </a>
           ))}
           <div className="mt-3 flex flex-col gap-2 border-t border-gray-200 pt-3">
+            <Link
+              to="/onboarding/1"
+              onClick={closeMobile}
+              className="inline-flex h-10 items-center justify-center rounded-md border border-violet-200 font-body text-sm font-medium text-violet-700 transition hover:bg-violet-50"
+            >
+              Onboarding
+            </Link>
             <Link
               to="/login"
               onClick={closeMobile}

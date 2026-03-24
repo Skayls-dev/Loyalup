@@ -5,7 +5,7 @@ type OnboardingLayoutProps = {
   children: ReactNode
 }
 
-const TOTAL_STEPS = 5
+const TOTAL_STEPS = 3
 
 function clampStep(step: number): number {
   return Math.min(TOTAL_STEPS, Math.max(1, step))
@@ -93,7 +93,7 @@ export function OnboardingLayout({ currentStep, children }: OnboardingLayoutProp
         </div>
 
         <div className="mb-8 flex w-full max-w-2xl items-center">
-          {[1, 2, 3, 4, 5].map((step, idx) => (
+          {[1, 2, 3].map((step, idx) => (
             <div key={step} className="flex w-full items-center">
               <StepNode step={step} activeStep={activeStep} />
               {idx < TOTAL_STEPS - 1 ? <StepLine done={activeStep > step} /> : null}
@@ -108,7 +108,7 @@ export function OnboardingLayout({ currentStep, children }: OnboardingLayoutProp
           <div>{children}</div>
 
           <div className="mt-8 flex items-center justify-center gap-2" aria-label="Progression onboarding">
-            {[1, 2, 3, 4, 5].map((step) => (
+            {[1, 2, 3].map((step) => (
               <ProgressDot key={step} index={step} activeStep={activeStep} />
             ))}
           </div>

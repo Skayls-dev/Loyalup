@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
-import { Navigate, Outlet, Route, Routes, useLocation, useParams } from 'react-router-dom'
+import { Link, Navigate, Outlet, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ProtectedRoute } from './ProtectedRoute'
 import { LoginForm } from '../modules/auth/components/LoginForm'
 import { RegisterForm } from '../modules/auth/components/RegisterForm'
@@ -13,7 +13,7 @@ import { MerchantRevenueChart } from '../components/merchant/MerchantRevenueChar
 import { MerchantTransactions } from '../components/merchant/MerchantTransactions'
 import { TopCustomers } from '../components/merchant/TopCustomers'
 import { ServiceManager } from '../modules/providers/components/ServiceManager'
-import type { SocialRole, UserRole } from '../modules/auth/services/authService'
+import type { SocialRole } from '../modules/auth/services/authService'
 import { useEventTracker } from '../shared/hooks/useEventTracker'
 import { supabase } from '../shared/lib/supabaseClient'
 
@@ -140,9 +140,10 @@ function RouteFallback() {
 }
 
 function AuthRoute() {
+  const navigate = useNavigate()
   const location = useLocation()
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login')
-  const [selectedRole, setSelectedRole] = useState<UserRole>('client')
+  const [selectedRole, setSelectedRole] = useState<'client' | 'fournisseur'>('client')
   const [socialRole, setSocialRole] = useState<SocialRole>('client')
   const [socialName, setSocialName] = useState('')
   const [socialError, setSocialError] = useState<string | null>(null)
@@ -166,6 +167,9 @@ function AuthRoute() {
 
     return user.email.split('@')[0] ?? ''
   }, [user?.email])
+
+  const currentModeLabel = authMode === 'signup' ? 'Inscription' : 'Connexion'
+  const currentRoleLabel = selectedRole === 'fournisseur' ? 'Fournisseur' : 'Client'
 
   useEffect(() => {
     if (!socialName && emailLocalPart) {
@@ -348,9 +352,49 @@ function AuthRoute() {
           <span className="h-2 w-2 rounded-full bg-violet-500" aria-hidden="true" />
         </div>
 
+        <Link
+          to="/"
+          className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-200 px-3 py-1.5 font-body text-xs font-semibold text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50 hover:text-zinc-900"
+        >
+          ← Retour au site
+        </Link>
+
         <div className="w-full max-w-sm">
-          {/* Login / Signup animated tab switcher */}
-          <div className="relative mb-7 flex rounded-xl bg-zinc-100 p-1">
+          {/* Role tabs first */}
+          <div className="mb-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-400">
+              Je me connecte en tant que
+            </p>
+            <div className="relative flex rounded-xl bg-zinc-100 p-1">
+              <span
+                className={`absolute inset-y-1 w-[calc(50%-2px)] rounded-lg bg-white shadow-sm transition-all duration-200 ease-out ${
+                  selectedRole === 'fournisseur' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
+                }`}
+                aria-hidden="true"
+              />
+              <button
+                type="button"
+                onClick={() => setSelectedRole('client')}
+                className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
+                  selectedRole === 'client' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+                }`}
+              >
+                Client
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRole('fournisseur')}
+                className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
+                  selectedRole === 'fournisseur' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
+                }`}
+              >
+                Fournisseur
+              </button>
+            </div>
+          </div>
+
+          {/* Then login / signup tabs */}
+          <div className="relative mb-5 flex rounded-xl bg-zinc-100 p-1">
             <span
               className={`absolute inset-y-1 w-[calc(50%-2px)] rounded-lg bg-white shadow-sm transition-all duration-200 ease-out ${
                 authMode === 'signup' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
@@ -377,44 +421,29 @@ function AuthRoute() {
             </button>
           </div>
 
+          <p className="mb-5 text-center font-body text-xs text-zinc-500">
+            Mode actuel: <span className="font-semibold text-zinc-700">{currentModeLabel}</span>
+            {' '}·{' '}
+            <span className="font-semibold text-violet-700">{currentRoleLabel}</span>
+          </p>
+
+          <div className="mb-5 rounded-xl border border-violet-200 bg-violet-50/70 p-3">
+            <p className="font-body text-xs text-violet-800">
+              Nouveau ici ? Lancez directement le parcours guidé sans connexion préalable.
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/onboarding/1')}
+              className="mt-2 inline-flex h-10 w-full items-center justify-center rounded-lg bg-violet-600 px-3 font-body text-sm font-semibold text-white transition hover:brightness-105"
+            >
+              Commencer l'onboarding
+            </button>
+          </div>
+
           {authMode === 'signup' ? (
-            <div className="space-y-5">
-              {/* Role picker */}
-              <div>
-                <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-zinc-400">
-                  Je suis
-                </p>
-                <div className="relative flex rounded-xl bg-zinc-100 p-1">
-                  <span
-                    className={`absolute inset-y-1 w-[calc(50%-2px)] rounded-lg bg-white shadow-sm transition-all duration-200 ease-out ${
-                      selectedRole === 'fournisseur' ? 'translate-x-[calc(100%+4px)]' : 'translate-x-0'
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRole('client')}
-                    className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
-                      selectedRole === 'client' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
-                    }`}
-                  >
-                    Client
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedRole('fournisseur')}
-                    className={`relative z-10 flex-1 rounded-lg py-2 text-sm font-semibold transition-colors duration-200 ${
-                      selectedRole === 'fournisseur' ? 'text-zinc-900' : 'text-zinc-400 hover:text-zinc-600'
-                    }`}
-                  >
-                    Fournisseur
-                  </button>
-                </div>
-              </div>
-              <RegisterForm role={selectedRole} bare />
-            </div>
+            <RegisterForm role={selectedRole} bare />
           ) : (
-            <LoginForm bare />
+            <LoginForm allowedRoles={[selectedRole]} bare />
           )}
         </div>
       </div>

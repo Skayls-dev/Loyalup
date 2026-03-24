@@ -9,6 +9,39 @@ type SelectedNetwork = {
   emoji: string
 }
 
+type NextStep = {
+  icon: string
+  label: string
+  sublabel: string
+  action: 'navigate' | 'push'
+  to?: string
+  primary?: boolean
+}
+
+const nextSteps: NextStep[] = [
+  {
+    icon: '📱',
+    label: 'Scanner mon premier QR',
+    sublabel: 'Gagnez 75 pts dès maintenant',
+    action: 'navigate',
+    to: '/scan',
+    primary: true,
+  },
+  {
+    icon: '🌍',
+    label: 'Découvrir les réseaux',
+    sublabel: 'Bonus x1.5 chez les marchands partenaires',
+    action: 'navigate',
+    to: '/networks',
+  },
+  {
+    icon: '🔔',
+    label: 'Activer les notifications',
+    sublabel: 'Ne ratez aucun défi ni offre flash',
+    action: 'push',
+  },
+]
+
 function localizedText(raw: unknown, fallback = ''): string {
   if (typeof raw === 'string' && raw.trim()) return raw
   if (raw && typeof raw === 'object') {
@@ -25,6 +58,7 @@ export default function Step5Success() {
 
   const [networkPreview, setNetworkPreview] = useState<SelectedNetwork[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [notificationHint, setNotificationHint] = useState<string | null>(null)
 
   const hasSelectedNetworks = selectedNetworkIds.length > 0
 
@@ -141,6 +175,33 @@ export default function Step5Success() {
     return selectedNetworkIds.map((id) => ({ id, emoji: '🌐', name: `Réseau ${id.slice(0, 6)}` }))
   }, [networkPreview, selectedNetworkIds])
 
+  const handleNextStep = async (step: NextStep) => {
+    if (step.action === 'navigate' && step.to) {
+      navigate(step.to)
+      return
+    }
+
+    if (step.action !== 'push') {
+      return
+    }
+
+    setNotificationHint(null)
+
+    if (typeof Notification === 'undefined') {
+      setNotificationHint('Vous pouvez l\'activer plus tard dans les paramètres')
+      return
+    }
+
+    const permission = await Notification.requestPermission()
+
+    if (permission === 'granted') {
+      console.log('push permission granted')
+      return
+    }
+
+    setNotificationHint('Vous pouvez l\'activer plus tard dans les paramètres')
+  }
+
   return (
     <section className="mx-auto flex w-full max-w-3xl flex-col items-center text-center">
       <style>{`
@@ -196,22 +257,72 @@ export default function Step5Success() {
         </div>
       </div>
 
-      <div className="mt-6 w-full max-w-xl text-left">
-        <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Prochaines étapes</p>
-        <ul className="mt-3 space-y-2">
-          {[
-            'Explorez vos offres recommandées selon vos intérêts.',
-            'Scannez votre premier QR code pour gagner des points.',
-            'Activez vos notifications pour ne rater aucun défi.',
-          ].map((item, index) => (
-            <li key={item} className="flex items-start gap-2">
-              <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-100 text-xs font-bold text-violet-700">
-                {index + 1}
-              </span>
-              <span className="font-body text-sm text-gray-700">{item}</span>
-            </li>
-          ))}
-        </ul>
+      <div className="mt-6 w-full max-w-xl rounded-3xl border border-gray-200 bg-gradient-to-b from-white to-gray-50/80 p-4 text-left shadow-[0_18px_50px_rgba(91,79,232,0.08)] sm:p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="font-body text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Prochaines étapes</p>
+            <p className="mt-1 font-body text-sm text-gray-600">On vous recommande de commencer par votre premier scan.</p>
+          </div>
+          <span className="rounded-full bg-violet-100 px-3 py-1 text-[11px] font-semibold text-violet-700">
+            Démarrage rapide
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {nextSteps.map((step) => {
+            const isPrimary = Boolean(step.primary)
+            const isPushStep = step.action === 'push'
+
+            return (
+              <div key={step.label}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void handleNextStep(step)
+                  }}
+                  className={
+                    isPrimary
+                      ? 'flex w-full items-center gap-3 rounded-2xl bg-[#5B4FE8] px-4 py-3.5 text-left text-white shadow-[0_14px_30px_rgba(91,79,232,0.28)] transition hover:-translate-y-0.5 hover:brightness-105'
+                      : 'flex w-full items-center gap-3 rounded-2xl border border-gray-200 bg-white px-4 py-3.5 text-left text-gray-900 shadow-sm transition hover:-translate-y-0.5 hover:border-gray-300 hover:bg-gray-50'
+                  }
+                >
+                  <span
+                    className={
+                      isPrimary
+                        ? 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-white/14 text-xl'
+                        : 'flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gray-100 text-xl'
+                    }
+                    aria-hidden="true"
+                  >
+                    {step.icon}
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2 font-body text-sm font-semibold">
+                      <span>{step.label}</span>
+                      {isPrimary ? (
+                        <span className="rounded-full bg-white/14 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-white/90">
+                          Recommandé
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className={`mt-0.5 block text-xs ${isPrimary ? 'text-white/72' : 'text-gray-500'}`}>
+                      {step.sublabel}
+                    </span>
+                  </span>
+
+                  <span className={`text-lg ${isPrimary ? 'text-white/90' : 'text-gray-400'}`} aria-hidden="true">
+                    →
+                  </span>
+                </button>
+
+                {isPushStep && notificationHint ? (
+                  <p className="mt-2 pl-2 font-body text-xs text-gray-500">{notificationHint}</p>
+                ) : null}
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       {error ? <p className="mt-4 font-body text-sm text-rose-600">{error}</p> : null}
@@ -220,9 +331,9 @@ export default function Step5Success() {
         <button
           type="button"
           onClick={() => navigate('/dashboard')}
-          className="h-11 rounded-xl bg-[#5B4FE8] px-5 font-body text-sm font-semibold text-white transition hover:brightness-105"
+          className="mt-2 text-sm text-gray-500 underline-offset-2 hover:underline"
         >
-          Accéder à mon dashboard →
+          Passer cette étape
         </button>
 
         <button

@@ -221,15 +221,15 @@ function PendingCountdown({ onTimeout }: { onTimeout: () => void }) {
 }
 
 function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoading = false, onRetryShare, onReset }: ScanSuccessProps) {
-    const toggleShareActions = () => {
-      if (!showShareActions && !shareUrl && onRetryShare) {
-        void onRetryShare()
-      }
-      setShowShareActions((open) => !open)
-    }
-
   const [showShareActions, setShowShareActions] = useState(false)
   const [copyNotice, setCopyNotice] = useState<string | null>(null)
+
+  const toggleShareActions = () => {
+    if (!showShareActions && !shareUrl && onRetryShare) {
+      void onRetryShare()
+    }
+    setShowShareActions((open) => !open)
+  }
 
   const shareText = shareMessage ?? 'Rejoignez-moi sur Looyaal et gagnez un bonus de bienvenue.'
 
@@ -504,10 +504,22 @@ export default function QRScannerPage() {
   const [pendingTxId, setPendingTxId] = useState<string | null>(null)
   const [validatedPoints, setValidatedPoints] = useState<number | undefined>(undefined)
   const [validatedBalance, setValidatedBalance] = useState<number | undefined>(undefined)
+  const [scanResultData, setScanResultData] = useState<{
+    totalPoints: number
+    basePoints: number
+    bonusPoints: number
+    multiplier: number
+    merchantName: string
+    networkName: string
+    currentPoints: number
+    nextThreshold: number
+  } | null>(null)
   const [errorReason, setErrorReason] = useState('')
   const [shareUrl, setShareUrl] = useState<string | undefined>(undefined)
   const [shareMessage, setShareMessage] = useState<string>('')
   const [shareLoading, setShareLoading] = useState(false)
+
+  void scanResultData
 
   const loadShareLink = useCallback(async () => {
     setShareLoading(true)
@@ -546,6 +558,7 @@ export default function QRScannerPage() {
     setPendingTxId(null)
     setValidatedPoints(undefined)
     setValidatedBalance(undefined)
+    setScanResultData(null)
     setErrorReason('')
     setShareUrl(undefined)
     setShareMessage('')
@@ -567,15 +580,102 @@ export default function QRScannerPage() {
 
     const applyValidated = async () => {
       if (cancelled) return
-      // Fetch points from transactions table
-      const { data } = await supabase
+
+      const { data: txData } = await supabase
         .from('transactions')
-        .select('points_credited, client_points:client_points_record(solde)')
+        .select('points_credited, fournisseur_id, client_id')
         .eq('pending_transaction_id', pendingTxId)
         .maybeSingle()
+
+      const pointsCredited = Number((txData as { points_credited?: number | null } | null)?.points_credited ?? 0)
+      const fournisseurId = (txData as { fournisseur_id?: string | null } | null)?.fournisseur_id ?? null
+      const clientId = (txData as { client_id?: string | null } | null)?.client_id ?? null
+
+      let merchantName = 'Marchand'
+      if (fournisseurId) {
+        const { data: fournisseurData } = await supabase
+          .from('fournisseurs')
+          .select('nom_commerce')
+          .eq('id', fournisseurId)
+          .maybeSingle()
+
+        merchantName =
+          (fournisseurData as { nom_commerce?: string | null } | null)?.nom_commerce?.trim() || 'Marchand'
+      }
+
+      let networkName = 'Looyaal'
+      let multiplier = 1.0
+      if (fournisseurId) {
+        const { data: networkMembership } = await supabase
+          .from('network_members')
+          .select('networks:network_id(name, points_multiplier)')
+          .eq('fournisseur_id', fournisseurId)
+          .eq('status', 'active')
+          .limit(1)
+          .maybeSingle()
+
+        if (networkMembership) {
+          const rawNetworks = (networkMembership as { networks?: unknown }).networks
+          const network = Array.isArray(rawNetworks) ? rawNetworks[0] : rawNetworks
+
+          if (network && typeof network === 'object') {
+            const rawName = (network as { name?: unknown }).name
+            networkName =
+              typeof rawName === 'string'
+                ? rawName
+                : ((rawName as { fr?: string } | undefined)?.fr ?? 'Looyaal')
+            multiplier = Number((network as { points_multiplier?: number | null }).points_multiplier ?? 1)
+          }
+        }
+      }
+
+      const basePoints = multiplier > 1 ? Math.round(pointsCredited / multiplier) : pointsCredited
+      const bonusPoints = pointsCredited - basePoints
+
+      let currentPoints = pointsCredited
+      let nextThreshold = 1000
+
+      if (clientId && fournisseurId) {
+        const { data: clientPointsData } = await supabase
+          .from('client_points')
+          .select('solde')
+          .eq('client_id', clientId)
+          .eq('fournisseur_id', fournisseurId)
+          .maybeSingle()
+
+        currentPoints = Number((clientPointsData as { solde?: number | null } | null)?.solde ?? pointsCredited)
+      }
+
+      if (fournisseurId) {
+        const { data: rewardRules } = await supabase
+          .from('reward_rules')
+          .select('points_required')
+          .eq('fournisseur_id', fournisseurId)
+          .eq('actif', true)
+          .order('points_required', { ascending: true })
+
+        const nextRule = ((rewardRules ?? []) as Array<{ points_required?: number | null }>).find(
+          (rule) => Number(rule.points_required) > currentPoints,
+        )
+
+        if (nextRule) {
+          nextThreshold = Number(nextRule.points_required)
+        }
+      }
+
       if (!cancelled) {
-        const row = data as { points_credited: number | null; client_points_record?: { solde: number } | null } | null
-        setValidatedPoints(row?.points_credited ?? undefined)
+        setValidatedPoints(pointsCredited)
+        setValidatedBalance(currentPoints)
+        setScanResultData({
+          totalPoints: pointsCredited,
+          basePoints,
+          bonusPoints,
+          multiplier,
+          merchantName,
+          networkName,
+          currentPoints,
+          nextThreshold,
+        })
         setState('validated')
         if (pollingTimer) clearInterval(pollingTimer)
         unsubscribeTransactionStatus()
@@ -639,6 +739,7 @@ export default function QRScannerPage() {
     shareLoading,
     shareMessage,
     shareUrl,
+    loadShareLink,
     state,
     validatedBalance,
     validatedPoints,

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { QrCode } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui'
@@ -21,6 +22,44 @@ function formatFrenchDate(date: Date): string {
   })
 }
 
+type FirstScanBannerProps = {
+  onDismiss: () => void
+}
+
+function FirstScanBanner({ onDismiss }: FirstScanBannerProps) {
+  const navigate = useNavigate()
+
+  return (
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-[#5B4FE8] to-[#8B7FF5] p-5 text-white shadow-lg">
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Fermer"
+        className="absolute right-3 top-3 flex h-6 w-6 items-center justify-center rounded-full bg-white/20 text-xs text-white hover:bg-white/30"
+      >
+        ×
+      </button>
+
+      <div className="flex items-start gap-4">
+        <span className="text-3xl">📱</span>
+        <div className="flex-1">
+          <p className="font-display text-lg font-extrabold">Faites votre premier scan</p>
+          <p className="mt-1 text-sm text-white/80">
+            Gagnez 75 points dès maintenant chez un marchand partenaire.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/scan')}
+            className="mt-3 inline-flex h-9 items-center justify-center rounded-lg bg-white px-4 text-sm font-semibold text-[#5B4FE8] transition hover:bg-white/90"
+          >
+            Scanner maintenant →
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function DashboardHome() {
   const navigate = useNavigate()
   const { user, profile } = useAuth()
@@ -36,9 +75,23 @@ export function DashboardHome() {
     loading,
   } = useDashboardStats()
   const { networks, tier: tierData } = useDashboard(userId)
+  const [bannerDismissed, setBannerDismissed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') {
+      return false
+    }
+
+    return window.localStorage.getItem('loyalup_first_scan_banner_dismissed') === 'true'
+  })
 
   const userName = profile?.nom?.trim() || 'Membre Looyaal'
   const today = formatFrenchDate(new Date())
+
+  function handleDismissBanner() {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('loyalup_first_scan_banner_dismissed', 'true')
+    }
+    setBannerDismissed(true)
+  }
 
   const statCards = [
     {
@@ -103,6 +156,10 @@ export function DashboardHome() {
           </Button>
         </div>
       </header>
+
+      {!loading && totalPoints === 0 && monthlyTransactions === 0 && !bannerDismissed && (
+        <FirstScanBanner onDismiss={handleDismissBanner} />
+      )}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {statCards.map((card) => (

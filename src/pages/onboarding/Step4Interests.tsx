@@ -24,8 +24,8 @@ const interests: InterestItem[] = [
 ]
 
 export default function Step4Interests() {
-  const { goPrev, goNext, selectedInterests, setInterests } = useOnboarding()
-  const [selected, setSelected] = useState<string[]>(selectedInterests)
+  const { goPrev, goNext } = useOnboarding()
+  const [selected, setSelected] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,8 +48,6 @@ export default function Step4Interests() {
     }
 
     const userId = authData.user.id
-
-    setInterests(selected)
 
     if (selected.length > 0) {
       const { error: deleteError } = await supabase.from('user_interests').delete().eq('user_id', userId)
