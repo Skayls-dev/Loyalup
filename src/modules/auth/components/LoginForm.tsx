@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../hooks/useAuth'
@@ -42,6 +42,15 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
   const [localError, setLocalError] = useState<string | null>(null)
   const showRoleSelector = allowedRoles.length > 1
 
+  // Sync internal selectedRole when the parent passes a single forced role (e.g. AuthRoute
+  // switches the outer tab from 'client' to 'fournisseur'). Without this, the stale 'client'
+  // default would cause the role-mismatch guard in handleSubmit to log out a valid fournisseur.
+  useEffect(() => {
+    if (allowedRoles.length === 1 && allowedRoles[0]) {
+      setSelectedRole(allowedRoles[0])
+    }
+  }, [allowedRoles])
+
   const resolvedError = useMemo(() => localError ?? error, [localError, error])
   const showSocialLogin = !allowedRoles.includes('admin')
 
@@ -82,6 +91,14 @@ export function LoginForm({ allowedRoles = ['client', 'fournisseur'], title = 'C
         setLocalError(
           `Ce compte est associé au rôle "${effectiveRole}" et non "${selectedRole}".`,
         )
+        return
+      }
+
+      // If role could not be resolved (no metadata, no profile row), log out and surface an
+      // actionable error rather than silently landing on the social-profile completion screen.
+      if (!effectiveRole) {
+        await logout()
+        setLocalError('Impossible de déterminer le rôle de ce compte. Contactez le support.')
       }
     } catch {
       return
