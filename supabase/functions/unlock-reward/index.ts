@@ -10,6 +10,19 @@ type UnlockRewardRequest = {
   pending_transaction_id?: string
 }
 
+function parseJwtSub(jwt: string): string | null {
+  try {
+    const payloadPart = jwt.split('.')[1]
+    if (!payloadPart) return null
+    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
+    const payload = JSON.parse(atob(padded)) as { sub?: unknown }
+    return typeof payload.sub === 'string' && payload.sub.trim().length > 0 ? payload.sub : null
+  } catch {
+    return null
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -24,10 +37,9 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+    if (!supabaseUrl || !serviceRoleKey) {
       return new Response(JSON.stringify({ error: 'Missing Supabase environment variables' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -54,17 +66,16 @@ Deno.serve(async (req) => {
 
     const pendingTransactionId = payload.pending_transaction_id?.trim() ?? ''
 
-    const authClient = createClient(supabaseUrl, anonKey)
-    const { data: userData, error: userError } = await authClient.auth.getUser(jwt)
-
-    if (userError || !userData.user) {
+    // The request is already gateway-authenticated (verify_jwt=true).
+    // Read caller identity directly from JWT payload to avoid extra auth roundtrips.
+    const callerUserId = parseJwtSub(jwt)
+    if (!callerUserId) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
 
-    const callerUserId = userData.user.id
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
     const { data: rewardData, error: rewardError } = await adminClient
