@@ -73,4 +73,28 @@ describe('useQRGenerate', () => {
     unmount()
     expect(clearIntervalSpy).toHaveBeenCalled()
   })
+
+  it('retries quickly after transient failure', async () => {
+    generateTokenMock
+      .mockRejectedValueOnce(new Error('Session expirée, reconnectez-vous.'))
+      .mockResolvedValueOnce({
+        token: 'QR-RECOVERY',
+        expires_at: new Date(Date.now() + 180_000).toISOString(),
+      })
+
+    const { result } = renderHook(() => useQRGenerate())
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    await act(async () => {
+      vi.advanceTimersByTime(2_000)
+      await Promise.resolve()
+    })
+
+    expect(generateTokenMock).toHaveBeenCalledTimes(2)
+    expect(result.current.token).toBe('QR-RECOVERY')
+    expect(result.current.warning).toBeNull()
+  })
 })

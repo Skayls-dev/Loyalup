@@ -8,8 +8,10 @@ import { QRTimerRing } from './QRTimerRing'
 import { supabase } from '../../../shared/lib/supabaseClient'
 
 export function QRDisplay() {
-  const { user, profile } = useAuth()
-  const isProviderSessionReady = Boolean(user?.id && profile?.role === 'fournisseur')
+  const { user, profile, role } = useAuth()
+  const isProviderSessionReady = Boolean(
+    user?.id && (role === 'fournisseur' || profile?.role === 'fournisseur' || role === null),
+  )
   const { token, manualCode, expiresAt, secondsLeft, isLoading, warning, regenerateNow } = useQRGenerate({
     enabled: isProviderSessionReady,
   })
@@ -186,9 +188,16 @@ export function QRDisplay() {
 
             <p className="animate-pulse text-sm text-zinc-500">{statusText}</p>
             {warning ? (
-              <p className="w-full rounded-lg border border-amber-800 bg-amber-950/50 px-3 py-2 text-xs text-amber-300">
-                {warning}
-              </p>
+              <div className="w-full space-y-2 rounded-lg border border-amber-800 bg-amber-950/50 px-3 py-2 text-xs text-amber-300">
+                <p>{warning}</p>
+                <button
+                  type="button"
+                  onClick={() => void regenerateNow()}
+                  className="inline-flex items-center rounded-md border border-amber-700 px-2 py-1 text-[11px] font-semibold text-amber-200 transition hover:bg-amber-900/40"
+                >
+                  Regenerer maintenant
+                </button>
+              </div>
             ) : null}
           </div>
         </div>

@@ -17,6 +17,8 @@ type UseQRGenerateOptions = {
 
 const TOKEN_TOTAL_SECONDS = 180
 const REGENERATE_INTERVAL_MS = 170_000
+const FAST_RETRY_DELAY_MS = 2_000
+const MAX_FAST_RETRIES = 5
 
 function getSecondsLeft(expiresAt: string | null): number {
   if (!expiresAt) {
@@ -37,6 +39,8 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
   const [warning, setWarning] = useState<string | null>(null)
 
   const expiryTimeoutRef = useRef<number | null>(null)
+  const retryTimeoutRef = useRef<number | null>(null)
+  const fastRetryCountRef = useRef(0)
   const autoRetryRef = useRef(true)
 
   const clearExpiryTimeout = () => {
@@ -44,6 +48,29 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
       window.clearTimeout(expiryTimeoutRef.current)
       expiryTimeoutRef.current = null
     }
+  }
+
+  const clearRetryTimeout = () => {
+    if (retryTimeoutRef.current !== null) {
+      window.clearTimeout(retryTimeoutRef.current)
+      retryTimeoutRef.current = null
+    }
+  }
+
+  const scheduleFastRetry = () => {
+    if (!enabled || !autoRetryRef.current) {
+      return
+    }
+
+    if (fastRetryCountRef.current >= MAX_FAST_RETRIES) {
+      return
+    }
+
+    clearRetryTimeout()
+    fastRetryCountRef.current += 1
+    retryTimeoutRef.current = window.setTimeout(() => {
+      regenerate().catch(() => null)
+    }, FAST_RETRY_DELAY_MS)
   }
 
   const regenerate = useCallback(async () => {
@@ -60,6 +87,7 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
     try {
       const data = await generateToken()
       autoRetryRef.current = true
+      fastRetryCountRef.current = 0
       setToken(data.token)
       setManualCode(data.manual_code?.trim() ? data.manual_code.trim() : null)
       setExpiresAt(data.expires_at)
@@ -68,6 +96,7 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
       localStorage.setItem('qr:last-token', JSON.stringify(data))
 
       clearExpiryTimeout()
+      clearRetryTimeout()
       const timeoutMs = Math.max(0, new Date(data.expires_at).getTime() - Date.now())
       expiryTimeoutRef.current = window.setTimeout(() => {
         if (autoRetryRef.current) {
@@ -80,6 +109,7 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
       if (message.includes('HTTP 401') || message.includes('HTTP 403')) {
         autoRetryRef.current = false
         clearExpiryTimeout()
+        clearRetryTimeout()
       }
 
       if (!navigator.onLine) {
@@ -100,6 +130,10 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
       }
 
       setWarning(message)
+
+      if (autoRetryRef.current && navigator.onLine) {
+        scheduleFastRetry()
+      }
     } finally {
       setIsLoading(false)
     }
@@ -114,7 +148,9 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
       setIsLoading(false)
       setWarning(null)
       autoRetryRef.current = true
+      fastRetryCountRef.current = 0
       clearExpiryTimeout()
+      clearRetryTimeout()
       return
     }
 
@@ -128,6 +164,7 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
 
     return () => {
       clearExpiryTimeout()
+      clearRetryTimeout()
       window.clearInterval(intervalId)
     }
   }, [enabled, regenerate])
@@ -152,6 +189,8 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
       warning,
       regenerateNow: async () => {
         autoRetryRef.current = true
+        fastRetryCountRef.current = 0
+        clearRetryTimeout()
         await regenerate()
       },
     }),
