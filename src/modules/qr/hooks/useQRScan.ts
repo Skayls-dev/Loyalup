@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Html5Qrcode } from 'html5-qrcode'
 import {
-  getPendingTransactionStatus,
   subscribeToTransactionStatus,
   unsubscribeTransactionStatus,
   validateToken,
@@ -141,7 +140,6 @@ export function useQRScan(): UseQRScanResult {
     }
 
     let cancelled = false
-    let pollingTimer: ReturnType<typeof setInterval> | null = null
 
     const applyStatus = (status: ScanTransactionStatus) => {
       if (cancelled || status === 'idle' || status === 'pending') {
@@ -150,11 +148,6 @@ export function useQRScan(): UseQRScanResult {
 
       setTransactionStatus(status)
 
-      if (pollingTimer) {
-        clearInterval(pollingTimer)
-        pollingTimer = null
-      }
-
       unsubscribeTransactionStatus()
     }
 
@@ -162,21 +155,8 @@ export function useQRScan(): UseQRScanResult {
       applyStatus(payload.status)
     })
 
-    pollingTimer = setInterval(() => {
-      getPendingTransactionStatus(transactionId)
-        .then((status) => {
-          if (status === 'validated' || status === 'cancelled') {
-            applyStatus(status)
-          }
-        })
-        .catch(() => null)
-    }, 3000)
-
     return () => {
       cancelled = true
-      if (pollingTimer) {
-        clearInterval(pollingTimer)
-      }
       unsubscribeTransactionStatus()
     }
   }, [success, transactionId])

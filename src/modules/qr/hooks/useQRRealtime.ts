@@ -122,19 +122,13 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
     }
 
     void loadCurrentPending()
-    const pollingInterval = window.setInterval(() => {
-      if (!pendingTransaction) {
-        void loadCurrentPending()
-      }
-    }, 1000)
     subscribeToPendingTransactions(fournisseurId, hydratePending)
 
     return () => {
       cancelled = true
-      window.clearInterval(pollingInterval)
       unsubscribe()
     }
-  }, [fournisseurId, pendingTransaction])
+  }, [fournisseurId])
 
   const clearPending = () => {
     setPendingTransaction(null)
