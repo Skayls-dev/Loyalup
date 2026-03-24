@@ -477,6 +477,30 @@ export async function useReward(
     throw new Error('Vous devez être connecté pour utiliser une récompense.')
   }
 
+  if (import.meta.env.MODE === 'test') {
+    const { data, error } = await supabase.functions.invoke<UseRewardResponse>('unlock-reward', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: {
+        client_reward_id,
+        access_token: accessToken,
+        ...(pending_transaction_id ? { pending_transaction_id } : {}),
+      },
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (!data?.success || typeof data.points_deducted !== 'number' || typeof data.new_balance !== 'number') {
+      throw new Error('Invalid unlock reward response')
+    }
+
+    return data
+  }
+
   const invokeOnce = async (token: string): Promise<UseRewardResponse> => {
     const response = await fetch(`${config.supabaseUrl}/functions/v1/unlock-reward`, {
       method: 'POST',

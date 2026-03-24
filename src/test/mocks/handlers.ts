@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw'
 
-const base = 'http://localhost:54321/functions/v1'
+const base = '*/functions/v1'
 
 export const handlers = [
   http.post(`${base}/generate-qr`, async () => {
