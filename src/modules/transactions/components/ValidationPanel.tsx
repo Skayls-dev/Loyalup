@@ -106,7 +106,7 @@ export function ValidationPanel({
             requires_physical_presence?: boolean | null
           }
 
-          return typed.reward_delivery_type !== 'digital_code' && Boolean(typed.requires_physical_presence)
+          return typed.reward_delivery_type !== 'digital_code'
         }).length
 
         setAvailableRewardsCount(eligibleCount)

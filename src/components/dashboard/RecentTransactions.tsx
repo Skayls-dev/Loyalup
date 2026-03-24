@@ -63,11 +63,17 @@ export function RecentTransactions({ userId, limit = 4, className = '' }: Recent
             </div>
 
             <div className="min-w-0 flex-1">
-              <p className="truncate font-body text-sm font-semibold text-dark">{tx.merchantName}</p>
+              <p className="truncate font-body text-sm font-semibold text-dark">
+                {tx.transactionType === 'reward_redemption' && tx.serviceName ? tx.serviceName : tx.merchantName}
+              </p>
               <p className="mt-0.5 font-body text-xs text-gray-500">{formatTransactionDate(tx.createdAt)}</p>
             </div>
 
-            <p className="font-body text-sm font-semibold text-accent-green">+{tx.points.toLocaleString('fr-FR')} pts</p>
+            {tx.transactionType === 'reward_redemption' ? (
+              <p className="font-body text-sm font-semibold text-amber-500">{tx.points.toLocaleString('fr-FR')} pts</p>
+            ) : (
+              <p className="font-body text-sm font-semibold text-accent-green">+{tx.points.toLocaleString('fr-FR')} pts</p>
+            )}
           </article>
         ))}
       </div>

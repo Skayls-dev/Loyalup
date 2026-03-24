@@ -91,12 +91,10 @@ export function RedemptionPanel({
             })
             .filter((row): row is AvailableRewardItem => row !== null)
 
-          // Caisse provider: only show rewards that explicitly require physical presence.
+          // Caisse provider: show all non-digital-code rewards (excludes digital codes only).
           setAvailableRewards(
             mappedRewards.filter(
-              (reward) =>
-                reward.reward_rule.reward_delivery_type !== 'digital_code' &&
-                reward.reward_rule.requires_physical_presence,
+              (reward) => reward.reward_rule.reward_delivery_type !== 'digital_code',
             ),
           )
         }

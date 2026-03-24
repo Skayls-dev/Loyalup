@@ -80,8 +80,19 @@ export function MerchantTransactions({ merchantId, limit = 4, className = '' }: 
               </div>
 
               <div className="text-right">
-                <p className="font-body text-sm font-semibold text-accent-green">+{tx.pointsGiven.toLocaleString('fr-FR')} pts</p>
-                <p className="mt-0.5 font-body text-xs text-gray-500">{tx.amount.toLocaleString('fr-FR')} €</p>
+                {tx.transactionType === 'reward_redemption' ? (
+                  <>
+                    <p className="font-body text-sm font-semibold text-amber-500">
+                      {tx.pointsGiven.toLocaleString('fr-FR')} pts
+                    </p>
+                    <p className="mt-0.5 font-body text-xs text-amber-400">Récompense utilisée</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-body text-sm font-semibold text-accent-green">+{tx.pointsGiven.toLocaleString('fr-FR')} pts</p>
+                    <p className="mt-0.5 font-body text-xs text-gray-500">{tx.amount.toLocaleString('fr-FR')} €</p>
+                  </>
+                )}
               </div>
             </article>
           )

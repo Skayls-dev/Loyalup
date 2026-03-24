@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
 
     const { data: rewardRuleData, error: rewardRuleError } = await adminClient
       .from('reward_rules')
-      .select('id, points_required, requires_physical_presence')
+      .select('id, nom, points_required, requires_physical_presence')
       .eq('id', rewardData.reward_rule_id)
       .maybeSingle()
 
@@ -147,21 +147,9 @@ Deno.serve(async (req) => {
       })
     }
 
-    if (isProviderCaller && rewardRuleData.requires_physical_presence !== true) {
-      return new Response(JSON.stringify({ error: 'REWARD_NOT_CASHIER_ELIGIBLE' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    if (rewardRuleData.requires_physical_presence === true) {
-      if (!pendingTransactionId) {
-        return new Response(JSON.stringify({ error: 'PHYSICAL_PRESENCE_REQUIRED' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
-      }
-
+    // For provider callers: validate that the pending transaction belongs to the right client+provider.
+    // Clients with digital/non-physical rewards can self-redeem without a pending transaction.
+    if (isProviderCaller) {
       const { data: pendingTransactionData, error: pendingTransactionError } = await adminClient
         .from('pending_transactions')
         .select('id')
@@ -184,6 +172,12 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
+    } else if (rewardRuleData.requires_physical_presence === true && !pendingTransactionId) {
+      // Client caller trying to self-redeem a physical-presence-only reward without a scan
+      return new Response(JSON.stringify({ error: 'PHYSICAL_PRESENCE_REQUIRED' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
     }
 
     const { data: rpcData, error: rpcError } = await adminClient.rpc('consume_client_reward', {
@@ -205,6 +199,25 @@ Deno.serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
+    }
+
+    // Record redemption in transactions so it appears in client + merchant history.
+    // Only when performed at the caisse (provider caller with a pending transaction).
+    if (isProviderCaller && pendingTransactionId) {
+      const pointsDeducted = result.points_deducted ?? rewardRuleData.points_required ?? 0
+      const rewardLabel = `🎁 ${rewardRuleData.nom?.trim() || 'Récompense'}`
+      await adminClient.from('transactions').insert({
+        pending_transaction_id: pendingTransactionId,
+        client_id: targetClientId,
+        fournisseur_id: rewardData.fournisseur_id,
+        service_id: null,
+        service_nom_libre: rewardLabel,
+        montant: 0,
+        points_credited: -pointsDeducted,
+        status: 'validated',
+        transaction_type: 'reward_redemption',
+      })
+      // Intentionally not throwing on insert error — reward was already consumed successfully.
     }
 
     return new Response(

@@ -11,6 +11,8 @@ export interface MerchantTransactionItem {
   pointsGiven: number
   amount: number
   createdAt: string
+  transactionType: 'purchase' | 'reward_redemption'
+  serviceName: string | null
 }
 
 export interface UseMerchantTransactionsResult {
@@ -25,6 +27,8 @@ type TransactionRow = {
   montant: number | null
   points_credited: number | null
   created_at: string
+  transaction_type: string | null
+  service_nom_libre: string | null
 }
 
 function levelToTier(level: number): MerchantTier {
@@ -64,7 +68,7 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
         // Schema adaptation: transactions currently use fournisseur_id / client_id / montant / points_credited.
         const { data: txData, error: txError } = await supabase
           .from('transactions')
-          .select('id, client_id, montant, points_credited, created_at')
+          .select('id, client_id, montant, points_credited, created_at, transaction_type, service_nom_libre')
           .eq('fournisseur_id', merchantId)
           .eq('status', 'validated')
           .order('created_at', { ascending: false })
@@ -128,6 +132,8 @@ export function useMerchantTransactions(merchantId: string, limit = 4): UseMerch
             pointsGiven: Number(row.points_credited ?? 0),
             amount: Number(row.montant ?? 0),
             createdAt: row.created_at,
+            transactionType: row.transaction_type === 'reward_redemption' ? 'reward_redemption' : 'purchase',
+            serviceName: row.service_nom_libre ?? null,
           }
         })
 

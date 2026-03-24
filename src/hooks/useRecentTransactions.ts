@@ -8,6 +8,8 @@ export interface RecentTransactionItem {
   networkColor: string
   points: number
   createdAt: string
+  transactionType: 'purchase' | 'reward_redemption'
+  serviceName: string | null
 }
 
 export interface UseRecentTransactionsResult {
@@ -22,6 +24,8 @@ type TransactionRow = {
   points_credited: number | null
   created_at: string
   status: string | null
+  transaction_type: string | null
+  service_nom_libre: string | null
 }
 
 export function useRecentTransactions(userId?: string, limit = 4): UseRecentTransactionsResult {
@@ -47,7 +51,7 @@ export function useRecentTransactions(userId?: string, limit = 4): UseRecentTran
         // Schema adaptation: transactions currently use client_id/fournisseur_id/points_credited.
         const { data: txData, error: txError } = await supabase
           .from('transactions')
-          .select('id, fournisseur_id, points_credited, created_at, status')
+          .select('id, fournisseur_id, points_credited, created_at, status, transaction_type, service_nom_libre')
           .eq('client_id', userId)
           .eq('status', 'validated')
           .order('created_at', { ascending: false })
@@ -78,10 +82,12 @@ export function useRecentTransactions(userId?: string, limit = 4): UseRecentTran
         const mapped: RecentTransactionItem[] = rows.map((row, index) => ({
           id: row.id,
           merchantName: row.fournisseur_id ? providerMap.get(row.fournisseur_id) ?? 'Marchand' : 'Marchand',
-          merchantEmoji: '🏪',
+          merchantEmoji: row.transaction_type === 'reward_redemption' ? '🎁' : '🏪',
           networkColor: fallbackColors[index % fallbackColors.length],
           points: Number(row.points_credited ?? 0),
           createdAt: row.created_at,
+          transactionType: row.transaction_type === 'reward_redemption' ? 'reward_redemption' : 'purchase',
+          serviceName: row.service_nom_libre ?? null,
         }))
 
         if (!cancelled) {
