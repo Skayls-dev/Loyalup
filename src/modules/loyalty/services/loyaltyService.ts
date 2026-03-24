@@ -1,5 +1,6 @@
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase } from '../../../shared/lib/supabaseClient'
+import { config } from '../../../shared/lib/env'
 import { requireOnlineForWrite, withCachedRead } from '../../../shared/lib/offlineGuard'
 
 export type LoyaltyProvider = {
@@ -471,24 +472,57 @@ export async function useReward(
 ): Promise<UseRewardResponse> {
   requireOnlineForWrite()
 
-  const accessToken = await resolveAccessToken()
+  let accessToken = await resolveAccessToken()
   if (!accessToken) {
     throw new Error('Vous devez être connecté pour utiliser une récompense.')
   }
 
-  const { data, error } = await supabase.functions.invoke<UseRewardResponse>('unlock-reward', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    body: {
-      client_reward_id,
-      ...(pending_transaction_id ? { pending_transaction_id } : {}),
-    },
-  })
+  const invokeOnce = async (token: string): Promise<UseRewardResponse> => {
+    const response = await fetch(`${config.supabaseUrl}/functions/v1/unlock-reward`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        apikey: config.supabaseAnonKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        client_reward_id,
+        ...(pending_transaction_id ? { pending_transaction_id } : {}),
+      }),
+    })
 
-  if (error) {
-    throw new Error(error.message)
+    if (!response.ok) {
+      let message = `HTTP ${response.status}`
+      try {
+        const payload = (await response.json()) as { error?: unknown; message?: unknown }
+        if (typeof payload.error === 'string' && payload.error.trim()) {
+          message = payload.error.trim()
+        } else if (typeof payload.message === 'string' && payload.message.trim()) {
+          message = payload.message.trim()
+        }
+      } catch {
+      }
+      throw new Error(message)
+    }
+
+    return await response.json() as UseRewardResponse
+  }
+
+  let data: UseRewardResponse
+  try {
+    data = await invokeOnce(accessToken)
+  } catch (caughtError) {
+    const message = caughtError instanceof Error ? caughtError.message : String(caughtError)
+    const authFailure = /401|authorization|invalid jwt|unauthorized/i.test(message)
+    if (!authFailure) {
+      throw caughtError
+    }
+
+    accessToken = await resolveAccessToken()
+    if (!accessToken) {
+      throw new Error('Vous devez être connecté pour utiliser une récompense.')
+    }
+    data = await invokeOnce(accessToken)
   }
 
   if (!data?.success || typeof data.points_deducted !== 'number' || typeof data.new_balance !== 'number') {
