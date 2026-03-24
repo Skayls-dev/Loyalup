@@ -487,6 +487,7 @@ export async function useReward(
       },
       body: JSON.stringify({
         client_reward_id,
+        access_token: token,
         ...(pending_transaction_id ? { pending_transaction_id } : {}),
       }),
     })

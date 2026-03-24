@@ -1,4 +1,4 @@
-import { createClient } from 'npm:@supabase/supabase-js@2'
+﻿import { createClient } from 'npm:@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -8,19 +8,48 @@ const corsHeaders = {
 type UnlockRewardRequest = {
   client_reward_id?: string
   pending_transaction_id?: string
+  access_token?: string
 }
 
-function parseJwtSub(jwt: string): string | null {
-  try {
-    const payloadPart = jwt.split('.')[1]
-    if (!payloadPart) return null
-    const base64 = payloadPart.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
-    const payload = JSON.parse(atob(padded)) as { sub?: unknown }
-    return typeof payload.sub === 'string' && payload.sub.trim().length > 0 ? payload.sub : null
-  } catch {
-    return null
+type RewardRow = {
+  id: string
+  client_id: string
+  status: 'available' | 'used' | 'expired' | string
+  reward_rule_id: string
+  fournisseur_id: string
+}
+
+type RewardRuleRow = {
+  id: string
+  nom: string | null
+  points_required: number | null
+  requires_physical_presence: boolean | null
+}
+
+type ConsumeRewardResult = {
+  success?: boolean
+  points_deducted?: number
+  new_balance?: number
+}
+
+function respond(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
+}
+
+function resolveAccessToken(req: Request, payload: UnlockRewardRequest): string | null {
+  const authHeader = req.headers.get('Authorization')
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.replace('Bearer ', '').trim()
+    if (token) {
+      return token
+    }
   }
+
+  const bodyToken = payload.access_token?.trim()
+  return bodyToken && bodyToken.length > 0 ? bodyToken : null
 }
 
 Deno.serve(async (req) => {
@@ -29,73 +58,55 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return respond({ error: 'Method not allowed' }, 405)
   }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
-    if (!supabaseUrl || !serviceRoleKey) {
-      return new Response(JSON.stringify({ error: 'Missing Supabase environment variables' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+      return respond({ error: 'Missing Supabase environment variables' }, 500)
     }
 
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const jwt = authHeader.replace('Bearer ', '').trim()
     const payload = (await req.json().catch(() => ({}))) as UnlockRewardRequest
 
     if (!payload.client_reward_id) {
-      return new Response(JSON.stringify({ error: 'client_reward_id is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'client_reward_id is required' }, 400)
+    }
+
+    const accessToken = resolveAccessToken(req, payload)
+    if (!accessToken) {
+      return respond({ error: 'Missing authorization header' }, 401)
     }
 
     const pendingTransactionId = payload.pending_transaction_id?.trim() ?? ''
 
-    // The request is already gateway-authenticated (verify_jwt=true).
-    // Read caller identity directly from JWT payload to avoid extra auth roundtrips.
-    const callerUserId = parseJwtSub(jwt)
-    if (!callerUserId) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+    const authClient = createClient(supabaseUrl, anonKey, {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+    })
+
+    const { data: userData, error: userError } = await authClient.auth.getUser()
+    if (userError || !userData.user) {
+      return respond({ error: 'Unauthorized' }, 401)
     }
 
+    const callerUserId = userData.user.id
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
     const { data: rewardData, error: rewardError } = await adminClient
       .from('client_rewards')
       .select('id, client_id, status, reward_rule_id, fournisseur_id')
       .eq('id', payload.client_reward_id)
-      .maybeSingle()
+      .maybeSingle<RewardRow>()
 
     if (rewardError) {
-      return new Response(JSON.stringify({ error: rewardError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: rewardError.message }, 400)
     }
 
     if (!rewardData) {
-      return new Response(JSON.stringify({ error: 'Reward not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'Reward not found' }, 404)
     }
 
     const { data: providerData, error: providerError } = await adminClient
@@ -103,151 +114,103 @@ Deno.serve(async (req) => {
       .select('id')
       .eq('user_id', callerUserId)
       .eq('id', rewardData.fournisseur_id)
-      .maybeSingle()
+      .maybeSingle<{ id: string }>()
 
     if (providerError) {
-      return new Response(JSON.stringify({ error: providerError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: providerError.message }, 400)
     }
 
     const isClientCaller = rewardData.client_id === callerUserId
     const isProviderCaller = Boolean(providerData?.id)
 
     if (!isClientCaller && !isProviderCaller) {
-      return new Response(JSON.stringify({ error: 'Forbidden' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'Forbidden' }, 403)
     }
 
     if (isProviderCaller && !pendingTransactionId) {
-      return new Response(JSON.stringify({ error: 'PENDING_TRANSACTION_REQUIRED' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'PENDING_TRANSACTION_REQUIRED' }, 403)
     }
 
-    const targetClientId = rewardData.client_id
-
     if (rewardData.status !== 'available') {
-      return new Response(JSON.stringify({ error: 'Reward is not available' }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'Reward is not available' }, 409)
     }
 
     const { data: rewardRuleData, error: rewardRuleError } = await adminClient
       .from('reward_rules')
       .select('id, nom, points_required, requires_physical_presence')
       .eq('id', rewardData.reward_rule_id)
-      .maybeSingle()
+      .maybeSingle<RewardRuleRow>()
 
     if (rewardRuleError) {
-      return new Response(JSON.stringify({ error: rewardRuleError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: rewardRuleError.message }, 400)
     }
 
     if (!rewardRuleData) {
-      return new Response(JSON.stringify({ error: 'Reward rule not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'Reward rule not found' }, 404)
     }
 
-    // For provider callers: validate that the pending transaction belongs to the right client+provider.
-    // Clients with digital/non-physical rewards can self-redeem without a pending transaction.
     if (isProviderCaller) {
-      const { data: pendingTransactionData, error: pendingTransactionError } = await adminClient
+      const { data: pendingData, error: pendingError } = await adminClient
         .from('pending_transactions')
         .select('id')
         .eq('id', pendingTransactionId)
-        .eq('client_id', targetClientId)
+        .eq('client_id', rewardData.client_id)
         .eq('fournisseur_id', rewardData.fournisseur_id)
         .eq('status', 'pending')
-        .maybeSingle()
+        .maybeSingle<{ id: string }>()
 
-      if (pendingTransactionError) {
-        return new Response(JSON.stringify({ error: pendingTransactionError.message }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+      if (pendingError) {
+        return respond({ error: pendingError.message }, 400)
       }
 
-      if (!pendingTransactionData) {
-        return new Response(JSON.stringify({ error: 'INVALID_PENDING_TRANSACTION' }), {
-          status: 403,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        })
+      if (!pendingData) {
+        return respond({ error: 'INVALID_PENDING_TRANSACTION' }, 403)
       }
     } else if (rewardRuleData.requires_physical_presence === true && !pendingTransactionId) {
-      // Client caller trying to self-redeem a physical-presence-only reward without a scan
-      return new Response(JSON.stringify({ error: 'PHYSICAL_PRESENCE_REQUIRED' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'PHYSICAL_PRESENCE_REQUIRED' }, 403)
     }
 
     const { data: rpcData, error: rpcError } = await adminClient.rpc('consume_client_reward', {
       p_client_reward_id: payload.client_reward_id,
-      p_client_id: targetClientId,
+      p_client_id: rewardData.client_id,
     })
 
     if (rpcError) {
-      return new Response(JSON.stringify({ error: rpcError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: rpcError.message }, 400)
     }
 
-    const result = Array.isArray(rpcData) ? rpcData[0] : null
-
+    const result = (Array.isArray(rpcData) ? rpcData[0] : null) as ConsumeRewardResult | null
     if (!result?.success) {
-      return new Response(JSON.stringify({ error: 'Failed to use reward' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return respond({ error: 'Failed to use reward' }, 500)
     }
 
-    // Record redemption in transactions so it appears in client + merchant history.
-    // Only when performed at the caisse (provider caller with a pending transaction).
     if (isProviderCaller && pendingTransactionId) {
-      const pointsDeducted = result.points_deducted ?? rewardRuleData.points_required ?? 0
-      const rewardLabel = `🎁 ${rewardRuleData.nom?.trim() || 'Récompense'}`
-      await adminClient.from('transactions').insert({
+      const pointsDeducted = Number(result.points_deducted ?? rewardRuleData.points_required ?? 0)
+      const rewardName = rewardRuleData.nom?.trim() || 'Reward'
+
+      const { error: txError } = await adminClient.from('transactions').insert({
         pending_transaction_id: pendingTransactionId,
-        client_id: targetClientId,
+        client_id: rewardData.client_id,
         fournisseur_id: rewardData.fournisseur_id,
         service_id: null,
-        service_nom_libre: rewardLabel,
+        service_nom_libre: `Reward: ${rewardName}`,
         montant: 0,
         points_credited: -pointsDeducted,
         status: 'validated',
-        transaction_type: 'reward_redemption',
       })
-      // Intentionally not throwing on insert error — reward was already consumed successfully.
+
+      if (txError) {
+        console.error('unlock-reward transaction insert failed', txError.message)
+      }
     }
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        points_deducted: result.points_deducted ?? rewardRuleData.points_required,
-        new_balance: result.new_balance,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    )
+    return respond({
+      success: true,
+      points_deducted: result.points_deducted ?? rewardRuleData.points_required,
+      new_balance: result.new_balance,
+    })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected error'
-
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return respond({ error: message }, 500)
   }
 })

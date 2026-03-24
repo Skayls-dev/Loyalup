@@ -111,6 +111,7 @@ async function consumeRewardAtCaisse(input: {
       body: JSON.stringify({
         client_reward_id: input.clientRewardId,
         pending_transaction_id: input.pendingTransactionId,
+        access_token: accessToken,
       }),
     })
 
@@ -136,6 +137,7 @@ async function consumeRewardAtCaisse(input: {
       body: {
         client_reward_id: input.clientRewardId,
         pending_transaction_id: input.pendingTransactionId,
+        access_token: accessToken,
       },
     })
 

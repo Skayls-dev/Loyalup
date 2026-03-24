@@ -14,7 +14,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.unlock-reward]
-verify_jwt = true
+verify_jwt = false
 
 [functions.track-event]
 verify_jwt = false
