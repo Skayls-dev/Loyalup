@@ -99,6 +99,17 @@ export function TransactionHistory({ fournisseur_id }: TransactionHistoryProps) 
     )
   }
 
+  if (error && transactions.length === 0) {
+    return (
+      <div className="space-y-3">
+        <p className="rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</p>
+        <SecondaryButton type="button" onClick={() => refresh().catch(() => null)} className="h-8 px-3">
+          Réessayer
+        </SecondaryButton>
+      </div>
+    )
+  }
+
   if (transactions.length === 0) {
     return (
       <EmptyState

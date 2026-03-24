@@ -30,6 +30,25 @@ async function getAccessTokenOrThrow(): Promise<string> {
   return token
 }
 
+async function ensureFreshSessionForRead(): Promise<void> {
+  const { data, error } = await supabase.auth.getSession()
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const token = data.session?.access_token
+  if (!token) {
+    throw new Error('Session expirée, reconnectez-vous.')
+  }
+
+  if (isTokenAboutToExpire(token)) {
+    const { error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      throw new Error(refreshError.message)
+    }
+  }
+}
+
 export type LoyaltyProvider = {
   id: string
   nom_commerce: string
@@ -174,6 +193,8 @@ export async function getTransactionHistory(
   limit: number,
 ): Promise<TransactionHistoryItem[]> {
   return withCachedRead(`loyalty:history:${client_id}:${fournisseur_id ?? 'all'}:${page}:${limit}`, async () => {
+    await ensureFreshSessionForRead()
+
     const from = page * limit
     const to = from + limit - 1
 

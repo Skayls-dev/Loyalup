@@ -304,10 +304,10 @@ function AuthRoute() {
         />
 
         {/* Wordmark */}
-        <div className="relative z-10 flex items-center gap-2">
+        <Link to="/" className="relative z-10 inline-flex w-fit items-center gap-2">
           <span className="text-2xl font-black tracking-tight text-white">Looyaal</span>
           <span className="h-2 w-2 rounded-full bg-violet-400" aria-hidden="true" />
-        </div>
+        </Link>
 
         {/* Headline + bullets */}
         <div className="relative z-10 space-y-8">
@@ -347,10 +347,10 @@ function AuthRoute() {
       {/* ── Form panel ───────────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col items-center justify-center overflow-y-auto bg-white px-6 py-12">
         {/* Mobile-only logo */}
-        <div className="mb-8 flex items-center gap-1.5 lg:hidden">
+        <Link to="/" className="mb-8 inline-flex items-center gap-1.5 lg:hidden">
           <span className="text-2xl font-black tracking-tight text-zinc-900">Looyaal</span>
           <span className="h-2 w-2 rounded-full bg-violet-500" aria-hidden="true" />
-        </div>
+        </Link>
 
         <Link
           to="/"
