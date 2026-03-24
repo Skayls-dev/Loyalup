@@ -171,7 +171,7 @@ export default function GamificationPage() {
       {loading ? <p className="text-sm text-slate-500">Chargement des données gamification...</p> : null}
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <ChallengesSection userId={userId} />
           <BadgesGallery userId={userId} />

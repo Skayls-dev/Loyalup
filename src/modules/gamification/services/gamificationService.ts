@@ -307,14 +307,15 @@ export async function getLeaderboard(
   if (error) throw error
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  const currentUserId = session?.user?.id ?? null
 
   const entries: LeaderboardEntry[] = ((data ?? []) as Array<{ rank: number; score: number; client_id: string }>).map((entry) => ({
     rank: entry.rank,
-    client_name: entry.client_id === user?.id ? 'Vous' : `Utilisateur #${entry.rank}`,
+    client_name: entry.client_id === currentUserId ? 'Vous' : `Utilisateur #${entry.rank}`,
     score: entry.score,
-    is_current_user: entry.client_id === user?.id,
+    is_current_user: entry.client_id === currentUserId,
   }))
 
   const myEntry = entries.find((e) => e.is_current_user)

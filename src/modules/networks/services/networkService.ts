@@ -655,8 +655,9 @@ export async function getNetworkLeaderboard(
   limit = 50,
 ): Promise<{ entries: NetworkLeaderboardEntry[]; myRank: number | null; myScore: number | null }> {
   const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    data: { session },
+  } = await supabase.auth.getSession()
+  const currentUserId = session?.user?.id ?? null
 
   const { data, error } = await supabase
     .from('network_clients')
@@ -675,33 +676,31 @@ export async function getNetworkLeaderboard(
   }>
 
   const clientIds = rows.map((row) => row.client_id)
-  const profilesByClientId = new Map<string, { nom: string | null; prenom: string | null }>()
+  const profilesByClientId = new Map<string, { nom: string | null }>()
 
   if (clientIds.length > 0) {
     const { data: profilesRows } = await supabase
       .from('profiles')
-      .select('id, nom, prenom')
+      .select('id, nom')
       .in('id', clientIds)
 
-    for (const row of (profilesRows ?? []) as Array<{ id: string; nom: string | null; prenom: string | null }>) {
+    for (const row of (profilesRows ?? []) as Array<{ id: string; nom: string | null }>) {
       profilesByClientId.set(row.id, {
         nom: row.nom,
-        prenom: row.prenom,
       })
     }
   }
 
   const entries: NetworkLeaderboardEntry[] = rows.map((row, index) => {
     const profile = profilesByClientId.get(row.client_id)
-    const prenom = profile?.prenom?.trim() ?? 'Client'
-    const nomInitial = profile?.nom?.trim() ? `${profile.nom.trim().charAt(0)}.` : ''
+    const nom = profile?.nom?.trim() ?? ''
 
     return {
       rank: index + 1,
       client_id: row.client_id,
-      client_name: `${prenom} ${nomInitial}`.trim(),
+      client_name: nom || `Utilisateur #${index + 1}`,
       score: Number(row.total_network_points ?? 0),
-      is_current_user: row.client_id === user?.id,
+      is_current_user: row.client_id === currentUserId,
     }
   })
 
@@ -710,12 +709,12 @@ export async function getNetworkLeaderboard(
   let myRank: number | null = myEntry?.rank ?? null
   let myScore: number | null = myEntry?.score ?? null
 
-  if (!myEntry && user?.id) {
+  if (!myEntry && currentUserId) {
     const { data: mine, error: myError } = await supabase
       .from('network_clients')
       .select('total_network_points')
       .eq('network_id', network_id)
-      .eq('client_id', user.id)
+      .eq('client_id', currentUserId)
       .maybeSingle<{ total_network_points: number }>()
 
     if (!myError && mine) {

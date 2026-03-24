@@ -4,7 +4,6 @@ import { requireOnlineForWrite } from '../../../shared/lib/offlineGuard'
 
 type GenerateTokenResponse = {
   token: string
-  manual_code?: string | null
   expires_at: string
 }
 
@@ -33,9 +32,18 @@ let transactionStatusChannel: ReturnType<typeof supabase.channel> | null = null
 export async function generateToken(): Promise<GenerateTokenResponse> {
   try {
     requireOnlineForWrite()
-    const data = await invokeQrFunctionWithRetry<GenerateTokenResponse>('generate-qr', {
+    const accessToken = await getAccessTokenOrThrow()
+
+    const { data, error } = await supabase.functions.invoke<GenerateTokenResponse>('generate-qr', {
       method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     })
+
+    if (error) {
+      throw new Error(await extractFunctionErrorMessage(error, 'Unable to generate QR token'))
+    }
 
     if (!data?.token || !data.expires_at) {
       throw new Error('Invalid generate token response')
@@ -51,10 +59,19 @@ export async function generateToken(): Promise<GenerateTokenResponse> {
 export async function validateToken(token: string): Promise<ValidateTokenResponse> {
   try {
     requireOnlineForWrite()
-    const data = await invokeQrFunctionWithRetry<ValidateTokenResponse>('validate-qr', {
+    const accessToken = await getAccessTokenOrThrow()
+
+    const { data, error } = await supabase.functions.invoke<ValidateTokenResponse>('validate-qr', {
       method: 'POST',
       body: { token },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
     })
+
+    if (error) {
+      throw new Error(await extractFunctionErrorMessage(error, 'Unable to validate QR token'))
+    }
 
     if (!data?.success || !data.fournisseur_id || !data.transaction_id) {
       throw new Error('Invalid validate token response')
@@ -171,52 +188,15 @@ function shouldSkipRealtimeSubscription(anonKey: string): boolean {
   return config.isDevelopment && isPlaceholderAnonKey(anonKey)
 }
 
-function isTokenAboutToExpire(token: string, bufferSeconds = 60): boolean {
-  try {
-    const payloadB64url = token.split('.')[1]
-    if (!payloadB64url) return true
-    const base64 = payloadB64url.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), '=')
-    const payload = JSON.parse(atob(padded)) as { exp?: unknown }
-    if (typeof payload.exp !== 'number') return true
-    return Date.now() / 1000 > payload.exp - bufferSeconds
-  } catch {
-    return false
-  }
-}
-
-let pendingRefresh: Promise<string> | null = null
-
-function doRefreshSession(): Promise<string> {
-  if (pendingRefresh) {
-    return pendingRefresh
-  }
-
-  const p = (async () => {
-    const { data, error } = await supabase.auth.refreshSession()
-    if (error) {
-      throw new Error(error.message)
+async function getAccessTokenOrThrow(): Promise<string> {
+  const isTokenAboutToExpire = (token: string, bufferSeconds = 60): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number }
+      const exp = typeof payload.exp === 'number' ? payload.exp : 0
+      return exp - Math.floor(Date.now() / 1000) < bufferSeconds
+    } catch {
+      return true
     }
-
-    const refreshedToken = data.session?.access_token
-    if (!refreshedToken) {
-      throw new Error('Session expirée, reconnectez-vous.')
-    }
-
-    return refreshedToken
-  })()
-
-  pendingRefresh = p
-  void p.finally(() => {
-    if (pendingRefresh === p) pendingRefresh = null
-  })
-
-  return p
-}
-
-async function resolveAccessTokenOrThrow(forceRefresh = false): Promise<string> {
-  if (forceRefresh) {
-    return doRefreshSession()
   }
 
   const { data, error } = await supabase.auth.getSession()
@@ -224,102 +204,29 @@ async function resolveAccessTokenOrThrow(forceRefresh = false): Promise<string> 
     throw new Error(error.message)
   }
 
-  const token = data.session?.access_token
+  let token = data.session?.access_token
   if (!token) {
     throw new Error('Session expirée, reconnectez-vous.')
   }
 
   if (isTokenAboutToExpire(token)) {
-    return doRefreshSession()
+    const { data: refreshedData, error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) {
+      throw new Error(refreshError.message)
+    }
+
+    token = refreshedData.session?.access_token
+    if (!token) {
+      throw new Error('Session expirée, reconnectez-vous.')
+    }
   }
 
   return token
 }
 
-type QrInvokeOptions = {
-  method: 'POST' | 'GET'
-  body?: Record<string, unknown>
-}
-
-async function invokeQrFunctionWithRetry<T>(
-  functionName: 'generate-qr' | 'validate-qr',
-  options: QrInvokeOptions,
-): Promise<T> {
-  if (import.meta.env.MODE === 'test') {
-    return invokeQrFunctionForTests<T>(functionName, options)
-  }
-
-  const invokeOnce = async (accessToken: string): Promise<T> => {
-    const response = await fetch(`${config.supabaseUrl}/functions/v1/${functionName}`, {
-      method: options.method,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        apikey: config.supabaseAnonKey,
-        'Content-Type': 'application/json',
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    })
-
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null
-      const detail =
-        (typeof payload?.error === 'string' && payload.error) ||
-        (typeof payload?.message === 'string' && payload.message) ||
-        null
-      const err = new Error(detail ?? `HTTP ${response.status}`) as Error & { httpStatus: number }
-      err.httpStatus = response.status
-      throw err
-    }
-
-    return (await response.json()) as T
-  }
-
-  let accessToken = await resolveAccessTokenOrThrow(false)
-
-  try {
-    return await invokeOnce(accessToken)
-  } catch (error) {
-    const status = extractHttpStatus(error)
-    const message = error instanceof Error ? error.message : ''
-    const isUnauthorized = status === 401 || /invalid jwt|unauthorized/i.test(message)
-
-    if (!isUnauthorized) {
-      throw error
-    }
-
-    accessToken = await resolveAccessTokenOrThrow(true)
-    return invokeOnce(accessToken)
-  }
-}
-
-async function invokeQrFunctionForTests<T>(
-  functionName: 'generate-qr' | 'validate-qr',
-  options: QrInvokeOptions,
-): Promise<T> {
-  const accessToken = await resolveAccessTokenOrThrow(false)
-  const { data, error } = await supabase.functions.invoke<T>(functionName, {
-    method: options.method,
-    body: options.body,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  })
-
-  if (error) {
-    throw error
-  }
-
-  return data as T
-}
-
 function extractHttpStatus(error: unknown): number | null {
   if (!error || typeof error !== 'object') {
     return null
-  }
-
-  const directStatus = (error as { httpStatus?: unknown }).httpStatus
-  if (typeof directStatus === 'number') {
-    return directStatus
   }
 
   const maybeContext = (error as { context?: { status?: unknown } }).context
@@ -392,10 +299,6 @@ function normalizeQrErrorMessage(raw: string): string {
     [/^Missing token$/i, 'QR invalide.'],
     [/^Unauthorized$/i, 'Session expirée, reconnectez-vous.'],
     [/^Missing or invalid Authorization header$/i, 'Session invalide, reconnectez-vous.'],
-    [/^Unable to generate QR token \(HTTP 401\)/i, 'Session expirée, reconnectez-vous.'],
-    [/^Unable to generate QR token \(HTTP 403\)/i, 'Accès refusé pour générer le QR.'],
-    [/JWT expired|token is expired/i, 'Session expirée, reconnectez-vous.'],
-    [/invalid JWT|invalid_jwt/i, 'Session invalide, reconnectez-vous.'],
     [/^Unable to validate QR token \(HTTP 401\)$/i, 'Session expirée, reconnectez-vous.'],
     [/^Unable to validate QR token \(HTTP 409\)$/i, 'QR expiré ou déjà utilisé. Demandez un nouveau QR.'],
     [/^Unable to validate QR token \(HTTP 404\)$/i, 'QR invalide ou introuvable.'],
