@@ -127,19 +127,51 @@ async function consumeRewardAtCaisse(input: {
     }
   }
 
+  const invokeViaSdk = async (accessToken: string): Promise<void> => {
+    const { error } = await supabase.functions.invoke('unlock-reward', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: {
+        client_reward_id: input.clientRewardId,
+        pending_transaction_id: input.pendingTransactionId,
+      },
+    })
+
+    if (error) {
+      throw new Error(error.message)
+    }
+  }
+
   let accessToken = await getAccessTokenOrThrow(false)
 
   try {
     await invokeOnce(accessToken)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
+
+    if (/missing authorization header/i.test(message)) {
+      await invokeViaSdk(accessToken)
+      return
+    }
+
     const isAuthIssue = /401|invalid jwt|unauthorized|authorization/i.test(message)
     if (!isAuthIssue) {
       throw error
     }
 
     accessToken = await getAccessTokenOrThrow(true)
-    await invokeOnce(accessToken)
+    try {
+      await invokeOnce(accessToken)
+    } catch (retryError) {
+      const retryMessage = retryError instanceof Error ? retryError.message : String(retryError)
+      if (/missing authorization header/i.test(retryMessage)) {
+        await invokeViaSdk(accessToken)
+        return
+      }
+      throw retryError
+    }
   }
 }
 
