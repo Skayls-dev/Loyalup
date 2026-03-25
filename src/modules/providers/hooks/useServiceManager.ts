@@ -79,6 +79,7 @@ export function useServiceManager(): UseServiceManagerResult {
       fournisseur_id: fournisseurId,
       nom: data.nom,
       emoji: data.emoji,
+      image_url: data.image_url ?? null,
       prix_defaut: data.prix_defaut ?? null,
       points_defaut: data.points_defaut ?? null,
       points_per_euro: data.points_per_euro ?? 10,

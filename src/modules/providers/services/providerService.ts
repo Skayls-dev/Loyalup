@@ -79,6 +79,7 @@ export type ServiceItem = {
   fournisseur_id: string
   nom: string
   emoji: string
+  image_url: string | null
   prix_defaut: number | null
   points_defaut: number | null
   points_per_euro: number
@@ -104,6 +105,7 @@ export type CreateServiceParams = {
   fournisseur_id: string
   nom: string
   emoji: string
+  image_url?: string | null
   prix_defaut?: number | null
   points_defaut?: number | null
   points_per_euro?: number
@@ -317,7 +319,7 @@ export async function getProviderServices(fournisseur_id: string): Promise<Servi
   return withCachedRead(`provider:services:${fournisseur_id}`, async () => {
     const { data, error } = await supabase
       .from('services')
-      .select('id, fournisseur_id, nom, emoji, prix_defaut, points_defaut, points_per_euro, actif, created_at')
+      .select('id, fournisseur_id, nom, emoji, image_url, prix_defaut, points_defaut, points_per_euro, actif, created_at')
       .eq('fournisseur_id', fournisseur_id)
       .order('created_at', { ascending: true })
 
@@ -357,7 +359,7 @@ export async function getProviderConsumedServices(
             .eq('status', 'validated')),
       supabase
         .from('services')
-        .select('id, nom, emoji')
+        .select('id, nom, emoji, image_url')
         .eq('fournisseur_id', fournisseur_id),
     ])
 
@@ -370,7 +372,7 @@ export async function getProviderConsumedServices(
     }
 
     const serviceMap = new Map(
-      ((services ?? []) as Array<{ id: string; nom: string; emoji: string | null }>).map((service) => [
+      ((services ?? []) as Array<{ id: string; nom: string; emoji: string | null; image_url: string | null }>).map((service) => [
         service.id,
         service,
       ]),
@@ -631,12 +633,13 @@ export async function createService(params: CreateServiceParams): Promise<Servic
       fournisseur_id: params.fournisseur_id,
       nom: params.nom,
       emoji: params.emoji,
+      image_url: params.image_url ?? null,
       prix_defaut: params.prix_defaut ?? null,
       points_defaut: params.points_defaut ?? null,
       points_per_euro: params.points_per_euro ?? 10,
       actif: true,
     })
-    .select('id, fournisseur_id, nom, emoji, prix_defaut, points_defaut, points_per_euro, actif, created_at')
+    .select('id, fournisseur_id, nom, emoji, image_url, prix_defaut, points_defaut, points_per_euro, actif, created_at')
     .single()
 
   if (error) {
@@ -653,7 +656,7 @@ export async function updateService(id: string, updates: UpdateServiceParams): P
     .from('services')
     .update(updates)
     .eq('id', id)
-    .select('id, fournisseur_id, nom, emoji, prix_defaut, points_defaut, points_per_euro, actif, created_at')
+    .select('id, fournisseur_id, nom, emoji, image_url, prix_defaut, points_defaut, points_per_euro, actif, created_at')
     .single()
 
   if (error) {

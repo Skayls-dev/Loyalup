@@ -5,6 +5,7 @@ import type { ServiceItem } from '../services/providerService'
 type ServiceFormData = {
   nom: string
   emoji: string
+  image_url: string | null
   prix_defaut: number | null
   points_defaut: number | null
   points_per_euro: number
@@ -22,6 +23,7 @@ const secondaryButtonClass =
 export function ServiceForm({ initialData, onSubmit, onCancel }: ServiceFormProps) {
   const [nom, setNom] = useState(initialData?.nom ?? '')
   const [emoji, setEmoji] = useState(initialData?.emoji ?? '✨')
+  const [imageUrl, setImageUrl] = useState(initialData?.image_url ?? '')
   const [prix, setPrix] = useState(initialData?.prix_defaut !== null && initialData?.prix_defaut !== undefined ? String(initialData.prix_defaut) : '')
   const [pointsDefaut, setPointsDefaut] = useState(initialData?.points_defaut !== null && initialData?.points_defaut !== undefined ? String(initialData.points_defaut) : '')
   const [pointsPerEuro, setPointsPerEuro] = useState(String(initialData?.points_per_euro ?? 10))
@@ -75,6 +77,7 @@ export function ServiceForm({ initialData, onSubmit, onCancel }: ServiceFormProp
       await onSubmit({
         nom: nom.trim(),
         emoji: emoji.trim() || '✨',
+        image_url: imageUrl.trim() || null,
         prix_defaut: prix !== '' ? Number(prix) : null,
         points_defaut: pointsDefaut !== '' ? Number(pointsDefaut) : null,
         points_per_euro: Number(pointsPerEuro || 10),
@@ -118,6 +121,29 @@ export function ServiceForm({ initialData, onSubmit, onCancel }: ServiceFormProp
               placeholder="Ex: ✨"
               className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
             />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="service-image-url" className="text-xs font-medium text-gray-700">Image produit (URL)</label>
+            <input
+              id="service-image-url"
+              type="url"
+              value={imageUrl}
+              onChange={(e) => setImageUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/15"
+            />
+            {imageUrl.trim() ? (
+              <div className="mt-2 flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+                <img
+                  src={imageUrl}
+                  alt="Aperçu du produit"
+                  className="h-10 w-10 rounded-lg object-cover"
+                  loading="lazy"
+                />
+                <p className="text-[11px] text-gray-500">L'image sera affichee dans le catalogue quand disponible.</p>
+              </div>
+            ) : null}
           </div>
 
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

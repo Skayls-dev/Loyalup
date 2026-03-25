@@ -16,6 +16,25 @@ type ParsedCsvRow = {
   actif: boolean
 }
 
+function ServiceVisual({ emoji, imageUrl, nom }: { emoji: string; imageUrl: string | null; nom: string }) {
+  if (imageUrl?.trim()) {
+    return (
+      <img
+        src={imageUrl}
+        alt={nom}
+        className="h-7 w-7 shrink-0 rounded-md object-cover"
+        loading="lazy"
+      />
+    )
+  }
+
+  return (
+    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-gray-100 text-sm">
+      {emoji}
+    </span>
+  )
+}
+
 function normalizeHeader(value: string): string {
   return value
     .trim()
@@ -116,6 +135,7 @@ function parseServicesCsv(csvText: string): { rows: ParsedCsvRow[]; errors: stri
 
   const nomIndex = pickColumnIndex(headers, ['nom', 'name', 'service', 'produit'])
   const emojiIndex = pickColumnIndex(headers, ['emoji', 'icone', 'icon'])
+  const imageUrlIndex = pickColumnIndex(headers, ['image_url', 'image', 'photo_url', 'photo'])
   const prixIndex = pickColumnIndex(headers, ['prix_defaut', 'prix', 'price', 'default_price'])
   const pointsDefautIndex = pickColumnIndex(headers, ['points_defaut', 'points_fixes', 'fixed_points'])
   const pointsPerEuroIndex = pickColumnIndex(headers, ['points_per_euro', 'points_euro', 'points_par_euro'])
@@ -159,6 +179,7 @@ function parseServicesCsv(csvText: string): { rows: ParsedCsvRow[]; errors: stri
       data: {
         nom,
         emoji: (emojiIndex >= 0 ? columns[emojiIndex] : '').trim() || '✨',
+        image_url: (imageUrlIndex >= 0 ? columns[imageUrlIndex] : '').trim() || null,
         prix_defaut: prixDefaut,
         points_defaut: pointsDefaut,
         points_per_euro: pointsPerEuro > 0 ? pointsPerEuro : 10,
@@ -181,10 +202,10 @@ export function ServiceManager() {
 
   const handleDownloadTemplate = () => {
     const template = [
-      'nom;emoji;prix_defaut;points_defaut;points_per_euro;actif',
-      'Soin Premium;✨;49.90;80;10;actif',
-      'Pack Decouverte;🎁;29.00;;8;inactif',
-      'Massage 30 min;💆;35;;12;oui',
+      'nom;emoji;image_url;prix_defaut;points_defaut;points_per_euro;actif',
+      'Soin Premium;✨;https://images.example.com/soin-premium.jpg;49.90;80;10;actif',
+      'Pack Decouverte;🎁;;29.00;;8;inactif',
+      'Massage 30 min;💆;https://images.example.com/massage-30.jpg;35;;12;oui',
     ].join('\n')
 
     const blob = new Blob([template], { type: 'text/csv;charset=utf-8;' })
@@ -305,7 +326,7 @@ export function ServiceManager() {
       </div>
 
       <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-3 py-2">
-        <p className="text-[11px] font-medium text-gray-700">Format CSV attendu: nom;emoji;prix_defaut;points_defaut;points_per_euro;actif</p>
+        <p className="text-[11px] font-medium text-gray-700">Format CSV attendu: nom;emoji;image_url;prix_defaut;points_defaut;points_per_euro;actif</p>
         <p className="mt-1 text-[11px] text-gray-500">Delimiteur accepte: ; ou ,. Seule la colonne nom est obligatoire.</p>
       </div>
 
@@ -351,6 +372,7 @@ export function ServiceManager() {
                   <th className="px-2 py-1.5">Ligne</th>
                   <th className="px-2 py-1.5">Nom</th>
                   <th className="px-2 py-1.5">Emoji</th>
+                  <th className="px-2 py-1.5">Image</th>
                   <th className="px-2 py-1.5">Prix</th>
                   <th className="px-2 py-1.5">Pts fixes</th>
                   <th className="px-2 py-1.5">Pts/€</th>
@@ -363,6 +385,7 @@ export function ServiceManager() {
                     <td className="px-2 py-1.5 text-gray-600">{row.sourceLine}</td>
                     <td className="px-2 py-1.5 font-medium text-gray-800">{row.data.nom}</td>
                     <td className="px-2 py-1.5">{row.data.emoji}</td>
+                    <td className="px-2 py-1.5">{row.data.image_url ? 'Oui' : '-'}</td>
                     <td className="px-2 py-1.5">{row.data.prix_defaut ?? '-'}</td>
                     <td className="px-2 py-1.5">{row.data.points_defaut ?? '-'}</td>
                     <td className="px-2 py-1.5">{row.data.points_per_euro}</td>
@@ -401,11 +424,14 @@ export function ServiceManager() {
             key={service.id}
             className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-3 py-3 transition hover:-translate-y-[1px] hover:border-[#FF6B35]/40"
           >
-            <div className="min-w-0">
-              <p className="truncate font-body text-sm font-semibold text-dark">{service.emoji} {service.nom}</p>
+            <div className="min-w-0 flex items-center gap-2">
+              <ServiceVisual emoji={service.emoji} imageUrl={service.image_url} nom={service.nom} />
+              <div className="min-w-0">
+                <p className="truncate font-body text-sm font-semibold text-dark">{service.nom}</p>
               <p className="truncate text-xs text-gray-500">
                 {service.prix_defaut !== null ? `${service.prix_defaut} €` : 'Prix libre'} • {service.points_defaut ?? '-'} pts • {service.points_per_euro} pts/€
               </p>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
