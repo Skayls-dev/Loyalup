@@ -22,7 +22,8 @@ const cacheKeyFor = (clientId: string, fournisseurId?: string) =>
   `loyalty:history:${clientId}:${fournisseurId ?? 'all'}`
 
 export function useTransactionHistory({ fournisseur_id }: UseTransactionHistoryParams): UseTransactionHistoryResult {
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
+  const userId = user?.id ?? null
   const [transactions, setTransactions] = useState<TransactionHistoryItem[]>([])
   const [loading, setLoading] = useState(true)
   const [hasMore, setHasMore] = useState(true)
@@ -33,18 +34,23 @@ export function useTransactionHistory({ fournisseur_id }: UseTransactionHistoryP
 
   const fetchPage = useCallback(
     async (page: number) => {
-      if (!user?.id) {
+      if (!userId) {
         return []
       }
 
-      const rows = await getTransactionHistory(user.id, fournisseur_id, page, PAGE_SIZE)
+      const rows = await getTransactionHistory(userId, fournisseur_id, page, PAGE_SIZE)
       return rows.filter((row) => !seenIdsRef.current.has(row.id))
     },
-    [fournisseur_id, user?.id],
+    [fournisseur_id, userId],
   )
 
   const refresh = useCallback(async () => {
-    if (!user?.id) {
+    if (!userId) {
+      // Avoid wiping UI when auth state is temporarily rehydrating.
+      if (authLoading) {
+        return
+      }
+
       setTransactions([])
       setLoading(false)
       return
@@ -60,10 +66,10 @@ export function useTransactionHistory({ fournisseur_id }: UseTransactionHistoryP
       rows.forEach((row) => seenIdsRef.current.add(row.id))
       setTransactions(rows)
       setHasMore(rows.length === PAGE_SIZE)
-      localStorage.setItem(cacheKeyFor(user.id, fournisseur_id), JSON.stringify(rows))
+      localStorage.setItem(cacheKeyFor(userId, fournisseur_id), JSON.stringify(rows))
       setOffline(false)
     } catch (caughtError) {
-      const cached = localStorage.getItem(cacheKeyFor(user.id, fournisseur_id))
+      const cached = localStorage.getItem(cacheKeyFor(userId, fournisseur_id))
       if (cached) {
         try {
           const parsed = JSON.parse(cached) as TransactionHistoryItem[]
@@ -80,10 +86,10 @@ export function useTransactionHistory({ fournisseur_id }: UseTransactionHistoryP
     } finally {
       setLoading(false)
     }
-  }, [fetchPage, fournisseur_id, user?.id])
+  }, [authLoading, fetchPage, fournisseur_id, userId])
 
   const loadMore = useCallback(async () => {
-    if (!hasMore || loading || !user?.id) {
+    if (!hasMore || loading || !userId) {
       return
     }
 
@@ -105,7 +111,7 @@ export function useTransactionHistory({ fournisseur_id }: UseTransactionHistoryP
     } finally {
       setLoading(false)
     }
-  }, [fetchPage, hasMore, loading, user?.id])
+  }, [fetchPage, hasMore, loading, userId])
 
   useEffect(() => {
     refresh().catch(() => null)

@@ -49,6 +49,43 @@ async function ensureFreshSessionForRead(): Promise<void> {
   }
 }
 
+async function resolveCandidateClientIds(primaryClientId: string): Promise<string[]> {
+  const ids = new Set<string>([primaryClientId])
+
+  try {
+    const { data } = await supabase.auth.getSession()
+    const metaId = data.session?.user?.user_metadata?.loyalup_user_id
+    if (typeof metaId === 'string' && metaId.trim()) {
+      ids.add(metaId.trim())
+    }
+  } catch {
+    // Ignore and keep primary id only.
+  }
+
+  try {
+    const { data: identityData } = await supabase.functions.invoke<{
+      success: boolean
+      identities?: Array<{ loyalup_user_id?: string | null }>
+    }>('my-partner-identity', {
+      method: 'POST',
+      body: {},
+    })
+
+    if (identityData?.success && Array.isArray(identityData.identities)) {
+      for (const row of identityData.identities) {
+        const linkedId = row?.loyalup_user_id
+        if (typeof linkedId === 'string' && linkedId.trim()) {
+          ids.add(linkedId.trim())
+        }
+      }
+    }
+  } catch {
+    // my-partner-identity is best-effort for linked accounts.
+  }
+
+  return Array.from(ids)
+}
+
 export type LoyaltyProvider = {
   id: string
   nom_commerce: string
@@ -194,17 +231,24 @@ export async function getTransactionHistory(
 ): Promise<TransactionHistoryItem[]> {
   return withCachedRead(`loyalty:history:${client_id}:${fournisseur_id ?? 'all'}:${page}:${limit}`, async () => {
     await ensureFreshSessionForRead()
+    const candidateClientIds = await resolveCandidateClientIds(client_id)
 
     const from = page * limit
     const to = from + limit - 1
 
     let query = supabase
       .from('transactions')
-      .select('id, fournisseur_id, service_id, montant, points_credited, created_at')
-      .eq('client_id', client_id)
-      .eq('status', 'validated')
+      .select('id, fournisseur_id, service_id, montant, points_credited, created_at, status')
+      // Be tolerant to historical rows or schema drift: keep validated/default rows, exclude cancelled.
+      .or('status.eq.validated,status.eq.completed,status.is.null')
       .order('created_at', { ascending: false })
       .range(from, to)
+
+    if (candidateClientIds.length > 1) {
+      query = query.in('client_id', candidateClientIds)
+    } else {
+      query = query.eq('client_id', client_id)
+    }
 
     if (fournisseur_id) {
       query = query.eq('fournisseur_id', fournisseur_id)
@@ -217,6 +261,87 @@ export async function getTransactionHistory(
     }
 
     const rows = data ?? []
+
+    // Some clients can have activity stuck in pending_transactions while finalized transactions are missing.
+    if (rows.length === 0 && !fournisseur_id) {
+      const pendingQuery = supabase
+        .from('pending_transactions')
+        .select('id, fournisseur_id, created_at, status')
+        .in('status', ['pending', 'validated'])
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      const { data: pendingRows, error: pendingError } =
+        candidateClientIds.length > 1
+          ? await pendingQuery.in('client_id', candidateClientIds)
+          : await pendingQuery.eq('client_id', client_id)
+
+      if (!pendingError && (pendingRows?.length ?? 0) > 0) {
+        const pendingProviderIds = [...new Set((pendingRows ?? []).map((row) => row.fournisseur_id).filter(Boolean))] as string[]
+        const { data: pendingProviders } = pendingProviderIds.length
+          ? await supabase.from('fournisseurs').select('id, nom_commerce').in('id', pendingProviderIds)
+          : { data: [] }
+
+        const pendingProviderMap = new Map((pendingProviders ?? []).map((p) => [p.id, p]))
+
+        return (pendingRows ?? []).map((row) => {
+          const provider = pendingProviderMap.get(row.fournisseur_id)
+          const isValidatedPending = row.status === 'validated'
+
+          return {
+            id: `pending-${String(row.id)}`,
+            fournisseur_id: String(row.fournisseur_id),
+            service_id: null,
+            service_nom: isValidatedPending ? 'Validation en cours de synchronisation' : 'Scan en attente de validation',
+            service_emoji: isValidatedPending ? '✅' : '⏳',
+            fournisseur_nom: provider?.nom_commerce?.trim() || 'Commerce',
+            montant: 0,
+            points_credited: 0,
+            created_at: String(row.created_at),
+          }
+        })
+      }
+
+      // Last fallback: show scan activity when no finalized/pending transaction rows are present.
+      const scansQuery = supabase
+        .from('qr_scans')
+        .select('id, merchant_id, points_earned, created_at, status, reason, failure_reason')
+        .order('created_at', { ascending: false })
+        .range(from, to)
+
+      const { data: scanRows, error: scansError } =
+        candidateClientIds.length > 1
+          ? await scansQuery.in('user_id', candidateClientIds)
+          : await scansQuery.eq('user_id', client_id)
+
+      if (!scansError && (scanRows?.length ?? 0) > 0) {
+        const merchantIds = [...new Set((scanRows ?? []).map((row) => row.merchant_id).filter(Boolean))] as string[]
+        const { data: merchants } = merchantIds.length
+          ? await supabase.from('fournisseurs').select('id, nom_commerce').in('id', merchantIds)
+          : { data: [] }
+
+        const merchantMap = new Map((merchants ?? []).map((m) => [m.id, m]))
+
+        return (scanRows ?? []).map((row) => {
+          const merchant = row.merchant_id ? merchantMap.get(String(row.merchant_id)) : null
+          const rawStatus = String(row.status ?? '').toLowerCase()
+          const isSuccess = rawStatus === 'success' || rawStatus === 'validated' || rawStatus === 'ok'
+
+          return {
+            id: `scan-${String(row.id)}`,
+            fournisseur_id: row.merchant_id ? String(row.merchant_id) : 'unknown',
+            service_id: null,
+            service_nom: isSuccess ? 'Scan validé' : 'Scan non validé',
+            service_emoji: isSuccess ? '📷' : '⚠️',
+            fournisseur_nom: merchant?.nom_commerce?.trim() || 'Commerce',
+            montant: 0,
+            points_credited: Number(row.points_earned ?? 0),
+            created_at: String(row.created_at),
+          }
+        })
+      }
+    }
+
     const serviceIds = [...new Set(rows.filter(r => r.service_id).map(r => r.service_id!))]
     const providerIds = [...new Set(rows.map(r => r.fournisseur_id))]
 
