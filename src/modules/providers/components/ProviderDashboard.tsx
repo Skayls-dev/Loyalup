@@ -33,6 +33,17 @@ type ProviderScanAd = {
 
 const fallbackAds: AdConfig[] = [
   {
+    badge: 'Sponsor',
+    title: 'Afrocare, votre plateforme de soins afro & textures bouclees',
+    description: 'Découvrez des conseils experts, routines ciblées et produits adaptés pour cheveux texturés.',
+    ctaLabel: 'Visiter afrocare.be',
+    ctaUrl: 'https://afrocare.be/',
+    ctaNote: 'Partenaire mis en avant',
+    mediaType: 'video',
+    mediaUrl: '/ads/Afrocare.mp4',
+    posterUrl: '/ads/demo-poster.webp',
+  },
+  {
     badge: 'Publicite',
     title: 'Boostez vos visites avec Looyaal Premium',
     description: 'Activez des campagnes intelligentes et transformez chaque passage en retour client mesurable.',
@@ -73,6 +84,11 @@ function mapScanAdToBannerConfig(ad: ProviderScanAd): AdConfig {
     mediaUrl: ad.media_url ?? undefined,
     posterUrl: ad.poster_url ?? undefined,
   }
+}
+
+function withAfrocareSponsor(adList: AdConfig[]): AdConfig[] {
+  const normalized = adList.filter((ad) => ad.ctaUrl?.toLowerCase().includes('afrocare.be') !== true)
+  return [fallbackAds[0], ...normalized]
 }
 
 type DashboardTab =
@@ -123,7 +139,8 @@ export function ProviderDashboard() {
         return
       }
 
-      setAds((data as ProviderScanAd[]).map(mapScanAdToBannerConfig))
+      const dynamicAds = (data as ProviderScanAd[]).map(mapScanAdToBannerConfig)
+      setAds(withAfrocareSponsor(dynamicAds))
       setActiveAdIndex(0)
     }
 
