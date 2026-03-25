@@ -30,8 +30,9 @@ const fallbackAds: AdConfig[] = [
     ctaLabel: 'Visiter afrocare.be',
     ctaUrl: 'https://afrocare.be/',
     ctaNote: 'Partenaire mis en avant',
-    mediaType: 'image',
-    mediaUrl: '/ads/demo-poster.webp',
+    mediaType: 'video',
+    mediaUrl: '/ads/Afrocare.mp4',
+    posterUrl: '/ads/demo-poster.webp',
   },
   {
     badge: 'Publicite',
