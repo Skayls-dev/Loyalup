@@ -5,6 +5,7 @@ import { requireOnlineForWrite } from '../../../shared/lib/offlineGuard'
 type GenerateTokenResponse = {
   token: string
   expires_at: string
+  manual_code?: string | null
 }
 
 type ValidateTokenResponse = {
