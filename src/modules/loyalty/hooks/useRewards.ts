@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../auth/hooks/useAuth'
 import { showToast } from '../../../shared/stores/toastStore'
 import {
@@ -25,6 +25,7 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
   const [rewards, setRewards] = useState<RewardCatalogItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const locallyConsumedRewardIdsRef = useRef<Set<string>>(new Set())
 
   const refetch = useCallback(async () => {
     if (!user?.id) {
@@ -61,6 +62,19 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
         return
       }
 
+      if (reward.status === 'used') {
+        const wasConsumedLocally = locallyConsumedRewardIdsRef.current.has(reward.id)
+        if (wasConsumedLocally) {
+          locallyConsumedRewardIdsRef.current.delete(reward.id)
+        } else {
+          showToast(
+            `${reward.reward_rule.emoji} ${reward.reward_rule.nom} consommée en caisse · -${reward.reward_rule.points_required} pts`,
+            'success',
+            3600,
+          )
+        }
+      }
+
       refetch().catch(() => null)
     })
 
@@ -91,6 +105,7 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
 
     try {
       await consumeReward(reward.unlocked_reward_id, pending_transaction_id)
+      locallyConsumedRewardIdsRef.current.add(reward.unlocked_reward_id)
       showToast(
         `${reward.reward_rule.emoji} ${reward.reward_rule.nom} consommée · -${reward.reward_rule.points_required} pts`,
         'success',

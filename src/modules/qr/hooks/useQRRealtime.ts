@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../../shared/lib/supabaseClient'
 import type { Profile } from '../../../shared/types'
-import {
-  subscribeToPendingTransactions,
-  type PendingTransactionPayload,
-  unsubscribe,
-} from '../services/qrService'
+import type { PendingTransactionPayload } from '../services/qrService'
 
 type UseQRRealtimeResult = {
   pendingTransaction: PendingTransactionPayload | null
@@ -62,14 +58,31 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
 
   useEffect(() => {
     if (!fournisseurId) {
+      setPendingTransaction(null)
+      setClientProfile(null)
+      setClientPoints(0)
+      setTotalVisites(0)
       return
     }
 
     let cancelled = false
     let pollTimer: ReturnType<typeof window.setInterval> | null = null
+    const channel = supabase.channel(`merchant-pending-transactions-${fournisseurId}`)
+
+    const clearPendingState = () => {
+      if (cancelled) {
+        return
+      }
+
+      setPendingTransaction(null)
+      setClientProfile(null)
+      setClientPoints(0)
+      setTotalVisites(0)
+    }
 
     const hydratePending = async (payload: PendingTransactionPayload) => {
       if (payload.status !== 'pending') {
+        clearPendingState()
         return
       }
 
@@ -119,26 +132,53 @@ export function useQRRealtime(fournisseurId: string | null): UseQRRealtimeResult
 
       if (data) {
         await hydratePending(data)
+        return
       }
+
+      clearPendingState()
     }
 
     void loadCurrentPending()
-    subscribeToPendingTransactions(fournisseurId, hydratePending)
 
-    if (!pendingTransaction) {
-      pollTimer = window.setInterval(() => {
-        void loadCurrentPending()
-      }, 1000)
-    }
+    channel
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'pending_transactions',
+          filter: `fournisseur_id=eq.${fournisseurId}`,
+        },
+        (payload) => {
+          void hydratePending(payload.new as PendingTransactionPayload)
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pending_transactions',
+          filter: `fournisseur_id=eq.${fournisseurId}`,
+        },
+        (payload) => {
+          void hydratePending(payload.new as PendingTransactionPayload)
+        },
+      )
+      .subscribe()
+
+    pollTimer = window.setInterval(() => {
+      void loadCurrentPending()
+    }, 1000)
 
     return () => {
       cancelled = true
       if (pollTimer) {
         window.clearInterval(pollTimer)
       }
-      unsubscribe()
+      void supabase.removeChannel(channel)
     }
-  }, [fournisseurId, pendingTransaction])
+  }, [fournisseurId])
 
   const clearPending = () => {
     setPendingTransaction(null)

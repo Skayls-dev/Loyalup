@@ -864,6 +864,52 @@ export function subscribeToRewards(client_id: string, callback: RewardsCallback)
     .on(
       'postgres_changes',
       {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'client_rewards',
+        filter: `client_id=eq.${client_id}`,
+      },
+      async (payload) => {
+        const row = payload.new as {
+          id: string
+          client_id: string
+          fournisseur_id: string
+          reward_rule_id: string
+          status: ClientReward['status']
+          unlocked_at: string
+          used_at: string | null
+          created_at: string
+        }
+
+        if (!row?.id) {
+          return
+        }
+
+        const { data: rewardRule, error } = await supabase
+          .from('reward_rules')
+          .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, reward_delivery_type, requires_physical_presence, created_at')
+          .eq('id', row.reward_rule_id)
+          .maybeSingle()
+
+        if (error || !rewardRule) {
+          return
+        }
+
+        callback({
+          ...row,
+          reward_rule: {
+            ...(rewardRule as RewardRule),
+            points_required: Number(rewardRule.points_required),
+            actif: Boolean(rewardRule.actif),
+            reward_delivery_type: (rewardRule.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store') as 'in_store' | 'digital_code',
+            requires_physical_presence: Boolean(rewardRule.requires_physical_presence),
+          },
+        })
+      },
+    )
+    .on(
+      'postgres_changes',
+      {
         event: 'INSERT',
         schema: 'public',
         table: 'client_rewards',
@@ -887,7 +933,7 @@ export function subscribeToRewards(client_id: string, callback: RewardsCallback)
 
         const { data: rewardRule, error } = await supabase
           .from('reward_rules')
-          .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, created_at')
+          .select('id, fournisseur_id, nom, description, points_required, emoji, expiry_date, actif, reward_delivery_type, requires_physical_presence, created_at')
           .eq('id', row.reward_rule_id)
           .maybeSingle()
 
@@ -901,6 +947,8 @@ export function subscribeToRewards(client_id: string, callback: RewardsCallback)
             ...(rewardRule as RewardRule),
             points_required: Number(rewardRule.points_required),
             actif: Boolean(rewardRule.actif),
+            reward_delivery_type: (rewardRule.reward_delivery_type === 'digital_code' ? 'digital_code' : 'in_store') as 'in_store' | 'digital_code',
+            requires_physical_presence: Boolean(rewardRule.requires_physical_presence),
           },
         })
       },
