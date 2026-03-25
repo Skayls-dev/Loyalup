@@ -32,9 +32,14 @@ interface ScanSuccessProps {
   state: 'pending' | 'validated' | 'cancelled'
   points?: number
   balance?: number
+  merchantName?: string
   shareUrl?: string
   shareMessage?: string
   shareLoading?: boolean
+  feedbackRating?: number | null
+  feedbackSubmitting?: boolean
+  feedbackError?: string | null
+  onSelectFeedback?: (rating: number) => void
   onRetryShare?: () => Promise<void>
   onReset: () => void
 }
@@ -46,16 +51,6 @@ interface ScanErrorProps {
 
 interface ScanHistoryProps {
   userId: string
-}
-
-interface ScanFeedbackModalProps {
-  open: boolean
-  merchantName: string
-  rating: number | null
-  submitting: boolean
-  error: string | null
-  onSelect: (rating: number) => void
-  onClose: () => void
 }
 
 function QRViewport({ onSuccess, onError, disabled = false }: QRViewportProps) {
@@ -232,7 +227,21 @@ function PendingCountdown({ onTimeout }: { onTimeout: () => void }) {
   )
 }
 
-function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoading = false, onRetryShare, onReset }: ScanSuccessProps) {
+function ScanSuccess({
+  state,
+  points,
+  balance,
+  merchantName,
+  shareUrl,
+  shareMessage,
+  shareLoading = false,
+  feedbackRating = null,
+  feedbackSubmitting = false,
+  feedbackError = null,
+  onSelectFeedback,
+  onRetryShare,
+  onReset,
+}: ScanSuccessProps) {
   const [showShareActions, setShowShareActions] = useState(false)
   const [copyNotice, setCopyNotice] = useState<string | null>(null)
 
@@ -315,6 +324,38 @@ function ScanSuccess({ state, points, balance, shareUrl, shareMessage, shareLoad
         <p className="font-body text-xs text-emerald-700">
           Nouveau solde: {balance.toLocaleString('fr-FR')} pts
         </p>
+      ) : null}
+
+      {state === 'validated' && onSelectFeedback ? (
+        <div className="rounded-lg border border-emerald-200 bg-white p-3">
+          <p className="font-body text-xs font-semibold uppercase tracking-[0.12em] text-emerald-700">Feedback</p>
+          <p className="mt-1 font-body text-xs text-gray-600">
+            Comment notez-vous {merchantName ?? 'ce marchand'} ?
+          </p>
+
+          <div className="mt-2 flex items-center justify-center gap-1" aria-label="Noter de 1 a 5 etoiles">
+            {([1, 2, 3, 4, 5] as const).map((star) => {
+              const filled = star <= (feedbackRating ?? 0)
+              return (
+                <button
+                  key={`inline-feedback-star-${star}`}
+                  type="button"
+                  disabled={feedbackSubmitting}
+                  onClick={() => onSelectFeedback(star)}
+                  className={`text-2xl leading-none transition ${filled ? 'text-amber-500' : 'text-gray-300'} ${feedbackSubmitting ? 'cursor-wait opacity-70' : 'hover:scale-110'}`}
+                  aria-label={`Noter ${star} sur 5`}
+                >
+                  ★
+                </button>
+              )
+            })}
+          </div>
+
+          <p className="mt-2 text-center font-body text-xs text-gray-500">
+            {feedbackRating ? `Vous avez donne ${feedbackRating}/5.` : 'Selectionnez une note rapide en un clic.'}
+          </p>
+          {feedbackError ? <p className="mt-2 rounded-md bg-rose-50 px-2 py-1 font-body text-xs text-rose-700">{feedbackError}</p> : null}
+        </div>
       ) : null}
 
       <div className="rounded-lg border border-emerald-200 bg-white p-3">
@@ -508,62 +549,6 @@ function ScanHistory({ userId }: ScanHistoryProps) {
   )
 }
 
-function ScanFeedbackModal({
-  open,
-  merchantName,
-  rating,
-  submitting,
-  error,
-  onSelect,
-  onClose,
-}: ScanFeedbackModalProps) {
-  if (!open) return null
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-4 sm:items-center">
-      <div className="w-full max-w-sm rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="font-display text-xl font-extrabold text-dark">Votre avis compte</p>
-            <p className="mt-1 font-body text-sm text-gray-600">Comment notez-vous {merchantName} ?</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-md px-2 py-1 text-xs font-semibold text-gray-500 hover:bg-gray-100"
-          >
-            Plus tard
-          </button>
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-2" aria-label="Noter de 1 a 5 etoiles">
-          {([1, 2, 3, 4, 5] as const).map((star) => {
-            const filled = star <= (rating ?? 0)
-            return (
-              <button
-                key={`feedback-star-${star}`}
-                type="button"
-                disabled={submitting}
-                onClick={() => onSelect(star)}
-                className={`text-3xl leading-none transition ${filled ? 'text-amber-500' : 'text-gray-300'} ${submitting ? 'cursor-wait opacity-70' : 'hover:scale-110'}`}
-                aria-label={`Noter ${star} sur 5`}
-              >
-                ★
-              </button>
-            )
-          })}
-        </div>
-
-        <p className="mt-3 text-center font-body text-xs text-gray-500">
-          {rating ? `Vous avez donne ${rating}/5.` : 'Selectionnez une note rapide en un clic.'}
-        </p>
-
-        {error ? <p className="mt-2 rounded-md bg-rose-50 px-2 py-1 font-body text-xs text-rose-700">{error}</p> : null}
-      </div>
-    </div>
-  )
-}
-
 export default function QRScannerPage() {
   const { user } = useAuth()
   const userId = user?.id ?? ''
@@ -591,11 +576,8 @@ export default function QRScannerPage() {
   const [feedbackRating, setFeedbackRating] = useState<number | null>(null)
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const [feedbackError, setFeedbackError] = useState<string | null>(null)
-  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false)
 
   void scanResultData
-
-  const feedbackMerchantName = scanResultData?.merchantName ?? 'ce marchand'
 
   const loadShareLink = useCallback(async () => {
     setShareLoading(true)
@@ -643,7 +625,6 @@ export default function QRScannerPage() {
     setFeedbackRating(null)
     setFeedbackSubmitting(false)
     setFeedbackError(null)
-    setFeedbackModalOpen(false)
     setState('scanning')
   }, [])
 
@@ -656,7 +637,6 @@ export default function QRScannerPage() {
     try {
       await upsertMerchantRating({ transactionId: validatedTransactionId, rating })
       setFeedbackRating(rating)
-      setFeedbackModalOpen(false)
       showToast('Merci pour votre avis !', 'success', 2400)
     } catch (caughtError) {
       setFeedbackError(caughtError instanceof Error ? caughtError.message : 'Impossible d\'enregistrer la note.')
@@ -780,7 +760,6 @@ export default function QRScannerPage() {
         setValidatedTransactionId(transactionId)
         setFeedbackRating(null)
         setFeedbackError(null)
-        setFeedbackModalOpen(Boolean(transactionId))
         setScanResultData({
           totalPoints: pointsCredited,
           basePoints,
@@ -832,9 +811,18 @@ export default function QRScannerPage() {
           state={state}
           points={validatedPoints}
           balance={validatedBalance}
+          merchantName={scanResultData?.merchantName ?? 'ce marchand'}
           shareUrl={shareUrl}
           shareMessage={shareMessage}
           shareLoading={shareLoading}
+          feedbackRating={feedbackRating}
+          feedbackSubmitting={feedbackSubmitting}
+          feedbackError={feedbackError}
+          onSelectFeedback={validatedTransactionId
+            ? (rating) => {
+                void handleFeedbackSelect(rating)
+              }
+            : undefined}
           onRetryShare={loadShareLink}
           onReset={resetScanner}
         />
@@ -858,6 +846,12 @@ export default function QRScannerPage() {
     state,
     validatedBalance,
     validatedPoints,
+    feedbackError,
+    feedbackRating,
+    feedbackSubmitting,
+    validatedTransactionId,
+    handleFeedbackSelect,
+    scanResultData,
   ])
 
   return (
@@ -868,18 +862,6 @@ export default function QRScannerPage() {
       </header>
 
       {stateCard}
-
-      <ScanFeedbackModal
-        open={state === 'validated' && feedbackModalOpen}
-        merchantName={feedbackMerchantName}
-        rating={feedbackRating}
-        submitting={feedbackSubmitting}
-        error={feedbackError}
-        onSelect={(rating) => {
-          void handleFeedbackSelect(rating)
-        }}
-        onClose={() => setFeedbackModalOpen(false)}
-      />
 
       <ScanHistory userId={userId} />
     </main>
