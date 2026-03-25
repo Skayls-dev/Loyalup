@@ -7,6 +7,7 @@ import { OnboardingProvider } from '../contexts/OnboardingContext'
 import { ConsentModal } from '../shared/components/ConsentModal'
 import { OfflineBanner } from '../shared/components/OfflineBanner'
 import { InstallBanner } from '../shared/components/InstallBanner'
+import { GlobalToastHost } from '../shared/components/GlobalToastHost'
 import { supabase } from '../shared/lib/supabaseClient'
 
 export function App() {
@@ -69,6 +70,7 @@ export function App() {
       </BrowserRouter>
       {user ? <ConsentModal locale="fr" /> : null}
       <InstallBanner />
+      <GlobalToastHost />
     </>
   )
 }

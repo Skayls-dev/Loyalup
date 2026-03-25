@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '../../auth/hooks/useAuth'
+import { showToast } from '../../../shared/stores/toastStore'
 import {
   getRewardCatalog,
   subscribeToRewards,
@@ -90,6 +91,11 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
 
     try {
       await consumeReward(reward.unlocked_reward_id, pending_transaction_id)
+      showToast(
+        `${reward.reward_rule.emoji} ${reward.reward_rule.nom} consommée · -${reward.reward_rule.points_required} pts`,
+        'success',
+        3200,
+      )
       await refetch()
     } catch (caughtError) {
       setRewards(previous)

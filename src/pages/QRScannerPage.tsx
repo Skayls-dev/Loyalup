@@ -9,6 +9,7 @@ import {
 } from '../modules/qr/services/qrService'
 import { getReferralStats, generateReferralLink } from '../modules/gamification/services/gamificationService'
 import { supabase } from '../shared/lib/supabaseClient'
+import { showToast } from '../shared/stores/toastStore'
 
 export interface ScanResult {
   token: string
@@ -514,6 +515,7 @@ export default function QRScannerPage() {
     currentPoints: number
     nextThreshold: number
   } | null>(null)
+  const lastValidatedNudgeRef = useRef<string | null>(null)
   const [errorReason, setErrorReason] = useState('')
   const [shareUrl, setShareUrl] = useState<string | undefined>(undefined)
   const [shareMessage, setShareMessage] = useState<string>('')
@@ -664,6 +666,17 @@ export default function QRScannerPage() {
       }
 
       if (!cancelled) {
+        const nudgeKey = `${pendingTxId}:${pointsCredited}:${currentPoints}`
+        if (lastValidatedNudgeRef.current !== nudgeKey) {
+          lastValidatedNudgeRef.current = nudgeKey
+          const remainingToNext = Math.max(0, nextThreshold - currentPoints)
+          const message =
+            remainingToNext > 0
+              ? `Scan validé · +${pointsCredited} pts · Encore ${remainingToNext} pts vers la prochaine récompense`
+              : `Scan validé · +${pointsCredited} pts`
+          showToast(message, 'success', 3200)
+        }
+
         setValidatedPoints(pointsCredited)
         setValidatedBalance(currentPoints)
         setScanResultData({
