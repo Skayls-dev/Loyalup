@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 
 export type AdConfig = {
@@ -52,12 +53,20 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
       ? resolvedAd.ctaUrl
       : `https://${resolvedAd.ctaUrl}`
     : null
+  const [videoLoadFailed, setVideoLoadFailed] = useState(false)
+
+  useEffect(() => {
+    setVideoLoadFailed(false)
+  }, [resolvedAd.mediaUrl, resolvedAd.mediaType])
+
+  const shouldRenderVideo = resolvedAd.mediaType === 'video' && !videoLoadFailed
+  const fallbackImageUrl = resolvedAd.posterUrl ?? resolvedAd.mediaUrl
 
   return (
     <article className={`overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-[0_18px_40px_rgba(15,23,42,0.10)] ${className}`}>
       {resolvedAd.mediaUrl ? (
         <div className="relative w-full">
-          {resolvedAd.mediaType === 'video' ? (
+          {shouldRenderVideo ? (
             <video
               src={resolvedAd.mediaUrl}
               poster={resolvedAd.posterUrl}
@@ -65,11 +74,13 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
               muted
               loop
               playsInline
+              preload="metadata"
+              onError={() => setVideoLoadFailed(true)}
               className="aspect-[16/9] w-full object-cover"
             />
           ) : (
             <img
-              src={resolvedAd.mediaUrl}
+              src={fallbackImageUrl}
               alt={resolvedAd.title}
               className="aspect-[16/9] w-full object-cover"
             />
