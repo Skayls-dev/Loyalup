@@ -62,19 +62,8 @@ export function useRewards({ fournisseur_id }: UseRewardsParams): UseRewardsResu
         return
       }
 
-      if (reward.status === 'used') {
-        const wasConsumedLocally = locallyConsumedRewardIdsRef.current.has(reward.id)
-        if (wasConsumedLocally) {
-          locallyConsumedRewardIdsRef.current.delete(reward.id)
-        } else {
-          showToast(
-            `${reward.reward_rule.emoji} ${reward.reward_rule.nom} consommée en caisse · -${reward.reward_rule.points_required} pts`,
-            'success',
-            3600,
-          )
-        }
-      }
-
+      // The toast for 'used' rewards is handled globally in App.tsx to fire
+      // regardless of which page the client is currently on. Only refetch here.
       refetch().catch(() => null)
     })
 
