@@ -3,6 +3,7 @@ import { supabase } from '../shared/lib/supabaseClient'
 
 export interface RecentTransactionItem {
   id: string
+  merchantId: string | null
   merchantName: string
   merchantEmoji: string
   networkColor: string
@@ -10,6 +11,8 @@ export interface RecentTransactionItem {
   createdAt: string
   transactionType: 'purchase' | 'reward_redemption'
   serviceName: string | null
+  canRate: boolean
+  ratingScore: number | null
 }
 
 export interface UseRecentTransactionsResult {
@@ -26,6 +29,11 @@ type TransactionRow = {
   status: string | null
   transaction_type: string | null
   service_nom_libre: string | null
+}
+
+type RatingRow = {
+  transaction_id: string
+  rating: number | null
 }
 
 export function useRecentTransactions(userId?: string, limit = 4): UseRecentTransactionsResult {
@@ -63,6 +71,7 @@ export function useRecentTransactions(userId?: string, limit = 4): UseRecentTran
 
         const rows = (txData ?? []) as TransactionRow[]
         const providerIds = [...new Set(rows.map((row) => row.fournisseur_id).filter(Boolean))] as string[]
+        const transactionIds = rows.map((row) => row.id)
 
         const { data: providersData, error: providersError } = providerIds.length
           ? await supabase.from('fournisseurs').select('id, nom_commerce').in('id', providerIds)
@@ -70,6 +79,23 @@ export function useRecentTransactions(userId?: string, limit = 4): UseRecentTran
 
         if (providersError) {
           throw new Error(providersError.message)
+        }
+
+        const { data: ratingsData, error: ratingsError } = transactionIds.length
+          ? await supabase
+              .from('merchant_ratings')
+              .select('transaction_id, rating')
+              .eq('client_id', userId)
+              .in('transaction_id', transactionIds)
+          : { data: [], error: null }
+
+        if (ratingsError) {
+          throw new Error(ratingsError.message)
+        }
+
+        const ratingMap = new Map<string, number>()
+        for (const row of (ratingsData ?? []) as RatingRow[]) {
+          ratingMap.set(row.transaction_id, Number(row.rating ?? 0))
         }
 
         const providerMap = new Map<string, string>()
@@ -81,6 +107,7 @@ export function useRecentTransactions(userId?: string, limit = 4): UseRecentTran
 
         const mapped: RecentTransactionItem[] = rows.map((row, index) => ({
           id: row.id,
+          merchantId: row.fournisseur_id,
           merchantName: row.fournisseur_id ? providerMap.get(row.fournisseur_id) ?? 'Marchand' : 'Marchand',
           merchantEmoji: row.transaction_type === 'reward_redemption' ? '🎁' : '🏪',
           networkColor: fallbackColors[index % fallbackColors.length],
@@ -88,6 +115,11 @@ export function useRecentTransactions(userId?: string, limit = 4): UseRecentTran
           createdAt: row.created_at,
           transactionType: row.transaction_type === 'reward_redemption' ? 'reward_redemption' : 'purchase',
           serviceName: row.service_nom_libre ?? null,
+          canRate:
+            row.transaction_type !== 'reward_redemption'
+            && Number(row.points_credited ?? 0) > 0
+            && Boolean(row.fournisseur_id),
+          ratingScore: ratingMap.get(row.id) ?? null,
         }))
 
         if (!cancelled) {

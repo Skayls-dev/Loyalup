@@ -105,6 +105,12 @@ export default function MerchantSettingsPage() {
               <span className="font-body text-sm text-gray-600">Clients fidèles</span>
               <strong className="font-display text-lg text-dark">{stats.loyalCustomers.toLocaleString('fr-FR')}</strong>
             </div>
+            <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+              <span className="font-body text-sm text-gray-600">Réputation</span>
+              <strong className="font-display text-lg text-dark">
+                {stats.ratingCount > 0 ? `${stats.averageRating.toFixed(1)} ★ (${stats.ratingCount})` : 'Aucun avis'}
+              </strong>
+            </div>
           </div>
         </section>
       </div>

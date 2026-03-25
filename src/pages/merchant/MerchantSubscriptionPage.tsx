@@ -60,6 +60,12 @@ export default function MerchantSubscriptionPage() {
               <span className="font-body text-sm text-gray-600">Taux de retour</span>
               <strong className="font-display text-lg text-dark">{stats.retentionRate}%</strong>
             </div>
+            <div className="flex items-center justify-between rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
+              <span className="font-body text-sm text-gray-600">Réputation</span>
+              <strong className="font-display text-lg text-dark">
+                {stats.ratingCount > 0 ? `${stats.averageRating.toFixed(1)} ★` : 'Aucun avis'}
+              </strong>
+            </div>
             <div className="rounded-lg border border-primary/15 bg-primary-light px-4 py-3 text-sm text-gray-700">
               Plan recommandé: <span className="font-semibold text-primary">Premium</span>
             </div>

@@ -9,6 +9,8 @@ export interface MerchantStats {
   loyalCustomers: number
   newCustomersThisMonth: number
   retentionRate: number
+  averageRating: number
+  ratingCount: number
 }
 
 export interface UseMerchantStatsResult {
@@ -25,6 +27,8 @@ const defaultStats: MerchantStats = {
   loyalCustomers: 0,
   newCustomersThisMonth: 0,
   retentionRate: 0,
+  averageRating: 0,
+  ratingCount: 0,
 }
 
 type MerchantTransactionRow = {
@@ -32,6 +36,10 @@ type MerchantTransactionRow = {
   montant: number | null
   points_credited: number | null
   created_at: string
+}
+
+type MerchantRatingRow = {
+  rating: number | null
 }
 
 function monthStart(date: Date): Date {
@@ -65,7 +73,7 @@ export function useMerchantStats(merchantId: string): UseMerchantStatsResult {
         const startCurrentMonth = monthStart(now)
         const startPreviousMonth = monthStart(new Date(now.getFullYear(), now.getMonth() - 1, 1))
 
-        const [currentMonthRes, previousMonthRes, preCurrentMonthRes] = await Promise.all([
+        const [currentMonthRes, previousMonthRes, preCurrentMonthRes, ratingsRes] = await Promise.all([
           supabase
             .from('transactions')
             .select('client_id, montant, points_credited, created_at')
@@ -85,11 +93,16 @@ export function useMerchantStats(merchantId: string): UseMerchantStatsResult {
             .eq('fournisseur_id', merchantId)
             .eq('status', 'validated')
             .lt('created_at', startCurrentMonth.toISOString()),
+          supabase
+            .from('merchant_ratings')
+            .select('rating')
+            .eq('fournisseur_id', merchantId),
         ])
 
         if (currentMonthRes.error) throw new Error(currentMonthRes.error.message)
         if (previousMonthRes.error) throw new Error(previousMonthRes.error.message)
         if (preCurrentMonthRes.error) throw new Error(preCurrentMonthRes.error.message)
+        if (ratingsRes.error) throw new Error(ratingsRes.error.message)
 
         const currentMonthRows = (currentMonthRes.data ?? []) as MerchantTransactionRow[]
         const previousMonthRows = (previousMonthRes.data ?? []) as Array<{ client_id: string | null; montant: number | null }>
@@ -107,6 +120,7 @@ export function useMerchantStats(merchantId: string): UseMerchantStatsResult {
 
         const monthlyClients = new Set(currentMonthRows.map((row) => row.client_id).filter(Boolean) as string[])
         const previousClients = new Set((preCurrentMonthRes.data ?? []).map((row) => row.client_id).filter(Boolean) as string[])
+        const ratingRows = (ratingsRes.data ?? []) as MerchantRatingRow[]
 
         const newCustomersThisMonth = [...monthlyClients].filter((clientId) => !previousClients.has(clientId)).length
 
@@ -119,6 +133,13 @@ export function useMerchantStats(merchantId: string): UseMerchantStatsResult {
         const loyalCustomers = [...visitsByClient.values()].filter((count) => count >= 2).length
         const totalCustomers = monthlyClients.size
         const retentionRate = totalCustomers > 0 ? (loyalCustomers / totalCustomers) * 100 : 0
+        const normalizedRatings = ratingRows
+          .map((row) => Number(row.rating ?? 0))
+          .filter((value) => Number.isFinite(value) && value >= 1 && value <= 5)
+        const ratingCount = normalizedRatings.length
+        const averageRating = ratingCount > 0
+          ? Math.round((normalizedRatings.reduce((sum, value) => sum + value, 0) / ratingCount) * 10) / 10
+          : 0
 
         if (!cancelled) {
           setStats({
@@ -129,6 +150,8 @@ export function useMerchantStats(merchantId: string): UseMerchantStatsResult {
             loyalCustomers,
             newCustomersThisMonth,
             retentionRate: Math.round(retentionRate),
+            averageRating,
+            ratingCount,
           })
           setLoading(false)
         }

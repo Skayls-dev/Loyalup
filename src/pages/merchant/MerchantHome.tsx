@@ -55,11 +55,13 @@ export function MerchantHome({
       accentClassName: 'bg-accent-green',
     },
     {
-      key: 'retention',
-      title: 'Taux de retour',
-      value: `${stats.retentionRate}%`,
+      key: 'reputation',
+      title: 'Réputation',
+      value: stats.ratingCount > 0 ? `${stats.averageRating.toFixed(1)} ★` : 'N/A',
       valueClassName: 'text-dark',
-      subtitle: 'moy. secteur : 41%',
+      subtitle: stats.ratingCount > 0
+        ? `${stats.ratingCount.toLocaleString('fr-FR')} avis clients`
+        : 'Aucun avis pour le moment',
       subtitleClassName: 'text-gray-500',
       accentClassName: 'bg-[#FFD23F]',
     },
