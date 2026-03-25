@@ -10,8 +10,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['vite.svg'],
       manifest: {
-        name: 'LoyalUp',
-        short_name: 'LoyalUp',
+        name: 'LooYaal',
+        short_name: 'LooYaal',
         description: 'Votre programme de fidélité',
         theme_color: '#080811',
         background_color: '#080811',
