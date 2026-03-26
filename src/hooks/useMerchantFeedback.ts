@@ -27,7 +27,6 @@ type MerchantRatingRow = {
 type ProfileNameRow = {
   id: string
   nom: string | null
-  prenom: string | null
 }
 
 function buildClientDisplayName(profile?: ProfileNameRow): string | null {
@@ -35,10 +34,8 @@ function buildClientDisplayName(profile?: ProfileNameRow): string | null {
     return null
   }
 
-  const prenom = profile.prenom?.trim() ?? ''
   const nom = profile.nom?.trim() ?? ''
-  const full = `${prenom} ${nom}`.trim()
-  return full.length > 0 ? full : null
+  return nom.length > 0 ? nom : null
 }
 
 export function useMerchantFeedback(merchantId: string, limit = 8): UseMerchantFeedbackResult {
@@ -79,7 +76,7 @@ export function useMerchantFeedback(merchantId: string, limit = 8): UseMerchantF
         if (clientIds.length > 0) {
           const { data: profilesData, error: profilesError } = await supabase
             .from('profiles')
-            .select('id, nom, prenom')
+            .select('id, nom')
             .in('id', clientIds)
 
           if (profilesError) {
