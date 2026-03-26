@@ -11,7 +11,7 @@ type UseInstallPromptResult = {
   isInstalled: boolean
 }
 
-export function useInstallPrompt(): UseInstallPromptResult {
+export function useInstallPrompt(enabled = true): UseInstallPromptResult {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [isInstalled, setIsInstalled] = useState(false)
 
@@ -21,6 +21,11 @@ export function useInstallPrompt(): UseInstallPromptResult {
 
     if (displayModeStandalone || navigatorStandalone) {
       setIsInstalled(true)
+    }
+
+    if (!enabled) {
+      setDeferredPrompt(null)
+      return
     }
 
     const onBeforeInstallPrompt = (event: Event) => {
@@ -40,7 +45,7 @@ export function useInstallPrompt(): UseInstallPromptResult {
       window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt)
       window.removeEventListener('appinstalled', onInstalled)
     }
-  }, [])
+  }, [enabled])
 
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) {

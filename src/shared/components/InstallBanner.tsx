@@ -15,8 +15,8 @@ function getDismissedUntil(): number {
 }
 
 export function InstallBanner() {
-  const { canInstall, isInstalled, promptInstall } = useInstallPrompt()
-  const [hiddenByUser, setHiddenByUser] = useState(false)
+  const [hiddenByUser, setHiddenByUser] = useState(() => getDismissedUntil() > Date.now())
+  const { canInstall, isInstalled, promptInstall } = useInstallPrompt(!hiddenByUser)
 
   useEffect(() => {
     if (getDismissedUntil() > Date.now()) {
