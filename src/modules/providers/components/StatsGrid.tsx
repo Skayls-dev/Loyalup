@@ -13,7 +13,7 @@ export function StatsGrid({ stats, loading, compact = false }: StatsGridProps) {
     if (loading || !stats) {
       return (
         <div className="grid grid-cols-2 gap-2">
-          {Array.from({ length: 4 }).map((_, index) => (
+          {Array.from({ length: 2 }).map((_, index) => (
             <div key={index} className="h-20 animate-pulse rounded-2xl border border-slate-200 bg-white shadow-sm" />
           ))}
         </div>
@@ -21,8 +21,6 @@ export function StatsGrid({ stats, loading, compact = false }: StatsGridProps) {
     }
 
     const compactItems = [
-      { label: 'STATUT QR', value: 'Actif', color: 'text-slate-900' },
-      { label: 'TEMPS RESTANT', value: '02:15', color: 'text-[#00e5a0]' },
       { label: 'POINTS CLIENT', value: `${stats.total_points_distributed.toLocaleString()} pts`, color: 'text-[#d4a017]' },
       { label: 'SCANS AUJOURD\'HUI', value: stats.transactions_today.toLocaleString(), color: 'text-[#3eb8f0]' },
     ]

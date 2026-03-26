@@ -10,6 +10,26 @@ function parseEnvValue(raw, key) {
   return match[1].trim()
 }
 
+function resolveAdminCredentials() {
+  const envUrl = process.env.VITE_SUPABASE_URL?.trim()
+  const envServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+
+  if (envUrl && envServiceRoleKey) {
+    return { supabaseUrl: envUrl, serviceRoleKey: envServiceRoleKey }
+  }
+
+  const envRaw = execSync('npx supabase status -o env', {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  })
+
+  return {
+    supabaseUrl: parseEnvValue(envRaw, 'API_URL'),
+    serviceRoleKey: parseEnvValue(envRaw, 'SERVICE_ROLE_KEY').replace(/\s+/g, ''),
+  }
+}
+
 function randomSuffix() {
   return Math.random().toString(36).slice(2, 8)
 }
@@ -151,19 +171,26 @@ async function createValidatedTransaction(adminClient, { fournisseurId, clientId
     throw pending.error ?? new Error('Failed to create pending transaction')
   }
 
-  const inserted = await adminClient.from('transactions').insert({
-    pending_transaction_id: pending.data.id,
-    client_id: clientId,
-    fournisseur_id: fournisseurId,
-    service_id: serviceId,
-    montant,
-    points_credited: points,
-    status: 'validated',
-  })
+  const inserted = await adminClient
+    .from('transactions')
+    .insert({
+      pending_transaction_id: pending.data.id,
+      client_id: clientId,
+      fournisseur_id: fournisseurId,
+      service_id: serviceId,
+      montant,
+      points_credited: points,
+      status: 'validated',
+      transaction_type: 'purchase',
+    })
+    .select('id')
+    .single()
 
-  if (inserted.error) {
-    throw inserted.error
+  if (inserted.error || !inserted.data?.id) {
+    throw inserted.error ?? new Error('Failed to create validated transaction')
   }
+
+  return inserted.data.id
 }
 
 async function seedForPair(adminClient, { clientId, fournisseurId, serviceIds }) {
@@ -181,7 +208,7 @@ async function seedForPair(adminClient, { clientId, fournisseurId, serviceIds })
     throw pointsUpsert.error
   }
 
-  await createValidatedTransaction(adminClient, {
+  const firstTxId = await createValidatedTransaction(adminClient, {
     fournisseurId,
     clientId,
     serviceId: serviceIds[0],
@@ -189,13 +216,51 @@ async function seedForPair(adminClient, { clientId, fournisseurId, serviceIds })
     points: 24,
   })
 
-  await createValidatedTransaction(adminClient, {
+  const secondTxId = await createValidatedTransaction(adminClient, {
     fournisseurId,
     clientId,
     serviceId: serviceIds[1],
     montant: 18,
     points: 36,
   })
+
+  return [firstTxId, secondTxId]
+}
+
+async function upsertMerchantRating(adminClient, { transactionId, rating, comment }) {
+  const upsert = await adminClient
+    .from('merchant_ratings')
+    .upsert(
+      {
+        transaction_id: transactionId,
+        rating,
+        comment,
+      },
+      { onConflict: 'transaction_id' },
+    )
+
+  if (upsert.error) {
+    throw upsert.error
+  }
+}
+
+async function upsertClientReward(adminClient, { clientId, fournisseurId, rewardRuleId, status, usedAt = null }) {
+  const upsert = await adminClient
+    .from('client_rewards')
+    .upsert(
+      {
+        client_id: clientId,
+        fournisseur_id: fournisseurId,
+        reward_rule_id: rewardRuleId,
+        status,
+        used_at: usedAt,
+      },
+      { onConflict: 'client_id,reward_rule_id' },
+    )
+
+  if (upsert.error) {
+    throw upsert.error
+  }
 }
 
 async function setConsents(adminClient, userId) {
@@ -246,14 +311,7 @@ async function addUserEvent(adminClient, userId, eventType, page) {
 }
 
 async function main() {
-  const envRaw = execSync('npx supabase status -o env', {
-    cwd: process.cwd(),
-    encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-  })
-
-  const supabaseUrl = parseEnvValue(envRaw, 'API_URL')
-  const serviceRoleKey = parseEnvValue(envRaw, 'SERVICE_ROLE_KEY').replace(/\s+/g, '')
+  const { supabaseUrl, serviceRoleKey } = resolveAdminCredentials()
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
@@ -321,19 +379,21 @@ async function main() {
     actif: true,
   })
 
-  await ensureNamedReward(adminClient, fournisseur1Id, {
+  const reward1Id = await ensureNamedReward(adminClient, fournisseur1Id, {
     nom: 'Boisson offerte Test',
     description: '1 boisson offerte après cumul de points',
     points_required: 100,
     emoji: '🎁',
+    reward_delivery_type: 'in_store',
     actif: true,
   })
 
-  await ensureNamedReward(adminClient, fournisseur2Id, {
+  const reward2Id = await ensureNamedReward(adminClient, fournisseur2Id, {
     nom: 'Soin découverte Test',
     description: 'Réduction sur soin découverte',
     points_required: 150,
     emoji: '✨',
+    reward_delivery_type: 'digital_code',
     actif: true,
   })
 
@@ -360,28 +420,77 @@ async function main() {
     actif: true,
   })
 
-  await seedForPair(adminClient, {
+  const p1c1Transactions = await seedForPair(adminClient, {
     clientId: users.client1.id,
     fournisseurId: fournisseur1Id,
     serviceIds: [p1ServiceA, p1ServiceB],
   })
 
-  await seedForPair(adminClient, {
+  const p1c2Transactions = await seedForPair(adminClient, {
     clientId: users.client2.id,
     fournisseurId: fournisseur1Id,
     serviceIds: [p1ServiceA, p1ServiceB],
   })
 
-  await seedForPair(adminClient, {
+  const p2c1Transactions = await seedForPair(adminClient, {
     clientId: users.client1.id,
     fournisseurId: fournisseur2Id,
     serviceIds: [p2ServiceA, p2ServiceB],
   })
 
-  await seedForPair(adminClient, {
+  const p2c2Transactions = await seedForPair(adminClient, {
     clientId: users.client2.id,
     fournisseurId: fournisseur2Id,
     serviceIds: [p2ServiceA, p2ServiceB],
+  })
+
+  await upsertMerchantRating(adminClient, {
+    transactionId: p1c1Transactions[1],
+    rating: 5,
+    comment: 'Service rapide et accueillant.',
+  })
+  await upsertMerchantRating(adminClient, {
+    transactionId: p1c2Transactions[1],
+    rating: 4,
+    comment: 'Très bon rapport qualité prix.',
+  })
+  await upsertMerchantRating(adminClient, {
+    transactionId: p2c1Transactions[1],
+    rating: 5,
+    comment: 'Expérience premium, je recommande.',
+  })
+  await upsertMerchantRating(adminClient, {
+    transactionId: p2c2Transactions[1],
+    rating: 4,
+    comment: 'Personnel attentif et professionnel.',
+  })
+
+  const nowIso = new Date().toISOString()
+  await upsertClientReward(adminClient, {
+    clientId: users.client1.id,
+    fournisseurId: fournisseur1Id,
+    rewardRuleId: reward1Id,
+    status: 'used',
+    usedAt: nowIso,
+  })
+  await upsertClientReward(adminClient, {
+    clientId: users.client2.id,
+    fournisseurId: fournisseur1Id,
+    rewardRuleId: reward1Id,
+    status: 'available',
+  })
+  await upsertClientReward(adminClient, {
+    clientId: users.client1.id,
+    fournisseurId: fournisseur2Id,
+    rewardRuleId: reward2Id,
+    status: 'used',
+    usedAt: nowIso,
+  })
+  await upsertClientReward(adminClient, {
+    clientId: users.client2.id,
+    fournisseurId: fournisseur2Id,
+    rewardRuleId: reward2Id,
+    status: 'available',
   })
 
   await setConsents(adminClient, users.client1.id)
@@ -400,11 +509,13 @@ async function main() {
     adminClient.from('transactions').select('*', { count: 'exact', head: true }),
     adminClient.from('client_points').select('*', { count: 'exact', head: true }),
     adminClient.from('reward_rules').select('*', { count: 'exact', head: true }),
+    adminClient.from('client_rewards').select('*', { count: 'exact', head: true }),
+    adminClient.from('merchant_ratings').select('*', { count: 'exact', head: true }),
     adminClient.from('user_consents').select('*', { count: 'exact', head: true }),
     adminClient.from('user_events').select('*', { count: 'exact', head: true }),
   ])
 
-  const [services, promotions, transactions, clientPoints, rewards, consents, events] = summaries
+  const [services, promotions, transactions, clientPoints, rewards, clientRewards, merchantRatings, consents, events] = summaries
 
   console.log('Seed complete')
   console.log(`services=${services.count ?? 0}`)
@@ -412,6 +523,8 @@ async function main() {
   console.log(`transactions=${transactions.count ?? 0}`)
   console.log(`client_points=${clientPoints.count ?? 0}`)
   console.log(`reward_rules=${rewards.count ?? 0}`)
+  console.log(`client_rewards=${clientRewards.count ?? 0}`)
+  console.log(`merchant_ratings=${merchantRatings.count ?? 0}`)
   console.log(`user_consents=${consents.count ?? 0}`)
   console.log(`user_events=${events.count ?? 0}`)
 }

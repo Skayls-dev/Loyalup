@@ -185,7 +185,7 @@ export function MerchantConsumedServicesCard({ merchantId }: MerchantConsumedSer
       {services.length === 0 ? (
         <p className="text-sm text-gray-500">Aucune consommation sur la periode selectionnee.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <div className="space-y-2">
             {services.map((service) => {
               const isActive = service.service_key === selectedServiceKey

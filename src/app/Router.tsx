@@ -94,6 +94,12 @@ const ClientRewardsPage = lazy(() =>
 const ClientHistoryPage = lazy(() =>
   import('../pages/dashboard/ClientHistoryPage').then((module) => ({ default: module.default })),
 )
+const MerchantDirectoryPage = lazy(() =>
+  import('../pages/dashboard/MerchantDirectoryPage').then((module) => ({ default: module.default })),
+)
+const OffersExplorerPage = lazy(() =>
+  import('../pages/dashboard/OffersExplorerPage').then((module) => ({ default: module.default })),
+)
 const AccountLinkingPage = lazy(() =>
   import('../pages/dashboard/AccountLinkingPage').then((module) => ({ default: module.default })),
 )
@@ -808,6 +814,8 @@ export function Router() {
             <Route path="/networks" element={<ClientNetworksPage />} />
             <Route path="/transactions" element={<ClientTransactionsPage />} />
             <Route path="/rewards" element={<ClientRewardsPage />} />
+            <Route path="/directory" element={<MerchantDirectoryPage />} />
+            <Route path="/offers" element={<OffersExplorerPage />} />
             <Route path="/challenges" element={<GamificationPage />} />
             <Route path="/history" element={<ClientHistoryPage />} />
             <Route path="/account-linking" element={<AccountLinkingPage />} />

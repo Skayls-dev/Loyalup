@@ -3,10 +3,11 @@ import { MerchantNetworks } from '../../components/merchant/MerchantNetworks'
 import { MerchantOffers } from '../../components/merchant/MerchantOffers'
 import { MerchantConsumedServicesCard } from '../../components/merchant/MerchantConsumedServicesCard'
 import { MerchantConsumedRewardsCard } from '../../components/merchant/MerchantConsumedRewardsCard'
-import { MerchantQrShowcase } from '../../components/merchant/MerchantQrShowcase'
 import { MerchantRevenueChart } from '../../components/merchant/MerchantRevenueChart'
 import { MerchantTransactions } from '../../components/merchant/MerchantTransactions'
 import { TopCustomers } from '../../components/merchant/TopCustomers'
+import { MerchantFeedbackPanel } from '../../components/merchant/MerchantFeedbackPanel'
+import { MerchantPerformanceRankCard } from '../../components/merchant/MerchantPerformanceRankCard'
 import { Button } from '../../components/ui'
 import { useMerchantStats } from '../../hooks/useMerchantStats'
 
@@ -112,21 +113,27 @@ export function MerchantHome({
         ))}
       </div>
 
-      <MerchantQrShowcase />
+      <MerchantPerformanceRankCard merchantId={merchantId} />
 
       <MerchantConsumedServicesCard merchantId={merchantId} />
 
       <MerchantConsumedRewardsCard merchantId={merchantId} />
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <MerchantRevenueChart merchantId={merchantId} className="xl:col-span-2" />
-        <TopCustomers merchantId={merchantId} className="xl:col-span-1" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <MerchantRevenueChart merchantId={merchantId} className="lg:col-span-2" />
+        <TopCustomers merchantId={merchantId} className="lg:col-span-1" />
       </div>
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <MerchantTransactions merchantId={merchantId} limit={6} />
         <MerchantNetworks merchantId={merchantId} />
       </div>
+
+      <MerchantFeedbackPanel
+        merchantId={merchantId}
+        averageRating={stats.averageRating}
+        ratingCount={stats.ratingCount}
+      />
 
       <MerchantOffers merchantId={merchantId} />
 

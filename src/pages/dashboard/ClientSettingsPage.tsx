@@ -4,6 +4,8 @@ import { Button } from '../../components/ui'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
 import { supabase } from '../../shared/lib/supabaseClient'
 
+const PROFILE_PHOTOS_BUCKET = 'profile-photos'
+
 const avatars = [
   { id: 'lion', emoji: '🦁', label: 'Lion', gradient: 'linear-gradient(135deg, #FFE3A3, #FFB86B)' },
   { id: 'leopard', emoji: '🐆', label: 'Léopard', gradient: 'linear-gradient(135deg, #FFD6C2, #FF9A8B)' },
@@ -44,8 +46,10 @@ export default function ClientSettingsPage() {
   const [editNom, setEditNom] = useState('')
   const [editPrenom, setEditPrenom] = useState('')
   const [editAvatarId, setEditAvatarId] = useState<string>('lion')
+  const [editPhotoUrl, setEditPhotoUrl] = useState<string>('')
   const [editCity, setEditCity] = useState('')
   const [editCountry, setEditCountry] = useState<(typeof countries)[number]>('Belgique')
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [profileEditError, setProfileEditError] = useState<string | null>(null)
   const [profileEditSuccess, setProfileEditSuccess] = useState<string | null>(null)
@@ -55,12 +59,57 @@ export default function ClientSettingsPage() {
     setEditPrenom(profile?.prenom?.trim() ?? '')
     const currentAvatar = profile?.avatar_id ?? 'lion'
     setEditAvatarId(avatars.some((a) => a.id === currentAvatar) ? currentAvatar : 'lion')
+    setEditPhotoUrl(profile?.avatar_url?.trim() ?? '')
     const currentCountry = (profile?.country ?? 'Belgique') as (typeof countries)[number]
     setEditCountry(countries.includes(currentCountry) ? currentCountry : 'Belgique')
     setEditCity(profile?.city?.trim() ?? profile?.ville?.trim() ?? '')
     setProfileEditError(null)
     setProfileEditSuccess(null)
     setIsEditing(true)
+  }
+
+  const handlePhotoUpload = async (file: File) => {
+    if (!user?.id) {
+      setProfileEditError('Utilisateur non authentifie.')
+      return
+    }
+
+    const maxSize = 4 * 1024 * 1024
+    if (file.size > maxSize) {
+      setProfileEditError('La photo depasse 4 Mo.')
+      return
+    }
+
+    if (!file.type.startsWith('image/')) {
+      setProfileEditError('Seuls les fichiers image sont autorises.')
+      return
+    }
+
+    setIsUploadingPhoto(true)
+    setProfileEditError(null)
+
+    try {
+      const extension = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg'
+      const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${extension}`
+      const upload = await supabase.storage.from(PROFILE_PHOTOS_BUCKET).upload(path, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type || undefined,
+      })
+
+      if (upload.error) throw upload.error
+
+      const { data } = supabase.storage.from(PROFILE_PHOTOS_BUCKET).getPublicUrl(path)
+      if (!data?.publicUrl) {
+        throw new Error('URL de la photo introuvable.')
+      }
+
+      setEditPhotoUrl(data.publicUrl)
+    } catch (err) {
+      setProfileEditError(err instanceof Error ? err.message : 'Impossible de televerser la photo.')
+    } finally {
+      setIsUploadingPhoto(false)
+    }
   }
 
   const handleProfileSave = async () => {
@@ -81,6 +130,7 @@ export default function ClientSettingsPage() {
           nom: trimmedNom,
           prenom: editPrenom.trim() || null,
           avatar_id: editAvatarId,
+          avatar_url: editPhotoUrl.trim() || null,
           city: editCity.trim() || null,
           ville: editCity.trim() || null,
           country: editCountry,
@@ -171,6 +221,52 @@ export default function ClientSettingsPage() {
 
           {isEditing ? (
             <div className="mt-4 space-y-4">
+                <div>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-gray-500">Photo de profil</p>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {editPhotoUrl ? (
+                      <img
+                        src={editPhotoUrl}
+                        alt="Photo de profil"
+                        className="h-14 w-14 rounded-xl border border-gray-200 object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-gray-50 text-lg text-gray-400">
+                        +
+                      </div>
+                    )}
+
+                    <label className="inline-flex cursor-pointer items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-primary/40 hover:text-primary">
+                      {isUploadingPhoto ? 'Upload...' : 'Choisir une photo'}
+                      <input
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        className="hidden"
+                        disabled={isUploadingPhoto || isSaving}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0]
+                          if (file) {
+                            void handlePhotoUpload(file)
+                          }
+                          event.currentTarget.value = ''
+                        }}
+                      />
+                    </label>
+
+                    {editPhotoUrl ? (
+                      <button
+                        type="button"
+                        onClick={() => setEditPhotoUrl('')}
+                        disabled={isSaving || isUploadingPhoto}
+                        className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Retirer
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-xs text-gray-500">Formats supportes: JPG, PNG, WEBP. Taille max 4 Mo.</p>
+                </div>
+
               {/* Avatar picker */}
               <div>
                 <p className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-gray-500">Avatar</p>
@@ -271,7 +367,15 @@ export default function ClientSettingsPage() {
           ) : (
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {/* Avatar display */}
-              {profile?.avatar_id && avatars.some((a) => a.id === profile.avatar_id) && (
+              {profile?.avatar_url?.trim() ? (
+                <div className="col-span-full flex items-center gap-3">
+                  <img
+                    src={profile.avatar_url}
+                    alt="Photo de profil"
+                    className="h-14 w-14 rounded-xl border border-gray-200 object-cover"
+                  />
+                </div>
+              ) : profile?.avatar_id && avatars.some((a) => a.id === profile.avatar_id) ? (
                 <div className="col-span-full flex items-center gap-3">
                   {(() => {
                     const av = avatars.find((a) => a.id === profile.avatar_id)
@@ -285,7 +389,7 @@ export default function ClientSettingsPage() {
                     ) : null
                   })()}
                 </div>
-              )}
+              ) : null}
               <div className="rounded-lg border border-gray-100 bg-gray-50 px-4 py-3">
                 <p className="text-xs font-medium uppercase tracking-[0.14em] text-gray-500">Nom</p>
                 <p className="mt-2 font-body text-sm font-semibold text-dark">{displayName}</p>

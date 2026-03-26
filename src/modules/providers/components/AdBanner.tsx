@@ -85,7 +85,7 @@ export function AdBanner({ className = '', ad, pagination }: AdBannerProps) {
       )}
 
       <div className="p-6 pt-4">
-        <h2 className="bg-gradient-to-r from-slate-900 via-slate-800 to-sky-600 bg-clip-text text-2xl font-bold leading-tight text-transparent">
+        <h2 className="bg-gradient-to-r from-slate-900 via-slate-800 to-sky-600 bg-clip-text text-xl font-bold leading-tight text-transparent sm:text-2xl">
           {resolvedAd.title}
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-slate-600">{resolvedAd.description}</p>

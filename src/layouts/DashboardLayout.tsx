@@ -10,7 +10,9 @@ import {
   Network,
   QrCode,
   Settings,
+  Store,
   Swords,
+  Tags,
   Users,
 } from 'lucide-react'
 import { useAuth } from '../modules/auth/hooks/useAuth'
@@ -31,11 +33,13 @@ type NavItem = {
 const primaryNav: NavItem[] = [
   { key: 'overview', label: "Vue d'ensemble", to: '/dashboard', icon: LayoutDashboard },
   { key: 'points', label: 'Mes points', to: '/points', icon: Coins },
+  { key: 'directory', label: 'Annuaire', to: '/directory', icon: Store },
   { key: 'networks', label: 'Mes reseaux', to: '/networks', icon: Network },
   { key: 'scanner', label: 'Scanner QR', to: '/scan', icon: QrCode },
 ]
 
 const activityNav: NavItem[] = [
+  { key: 'offers', label: 'Toutes les offres', to: '/offers', icon: Tags },
   { key: 'transactions', label: 'Transactions', to: '/transactions', icon: ArrowLeftRight },
   { key: 'challenges', label: 'Defis', to: '/challenges', icon: Swords, badgeCount: 3 },
   { key: 'transfers', label: 'Transferts', to: '/dashboard/transfers', icon: ArrowLeftRight },
@@ -91,10 +95,11 @@ function MobileBottomNav({
 }) {
   const mobileNav: NavItem[] = [
     { key: 'overview', label: 'Accueil', to: '/dashboard', icon: LayoutDashboard },
+    { key: 'directory', label: 'Annuaire', to: '/directory', icon: Store },
     { key: 'points', label: 'Points', to: '/points', icon: Coins },
     { key: 'scanner', label: 'Scanner', to: '/scan', icon: QrCode },
+    { key: 'offers', label: 'Offres', to: '/offers', icon: Tags },
     { key: 'networks', label: 'Reseaux', to: '/networks', icon: Network },
-    { key: 'onboarding', label: 'Onboarding', to: '/onboarding/1', icon: Users },
     { key: 'settings', label: 'Profil', to: '/settings', icon: Settings },
   ]
 

@@ -1,5 +1,6 @@
 import { History } from 'lucide-react'
 import { TransactionHistory } from '../../modules/loyalty/components/TransactionHistory'
+import { ClientFeedbackHistory } from '../../components/dashboard/ClientFeedbackHistory'
 import { Badge, PageHeader, SectionCard } from '../../shared/components/client-ui'
 
 export default function ClientHistoryPage() {
@@ -24,6 +25,8 @@ export default function ClientHistoryPage() {
 
         <TransactionHistory />
       </SectionCard>
+
+      <ClientFeedbackHistory />
     </section>
   )
 }

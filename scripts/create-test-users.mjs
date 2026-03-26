@@ -10,6 +10,26 @@ function parseEnvValue(raw, key) {
   return match[1].trim()
 }
 
+function resolveAdminCredentials() {
+  const envUrl = process.env.VITE_SUPABASE_URL?.trim()
+  const envServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+
+  if (envUrl && envServiceRoleKey) {
+    return { supabaseUrl: envUrl, serviceRoleKey: envServiceRoleKey }
+  }
+
+  const envRaw = execSync('npx supabase status -o env', {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+    stdio: ['pipe', 'pipe', 'pipe'],
+  })
+
+  return {
+    supabaseUrl: parseEnvValue(envRaw, 'API_URL'),
+    serviceRoleKey: parseEnvValue(envRaw, 'SERVICE_ROLE_KEY').replace(/\s+/g, ''),
+  }
+}
+
 async function findUserByEmail(adminClient, email) {
   const listed = await adminClient.auth.admin.listUsers({ page: 1, perPage: 1000 })
   if (listed.error) {
@@ -89,14 +109,7 @@ async function ensureUser(adminClient, { email, password, role, nom, adresse = '
 }
 
 async function main() {
-  const envRaw = execSync('npx supabase status -o env', {
-    cwd: process.cwd(),
-    encoding: 'utf8',
-    stdio: ['pipe', 'pipe', 'pipe'],
-  })
-
-  const supabaseUrl = parseEnvValue(envRaw, 'API_URL')
-  const serviceRoleKey = parseEnvValue(envRaw, 'SERVICE_ROLE_KEY')
+  const { supabaseUrl, serviceRoleKey } = resolveAdminCredentials()
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
 
   const users = [

@@ -337,7 +337,7 @@ async function createLinkedUser(
   })
 
   if (created.error || !created.data.user?.id) {
-    throw created.error ?? new Error('Unable to create linked Looyaal user')
+    throw created.error ?? new Error('Unable to create linked LoyalUp user')
   }
 
   const loyalupUserId = created.data.user.id

@@ -629,31 +629,38 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
           return (
             <article
               key={offer.id}
-              className={`flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-3 transition ${status.rowClass} ${rowHover}`}
+              className={`flex flex-col gap-2 rounded-lg border border-gray-200 bg-white px-3 py-3 transition sm:flex-row sm:items-center sm:gap-3 ${status.rowClass} ${rowHover}`}
             >
-              <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base ${icon.bgClass}`}>{icon.emoji}</span>
+              {/* Top row: icon + info + badge (mobile) */}
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <span className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base ${icon.bgClass}`}>{icon.emoji}</span>
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-body text-sm font-semibold text-dark">{offer.name}</p>
-                <p className="mt-0.5 truncate font-body text-xs text-gray-500">
-                  {offer.points_required.toLocaleString('fr-FR')} pts requis · {offer.redemptions_this_month.toLocaleString('fr-FR')} rachats ce mois
-                </p>
-                <p className="mt-1 inline-flex items-center gap-1.5 font-body text-xs text-gray-500">
-                  {offer.reward_delivery_type === 'digital_code' ? (
-                    <>
-                      <Globe className="h-3.5 w-3.5" />
-                      Code digital
-                    </>
-                  ) : (
-                    <>
-                      <MapPin className="h-3.5 w-3.5" />
-                      En boutique
-                    </>
-                  )}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-body text-sm font-semibold text-dark">{offer.name}</p>
+                  <p className="mt-0.5 truncate font-body text-xs text-gray-500">
+                    {offer.points_required.toLocaleString('fr-FR')} pts requis · {offer.redemptions_this_month.toLocaleString('fr-FR')} rachats ce mois
+                  </p>
+                  <p className="mt-1 inline-flex items-center gap-1.5 font-body text-xs text-gray-500">
+                    {offer.reward_delivery_type === 'digital_code' ? (
+                      <>
+                        <Globe className="h-3.5 w-3.5" />
+                        Code digital
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="h-3.5 w-3.5" />
+                        En boutique
+                      </>
+                    )}
+                  </p>
+                </div>
+
+                {/* Badge visible on mobile only (inline with icon row) */}
+                <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold sm:hidden ${status.badgeClass}`}>{status.label}</span>
               </div>
 
-              <div className="flex shrink-0 items-center gap-2">
+              {/* Bottom row on mobile / right side on desktop: action buttons + badge */}
+              <div className="flex flex-wrap items-center gap-2 pl-[52px] sm:shrink-0 sm:flex-nowrap sm:pl-0">
                 <Button type="button" variant="soft" size="sm" onClick={() => openEditModal(offer)}>
                   Editer
                 </Button>
@@ -666,9 +673,9 @@ export function MerchantOffers({ merchantId, className = '' }: MerchantOffersPro
                 <Button type="button" variant="soft" size="sm" loading={deletingOfferId === offer.id} onClick={() => setOfferToDelete(offer)}>
                   Supprimer
                 </Button>
+                {/* Badge visible on sm+ only */}
+                <span className={`hidden sm:inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${status.badgeClass}`}>{status.label}</span>
               </div>
-
-              <span className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${status.badgeClass}`}>{status.label}</span>
             </article>
           )
         })}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Expand, RefreshCw } from 'lucide-react'
+import { Expand, Minimize, RefreshCw } from 'lucide-react'
 import { supabase } from '../../shared/lib/supabaseClient'
 import { AdBanner, type AdConfig } from '../../modules/providers/components/AdBanner'
 import { StatsGrid } from '../../modules/providers/components/StatsGrid'
@@ -87,6 +87,7 @@ export function MerchantQrShowcase({ className = '' }: MerchantQrShowcaseProps) 
   const [ads, setAds] = useState<AdConfig[]>(fallbackAds)
   const [activeAdIndex, setActiveAdIndex] = useState(0)
   const [qrRefreshKey, setQrRefreshKey] = useState(0)
+  const [isFakeFullscreen, setIsFakeFullscreen] = useState(false)
   const showcaseRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -131,18 +132,39 @@ export function MerchantQrShowcase({ className = '' }: MerchantQrShowcaseProps) 
     const showcase = showcaseRef.current
     if (!showcase) return
 
+    // Exit fake fullscreen if active
+    if (isFakeFullscreen) {
+      setIsFakeFullscreen(false)
+      return
+    }
+
+    // Exit native fullscreen if active
     if (document.fullscreenElement === showcase) {
       await document.exitFullscreen().catch(() => null)
       return
     }
 
-    await showcase.requestFullscreen?.().catch(() => null)
+    // Try native fullscreen first; fall back to CSS fake fullscreen (PWA)
+    try {
+      await showcase.requestFullscreen()
+    } catch {
+      setIsFakeFullscreen(true)
+    }
   }
+
+  // Sync fake fullscreen state when native fullscreen exits via Escape key
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      if (!document.fullscreenElement && !isFakeFullscreen) return
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange)
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange)
+  }, [isFakeFullscreen])
 
   return (
     <div
       ref={showcaseRef}
-      className={`mx-auto grid w-full items-start gap-4 xl:grid-cols-[minmax(320px,40%)_minmax(0,60%)] ${className}`}
+      className={`mx-auto grid w-full items-start gap-4 lg:grid-cols-[minmax(320px,40%)_minmax(0,60%)] ${isFakeFullscreen ? 'fixed inset-0 z-[9999] grid-cols-1 rounded-none bg-[#081221] lg:grid-cols-1' : ''} ${className}`}
     >
       <div className="flex w-full flex-col gap-3">
         <div className="rounded-3xl bg-[#081221] p-3 text-white shadow-[0_24px_60px_rgba(2,8,23,0.28)]">
@@ -165,9 +187,9 @@ export function MerchantQrShowcase({ className = '' }: MerchantQrShowcaseProps) 
                 type="button"
                 onClick={() => void handleFullscreen()}
                 className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white/80 transition hover:bg-white/10"
-                aria-label="Plein écran"
+                aria-label={isFakeFullscreen ? 'Quitter le plein écran' : 'Plein écran'}
               >
-                <Expand className="h-4 w-4" />
+                {isFakeFullscreen ? <Minimize className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
               </button>
             </div>
           </div>

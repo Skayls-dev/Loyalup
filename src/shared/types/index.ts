@@ -51,6 +51,7 @@ export type Profile = {
 	city?: string | null
 	telephone?: string | null
 	avatar_id?: string | null
+	avatar_url?: string | null
 	country?: string | null
 	language?: string | null
 	onboarding_completed?: boolean | null

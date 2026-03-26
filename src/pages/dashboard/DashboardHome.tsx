@@ -181,6 +181,28 @@ export function DashboardHome() {
         ))}
       </div>
 
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <button
+          type="button"
+          onClick={() => navigate('/directory')}
+          className="rounded-[16px] border border-gray-200 bg-white p-5 text-left transition hover:-translate-y-[2px] hover:shadow-floating"
+        >
+          <p className="font-body text-xs uppercase tracking-[0.14em] text-gray-500">Annuaire avance</p>
+          <p className="mt-2 font-display text-2xl font-extrabold text-dark">Trouver les meilleurs marchands</p>
+          <p className="mt-1 font-body text-sm text-gray-600">Filtres intelligents, tri performance, note et popularite.</p>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => navigate('/offers')}
+          className="rounded-[16px] border border-gray-200 bg-white p-5 text-left transition hover:-translate-y-[2px] hover:shadow-floating"
+        >
+          <p className="font-body text-xs uppercase tracking-[0.14em] text-gray-500">Toutes les offres</p>
+          <p className="mt-2 font-display text-2xl font-extrabold text-dark">Catalogue unifie des offres</p>
+          <p className="mt-1 font-body text-sm text-gray-600">Badges Top conversion, Mieux note et Nouveau.</p>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
         <TierCard
           className="xl:col-span-1"

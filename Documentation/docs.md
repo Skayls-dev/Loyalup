@@ -23,6 +23,7 @@ provider2@Looyaal.test	Test1234!
 admin1@Looyaal.test	Test1234!
 superadmin@Looyaal.test	SuperAdmin123!
 
+📧 Email    : contact@afrocare.be  🔑 Mot passe: Afrocare2026!
 
 
 Local test data provisioning
