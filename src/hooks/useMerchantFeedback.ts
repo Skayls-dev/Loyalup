@@ -7,6 +7,7 @@ export interface MerchantFeedbackItem {
   comment: string | null
   createdAt: string
   clientId: string | null
+  clientName: string | null
 }
 
 export interface UseMerchantFeedbackResult {
@@ -21,6 +22,23 @@ type MerchantRatingRow = {
   comment: string | null
   created_at: string
   client_id: string | null
+}
+
+type ProfileNameRow = {
+  id: string
+  nom: string | null
+  prenom: string | null
+}
+
+function buildClientDisplayName(profile?: ProfileNameRow): string | null {
+  if (!profile) {
+    return null
+  }
+
+  const prenom = profile.prenom?.trim() ?? ''
+  const nom = profile.nom?.trim() ?? ''
+  const full = `${prenom} ${nom}`.trim()
+  return full.length > 0 ? full : null
 }
 
 export function useMerchantFeedback(merchantId: string, limit = 8): UseMerchantFeedbackResult {
@@ -55,6 +73,28 @@ export function useMerchantFeedback(merchantId: string, limit = 8): UseMerchantF
         }
 
         const rows = (data ?? []) as MerchantRatingRow[]
+        const clientIds = Array.from(new Set(rows.map((row) => row.client_id).filter((id): id is string => Boolean(id))))
+
+        const nameByClientId = new Map<string, string>()
+        if (clientIds.length > 0) {
+          const { data: profilesData, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, nom, prenom')
+            .in('id', clientIds)
+
+          if (profilesError) {
+            throw new Error(profilesError.message)
+          }
+
+          const profileRows = (profilesData ?? []) as ProfileNameRow[]
+          profileRows.forEach((profile) => {
+            const name = buildClientDisplayName(profile)
+            if (name) {
+              nameByClientId.set(profile.id, name)
+            }
+          })
+        }
+
         const mapped: MerchantFeedbackItem[] = rows
           .map((row) => ({
             id: row.id,
@@ -62,6 +102,7 @@ export function useMerchantFeedback(merchantId: string, limit = 8): UseMerchantF
             comment: row.comment,
             createdAt: row.created_at,
             clientId: row.client_id,
+            clientName: row.client_id ? nameByClientId.get(row.client_id) ?? null : null,
           }))
           .filter((row) => Number.isFinite(row.rating) && row.rating >= 1 && row.rating <= 5)
 

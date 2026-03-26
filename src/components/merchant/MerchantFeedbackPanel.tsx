@@ -28,6 +28,14 @@ function anonymizeClientLabel(clientId: string | null): string {
   return `Client #${clientId.slice(0, 6)}`
 }
 
+function getClientLabel(clientName: string | null, clientId: string | null): string {
+  if (clientName) {
+    return clientName
+  }
+
+  return anonymizeClientLabel(clientId)
+}
+
 export function MerchantFeedbackPanel({
   merchantId,
   averageRating,
@@ -83,7 +91,7 @@ export function MerchantFeedbackPanel({
         {filteredFeedback.map((item) => (
           <article key={item.id} className="rounded-xl border border-gray-200 bg-gray-50/60 p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="font-body text-sm font-semibold text-dark">{anonymizeClientLabel(item.clientId)}</p>
+              <p className="font-body text-sm font-semibold text-dark">{getClientLabel(item.clientName, item.clientId)}</p>
               <p className="font-body text-xs text-gray-500">
                 {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true, locale: fr })}
               </p>
