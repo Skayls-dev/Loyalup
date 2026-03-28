@@ -106,6 +106,9 @@ const AccountLinkingPage = lazy(() =>
 const QRScannerPage = lazy(() =>
   import('../pages/QRScannerPage').then((module) => ({ default: module.default })),
 )
+const SumUpOAuthCallbackPage = lazy(() =>
+  import('../pages/SumUpOAuthCallbackPage').then((module) => ({ default: module.default })),
+)
 const MerchantHome = lazy(() =>
   import('../pages/merchant/MerchantHome').then((module) => ({ default: module.MerchantHome })),
 )
@@ -797,6 +800,7 @@ export function Router() {
         <Route path="/join/:referralCode" element={<ReferralJoinPage />} />
         <Route path="/unauthorized" element={<UnauthorizedPage />} />
         <Route path="/auth/callback" element={<AuthCallbackRoute />} />
+        <Route path="/auth/sumup/callback" element={<SumUpOAuthCallbackPage />} />
         <Route path="/admin/auth" element={<AdminAuthRoute />} />
         <Route path="/onboarding/*" element={<OnboardingRouter />} />
 
