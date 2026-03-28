@@ -10,6 +10,7 @@ type Props = {
 
 type SimulationResult = {
   mode?: string
+  environment?: 'sandbox' | 'production'
   token_source?: string
   merchant_code?: string
   checkout_id?: string
@@ -46,7 +47,7 @@ function normalizeSandboxError(message: string): string {
     return 'Aucune connexion SumUp trouvée pour ce compte. Connectez SumUp ou configurez la clé sandbox serveur.'
   }
   if (message.includes('missing_payments_scope')) {
-    return 'Le scope payments est manquant pour créer un checkout. Configurez SUMUP_SANDBOX_API_KEY côté serveur.'
+    return 'Le scope payments est manquant pour créer un checkout. En production, activez ce scope sur l\'app OAuth; en sandbox, configurez SUMUP_SANDBOX_API_KEY côté serveur.'
   }
   return message
 }
@@ -97,6 +98,7 @@ async function copyToClipboard(value: string): Promise<void> {
 }
 
 export function SumUpSandboxSimulatorCard({ userId }: Props) {
+  const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox')
   const [amount, setAmount] = useState('12.34')
   const [currency, setCurrency] = useState('EUR')
   const [merchantCode, setMerchantCode] = useState('')
@@ -121,6 +123,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
           apikey: config.supabaseAnonKey,
         },
         body: JSON.stringify({
+          environment,
           amount: Number(amount),
           currency: currency.trim().toUpperCase(),
           merchant_code: merchantCode.trim() || undefined,
@@ -164,13 +167,38 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
     <section className="rounded-lg border border-[#FFE1D6] bg-[#FFF8F4] p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-body text-xs uppercase tracking-[0.16em] text-[#B7592C]">Sandbox SumUp</p>
-          <h2 className="mt-2 font-display text-base font-semibold text-dark">Simuler des transactions API</h2>
+          <p className="font-body text-xs uppercase tracking-[0.16em] text-[#B7592C]">Simulation SumUp</p>
+          <h2 className="mt-2 font-display text-base font-semibold text-dark">Tester en sandbox ou en production</h2>
           <p className="mt-1 font-body text-sm text-gray-600">
-            Crée un checkout sandbox, tente un paiement simulé, puis relit transactions.history.
+            Basculez d\'un environnement à l\'autre sans quitter l\'interface marchand.
           </p>
         </div>
       </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <Button
+          variant={environment === 'sandbox' ? 'primary' : 'soft'}
+          size="sm"
+          onClick={() => setEnvironment('sandbox')}
+          disabled={isSubmitting}
+        >
+          Sandbox
+        </Button>
+        <Button
+          variant={environment === 'production' ? 'primary' : 'soft'}
+          size="sm"
+          onClick={() => setEnvironment('production')}
+          disabled={isSubmitting}
+        >
+          Production
+        </Button>
+      </div>
+
+      <p className="mt-2 text-xs text-gray-600">
+        {environment === 'sandbox'
+          ? 'Sandbox: priorité à la clé serveur SUMUP_SANDBOX_API_KEY (ou SUM_UP_API_KEY_TEST).'
+          : 'Production: utilise uniquement le token OAuth du compte SumUp connecté du marchand.'}
+      </p>
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
@@ -236,7 +264,9 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
 
       <div className="mt-4">
         <Button variant="primary" size="sm" loading={isSubmitting} onClick={() => void runSimulation()}>
-          {historyOnly ? 'Lire transactions.history' : 'Lancer simulation sandbox'}
+          {historyOnly
+            ? `Lire transactions.history (${environment})`
+            : `Lancer simulation ${environment}`}
         </Button>
       </div>
 
@@ -247,6 +277,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
           ) : (
             <div className="grid grid-cols-1 gap-2 text-sm text-gray-700 md:grid-cols-2">
               <p><strong>Mode:</strong> {result.mode ?? 'simulate'}</p>
+              <p><strong>Environnement:</strong> {result.environment ?? environment}</p>
               <p><strong>Token source:</strong> {result.token_source ?? 'unknown'}</p>
               <p><strong>Merchant code:</strong> {result.merchant_code ?? 'n/a'}</p>
               <p>

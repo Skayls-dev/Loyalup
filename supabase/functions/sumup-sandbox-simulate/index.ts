@@ -140,6 +140,7 @@ Deno.serve(async (req: Request) => {
     merchant_code?: string
     history_limit?: number
     history_only?: boolean
+    environment?: 'sandbox' | 'production'
   }
 
   try {
@@ -159,6 +160,8 @@ Deno.serve(async (req: Request) => {
   const currency = String(body.currency ?? 'EUR').toUpperCase()
   const historyLimit = Number(body.history_limit ?? 10)
   const historyOnly = Boolean(body.history_only)
+  const environment = body.environment === 'production' ? 'production' : 'sandbox'
+  const isProduction = environment === 'production'
   const merchantCode = body.merchant_code ?? integration?.sumup_merchant_code
 
   if (!historyOnly && !merchantCode) {
@@ -170,14 +173,19 @@ Deno.serve(async (req: Request) => {
   }
 
   let tokenSource: 'sandbox_api_key' | 'oauth' = 'oauth'
-  let sumupToken = sandboxApiKey
+  let sumupToken: string | undefined
 
-  if (!sumupToken) {
+  if (!isProduction && sandboxApiKey) {
+    sumupToken = sandboxApiKey
+    tokenSource = 'sandbox_api_key'
+  } else {
     const hasPaymentsScope = Array.isArray(integration?.scopes) && integration.scopes.includes('payments')
     if (!historyOnly && !hasPaymentsScope) {
       return json(
         {
-          error: 'Sandbox checkout simulation requires SUMUP_SANDBOX_API_KEY secret or OAuth scope payments',
+          error: isProduction
+            ? 'Production checkout simulation requires OAuth scope payments on the connected SumUp account'
+            : 'Sandbox checkout simulation requires SUMUP_SANDBOX_API_KEY secret or OAuth scope payments',
           reason: 'missing_payments_scope',
         },
         400,
@@ -191,7 +199,9 @@ Deno.serve(async (req: Request) => {
         if (error.code === 'no_integration') {
           return json(
             {
-              error: 'No SumUp integration found for this merchant. Connect SumUp first, or set SUMUP_SANDBOX_API_KEY in Supabase secrets.',
+              error: isProduction
+                ? 'No SumUp integration found for this merchant. Connect SumUp first to use production mode.'
+                : 'No SumUp integration found for this merchant. Connect SumUp first, or set SUMUP_SANDBOX_API_KEY in Supabase secrets.',
               reason: 'no_integration',
             },
             400,
@@ -201,8 +211,10 @@ Deno.serve(async (req: Request) => {
       }
       return json({ error: 'Unable to obtain SumUp token' }, 500)
     }
-  } else {
-    tokenSource = 'sandbox_api_key'
+  }
+
+  if (!sumupToken) {
+    return json({ error: 'Unable to resolve SumUp token' }, 500)
   }
 
   try {
@@ -214,6 +226,7 @@ Deno.serve(async (req: Request) => {
 
       return json({
         mode: 'history_only',
+        environment,
         token_source: tokenSource,
         merchant_code: merchantCode,
         history_items: Array.isArray(history.items) ? history.items.length : 0,
@@ -262,6 +275,7 @@ Deno.serve(async (req: Request) => {
 
     return json({
       mode: 'simulate',
+      environment,
       token_source: tokenSource,
       merchant_code: merchantCode,
       checkout_id: checkoutId,
