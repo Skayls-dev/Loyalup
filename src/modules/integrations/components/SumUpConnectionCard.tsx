@@ -73,7 +73,10 @@ export function SumUpConnectionCard({ userId }: Props) {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => void connect()}
+            onClick={async () => {
+              try { await connect() }
+              catch (err) { showToast(err instanceof Error ? err.message : 'Impossible de connecter SumUp', 'error') }
+            }}
           >
             Connecter SumUp
           </Button>
@@ -104,7 +107,10 @@ export function SumUpConnectionCard({ userId }: Props) {
           <Button
             variant="primary"
             size="sm"
-            onClick={() => void connect()}
+            onClick={async () => {
+              try { await connect() }
+              catch (err) { showToast(err instanceof Error ? err.message : 'Impossible de connecter SumUp', 'error') }
+            }}
           >
             Reconnecter
           </Button>

@@ -57,17 +57,32 @@ async function fetchIntegrationByUserId(userId: string): Promise<IntegrationRow 
   return data as IntegrationRow | null
 }
 
+// Decode JWT exp claim to check if it has already expired.
+function isJwtExpired(token: string): boolean {
+  try {
+    const [, b64] = token.split('.')
+    const { exp } = JSON.parse(atob(b64.replace(/-/g, '+').replace(/_/g, '/'))) as { exp?: number }
+    return typeof exp === 'number' && exp * 1000 < Date.now()
+  } catch {
+    return true // treat unparseable tokens as expired
+  }
+}
+
 // Always obtain a server-fresh token by calling refreshSession().
 // getSession() only reads localStorage and can return stale/invalidated tokens.
 async function getAccessTokenOrThrow(): Promise<string> {
-  const { data, error } = await supabase.auth.refreshSession()
-  if (!error && data.session?.access_token) {
+  const { data, error: refreshError } = await supabase.auth.refreshSession()
+  if (!refreshError && data.session?.access_token) {
     return data.session.access_token
   }
-  // Fallback: use the cached session (refresh_token may have been absent)
+  // refreshSession() failed — try to use the cached session as a last resort,
+  // but only if the token is not already expired (expired tokens cause gateway 401s).
   const { data: sessionData } = await supabase.auth.getSession()
   const token = sessionData?.session?.access_token
-  if (!token) throw new Error('Non authentifié — veuillez vous reconnecter')
+  if (!token || isJwtExpired(token)) {
+    const reason = refreshError?.message ?? 'session expirée'
+    throw new Error(`Session expirée (${reason}) — veuillez vous déconnecter puis reconnecter`)
+  }
   return token
 }
 
@@ -101,8 +116,11 @@ export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
     )
 
     if (!res.ok) {
-      const body = await res.json().catch(() => ({})) as { error?: string }
-      throw new Error(body.error ?? `Erreur ${res.status} lors de la connexion SumUp`)
+      const body = await res.json().catch(() => ({})) as { error?: string; message?: string }
+      if (res.status === 401 || res.status === 403) {
+        throw new Error('Session invalide — veuillez vous déconnecter puis reconnecter')
+      }
+      throw new Error(body.error ?? body.message ?? `Erreur ${res.status} lors de la connexion SumUp`)
     }
 
     const data = await res.json() as { authorize_url?: string }
