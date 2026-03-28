@@ -118,7 +118,7 @@ export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string; message?: string }
       if (res.status === 401 || res.status === 403) {
-        throw new Error('Session invalide — veuillez vous déconnecter puis reconnecter')
+        throw new Error(body.error ?? body.message ?? 'Session invalide — veuillez vous déconnecter puis reconnecter')
       }
       throw new Error(body.error ?? body.message ?? `Erreur ${res.status} lors de la connexion SumUp`)
     }

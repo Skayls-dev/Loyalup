@@ -27,6 +27,7 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const clientId = Deno.env.get('SUMUP_CLIENT_ID')
   const redirectUri = Deno.env.get('SUMUP_REDIRECT_URI')
+  const scopesEnv = Deno.env.get('SUMUP_OAUTH_SCOPES')
 
   if (!supabaseUrl || !anonKey || !serviceRoleKey || !clientId || !redirectUri) {
     return json({ error: 'Server misconfiguration' }, 500)
@@ -89,10 +90,12 @@ Deno.serve(async (req: Request) => {
   authorizeUrl.searchParams.set('response_type', 'code')
   authorizeUrl.searchParams.set('client_id', clientId)
   authorizeUrl.searchParams.set('redirect_uri', redirectUri)
-  authorizeUrl.searchParams.set(
-    'scope',
-    'transactions.history user.profile_readonly user.app-settings',
-  )
+  // Some SumUp apps are not granted advanced scopes by default.
+  // Keep a minimal safe default and allow explicit override via env.
+  const scopes = scopesEnv?.trim().length
+    ? scopesEnv.trim()
+    : 'user.profile_readonly'
+  authorizeUrl.searchParams.set('scope', scopes)
   authorizeUrl.searchParams.set('state', state)
 
   return json({ authorize_url: authorizeUrl.toString() })
