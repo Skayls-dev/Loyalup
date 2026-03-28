@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../shared/lib/supabaseClient'
 import { config } from '../../../shared/lib/env'
@@ -20,8 +20,10 @@ type UseSumUpConnectionResult = {
   merchantCode: string | null
   connectedAt: Date | null
   isLoading: boolean
+  isVerifying: boolean
   connect: () => Promise<void>
   disconnect: () => Promise<void>
+  verify: () => Promise<{ alive: boolean; reason?: string }>
 }
 
 function deriveStatus(row: IntegrationRow | null | undefined): SumUpConnectionStatus {
@@ -88,6 +90,7 @@ async function getAccessTokenOrThrow(): Promise<string> {
 
 export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
   const queryClient = useQueryClient()
+  const [isVerifying, setIsVerifying] = useState(false)
 
   const query = useQuery<IntegrationRow | null>({
     queryKey: ['sumup-connection', userId],
@@ -129,6 +132,33 @@ export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
     window.location.href = data.authorize_url
   }
 
+  // ── verify ────────────────────────────────────────────────────────────────
+  async function verify(): Promise<{ alive: boolean; reason?: string }> {
+    setIsVerifying(true)
+    try {
+      const token = await getAccessTokenOrThrow()
+      const res = await fetch(
+        `${config.supabaseUrl}/functions/v1/sumup-verify`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            apikey: config.supabaseAnonKey,
+          },
+        },
+      )
+      const data = await res.json() as { alive?: boolean; reason?: string }
+      // If the function detected a revoked/broken token, refresh the UI
+      if (!data.alive) {
+        await queryClient.invalidateQueries({ queryKey: ['sumup-connection', userId] })
+      }
+      return { alive: data.alive ?? false, reason: data.reason }
+    } finally {
+      setIsVerifying(false)
+    }
+  }
+
   // ── disconnect ───────────────────────────────────────────────────────────
   async function disconnect(): Promise<void> {
     if (!row?.id) return
@@ -150,10 +180,12 @@ export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
       merchantCode: row?.sumup_merchant_code ?? null,
       connectedAt: row ? new Date(row.created_at) : null,
       isLoading: query.isLoading,
+      isVerifying,
       connect,
       disconnect,
+      verify,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [row, query.isLoading, userId],
+    [row, query.isLoading, userId, isVerifying],
   )
 }

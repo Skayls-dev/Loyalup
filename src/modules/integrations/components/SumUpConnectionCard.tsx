@@ -18,7 +18,7 @@ export function SumUpConnectionCard({ userId }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const handledRef = useRef(false)
 
-  const { connectionStatus, merchantName, merchantCode, connectedAt, isLoading, connect, disconnect } =
+  const { connectionStatus, merchantName, merchantCode, connectedAt, isLoading, connect, disconnect, verify, isVerifying } =
     useSumUpConnection(userId)
 
   // ── Handle OAuth callback return ──────────────────────────────────────────
@@ -130,6 +130,28 @@ export function SumUpConnectionCard({ userId }: Props) {
     }
   }
 
+  const handleVerify = async () => {
+    try {
+      const result = await verify()
+      if (result.alive) {
+        showToast('Connexion SumUp active et fonctionnelle.', 'success')
+      } else {
+        const reasons: Record<string, string> = {
+          revoked: 'Le token a été révoqué',
+          refresh_failed: 'Impossible de renouveler le token — reconnectez votre compte',
+          not_connected: 'Aucune intégration trouvée',
+          sumup_401: 'Token rejeté par SumUp — reconnectez votre compte',
+          sumup_403: 'Accès refusé par SumUp — reconnectez votre compte',
+          network_error: 'Impossible de joindre SumUp',
+        }
+        const label = reasons[result.reason ?? ''] ?? `Connexion invalide (${result.reason ?? 'unknown'})`
+        showToast(label, 'error')
+      }
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Erreur lors de la vérification', 'error')
+    }
+  }
+
   return (
     <section className="rounded-lg border border-gray-200 bg-white p-5">
       <div className="flex items-start justify-between gap-4">
@@ -151,7 +173,16 @@ export function SumUpConnectionCard({ userId }: Props) {
           Actif
         </Badge>
       </div>
-      <div className="mt-4">
+      <div className="mt-4 flex gap-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isVerifying}
+          onClick={() => void handleVerify()}
+          className="text-gray-500 hover:text-green-600"
+        >
+          {isVerifying ? 'Vérification…' : 'Tester la connexion'}
+        </Button>
         <Button
           variant="ghost"
           size="sm"
