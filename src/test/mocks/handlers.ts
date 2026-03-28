@@ -58,6 +58,31 @@ export const handlers = [
     })
   }),
 
+  http.post(`${base}/sumup-recent-transactions`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { limit?: number }
+    const limit = Math.min(50, Math.max(1, Number(body.limit ?? 5)))
+
+    const now = Date.now()
+    const items = Array.from({ length: limit }).map((_, index) => ({
+      id: `sumup-${index + 1}`,
+      transaction_code: `T-${index + 1}`,
+      timestamp: new Date(now - index * 2 * 60 * 1000).toISOString(),
+      amount: Number((12.5 + index).toFixed(2)),
+      currency: 'EUR',
+      status: 'SUCCESSFUL',
+      payment_type: 'card',
+    }))
+
+    return HttpResponse.json({
+      connected: true,
+      reason: null,
+      lookback_minutes: 30,
+      applied_limit: limit,
+      items,
+      recommended: items[0] ?? null,
+    })
+  }),
+
   http.post(`${base}/unlock-reward`, async ({ request }) => {
     const body = (await request.json().catch(() => ({}))) as { client_reward_id?: string }
 

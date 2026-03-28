@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { PendingTransactionPayload } from '../../qr/services/qrService'
 import type { Profile } from '../../../shared/types'
 import { supabase } from '../../../shared/lib/supabaseClient'
+import { config } from '../../../shared/lib/env'
 import { useServices } from '../hooks/useServices'
 import { useValidation } from '../hooks/useValidation'
 import { ClientPreview } from './ClientPreview'
@@ -11,6 +12,51 @@ import { ServiceSelector } from './ServiceSelector'
 import { TransactionSuccess } from './TransactionSuccess'
 
 type ValidationMode = 'service' | 'amount' | 'redemption'
+
+type SumUpRecentTransaction = {
+  id: string | null
+  transaction_code: string | null
+  timestamp: string | null
+  amount: number | null
+  currency: string | null
+  status: string | null
+  payment_type: string | null
+}
+
+type SumUpRecentTransactionsResponse = {
+  connected: boolean
+  reason: string | null
+  lookback_minutes?: number
+  applied_limit?: number
+  items: SumUpRecentTransaction[]
+  recommended?: SumUpRecentTransaction | null
+}
+
+function transactionSelectionKey(item: SumUpRecentTransaction, index: number): string {
+  return item.id ?? item.transaction_code ?? `index-${index}`
+}
+
+function clampLimit(value: number): number {
+  if (!Number.isFinite(value)) return 10
+  return Math.min(50, Math.max(1, Math.floor(value)))
+}
+
+async function getAccessTokenOrThrow(): Promise<string> {
+  const { data: refreshed } = await supabase.auth.refreshSession()
+  if (refreshed.session?.access_token) return refreshed.session.access_token
+
+  const { data: sessionData } = await supabase.auth.getSession()
+  const token = sessionData.session?.access_token
+  if (!token) throw new Error('Session expirée, veuillez vous reconnecter')
+  return token
+}
+
+function formatRecentTimestamp(value: string | null): string {
+  if (!value) return 'n/a'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+}
 
 type ValidationPanelProps = {
   pendingTransaction: PendingTransactionPayload
@@ -49,6 +95,16 @@ export function ValidationPanel({
   const [customServiceName, setCustomServiceName] = useState('')
   const [availableRewardsCount, setAvailableRewardsCount] = useState(0)
   const [showAllServices, setShowAllServices] = useState(false)
+  const [isSumUpLoading, setIsSumUpLoading] = useState(false)
+  const [sumUpConnected, setSumUpConnected] = useState(false)
+  const [sumUpLookbackMinutes, setSumUpLookbackMinutes] = useState(30)
+  const [sumUpFetchLimit, setSumUpFetchLimit] = useState(() => {
+    if (typeof window === 'undefined') return 10
+    const stored = window.localStorage.getItem(`looyaal:sumup-recent-limit:${pendingTransaction.fournisseur_id}`)
+    return clampLimit(Number(stored ?? 10))
+  })
+  const [sumUpRecentTransactions, setSumUpRecentTransactions] = useState<SumUpRecentTransaction[]>([])
+  const [selectedSumUpTransactionKeys, setSelectedSumUpTransactionKeys] = useState<string[]>([])
 
   const visibleServices = useMemo(() => {
     if (showAllServices) {
@@ -119,6 +175,116 @@ export function ValidationPanel({
       cancelled = true
     }
   }, [pendingTransaction.client_id, pendingTransaction.fournisseur_id])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const loadSumUpRecentTransactions = async () => {
+      setIsSumUpLoading(true)
+
+      try {
+        const token = await getAccessTokenOrThrow()
+        const response = await fetch(`${config.supabaseUrl}/functions/v1/sumup-recent-transactions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            apikey: config.supabaseAnonKey,
+          },
+          body: JSON.stringify({ pending_transaction_id: pendingTransaction.id, limit: sumUpFetchLimit }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`sumup-recent-transactions failed (${response.status})`)
+        }
+
+        const payload = await response.json() as SumUpRecentTransactionsResponse
+        if (cancelled) return
+
+        const recentItems = Array.isArray(payload.items) ? payload.items : []
+        const suggested = payload.recommended && typeof payload.recommended.amount === 'number'
+          ? payload.recommended
+          : recentItems.find((item) => typeof item.amount === 'number' && item.amount > 0) ?? null
+
+        setSumUpConnected(Boolean(payload.connected))
+        setSumUpLookbackMinutes(Number(payload.lookback_minutes ?? 30))
+        setSumUpRecentTransactions(recentItems)
+        setSumUpFetchLimit(clampLimit(Number(payload.applied_limit ?? sumUpFetchLimit)))
+
+        if (!payload.connected) {
+          setSelectedSumUpTransactionKeys([])
+          return
+        }
+
+        const availableKeys = recentItems.map((item, index) => transactionSelectionKey(item, index))
+
+        setSelectedSumUpTransactionKeys((previous) => {
+          const preserved = previous.filter((key) => availableKeys.includes(key))
+          if (preserved.length > 0) return preserved
+
+          const suggestedIndex = suggested
+            ? recentItems.findIndex((item) => (
+              (suggested.id && item.id === suggested.id)
+              || (suggested.transaction_code && item.transaction_code === suggested.transaction_code)
+            ))
+            : -1
+
+          if (suggestedIndex >= 0) {
+            return [transactionSelectionKey(recentItems[suggestedIndex], suggestedIndex)]
+          }
+
+          return []
+        })
+      } catch {
+        if (!cancelled) {
+          setSumUpConnected(false)
+          setSumUpRecentTransactions([])
+          setSelectedSumUpTransactionKeys([])
+        }
+      } finally {
+        if (!cancelled) {
+          setIsSumUpLoading(false)
+        }
+      }
+    }
+
+    void loadSumUpRecentTransactions()
+
+    return () => {
+      cancelled = true
+    }
+  }, [pendingTransaction.id, sumUpFetchLimit])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(
+      `looyaal:sumup-recent-limit:${pendingTransaction.fournisseur_id}`,
+      String(sumUpFetchLimit),
+    )
+  }, [pendingTransaction.fournisseur_id, sumUpFetchLimit])
+
+  const selectedSumUpTotal = useMemo(() => {
+    if (!sumUpConnected || selectedSumUpTransactionKeys.length === 0) return 0
+
+    let total = 0
+    sumUpRecentTransactions.forEach((item, index) => {
+      const key = transactionSelectionKey(item, index)
+      if (!selectedSumUpTransactionKeys.includes(key)) return
+      if (typeof item.amount !== 'number' || item.amount <= 0) return
+      total += item.amount
+    })
+
+    return Number(total.toFixed(2))
+  }, [sumUpConnected, selectedSumUpTransactionKeys, sumUpRecentTransactions])
+
+  useEffect(() => {
+    if (!sumUpConnected || selectedSumUpTotal <= 0) return
+    clearSelectedService()
+    setValidationMode('amount')
+    setMontant(selectedSumUpTotal.toFixed(2))
+    // The setters come from a custom hook and are intentionally omitted to prevent rerun loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sumUpConnected, selectedSumUpTotal])
 
   const [successData, setSuccessData] = useState<{
     serviceName: string
@@ -230,6 +396,98 @@ export function ValidationPanel({
           <>
             <div className="order-2 min-w-0 xl:order-3 xl:col-span-2">
               <div className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Mode de validation</p>
+                    {isSumUpLoading ? (
+                      <span className="text-xs text-zinc-500">Détection SumUp...</span>
+                    ) : sumUpConnected ? (
+                      <span className="rounded-full border border-indigo-600/40 bg-indigo-500/10 px-2 py-0.5 text-[11px] text-indigo-300">
+                        SumUp connecté
+                      </span>
+                    ) : (
+                      <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400">
+                        Flux manuel
+                      </span>
+                    )}
+                  </div>
+
+                  {sumUpConnected ? (
+                    <div className="mt-2 space-y-2">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-xs text-zinc-400">
+                          Transactions SumUp récentes ({sumUpLookbackMinutes} min)
+                        </p>
+                        <label className="flex items-center gap-2 text-xs text-zinc-400">
+                          Afficher
+                          <input
+                            type="number"
+                            min={1}
+                            max={50}
+                            value={sumUpFetchLimit}
+                            onChange={(event) => {
+                              setSumUpFetchLimit(clampLimit(Number(event.target.value)))
+                            }}
+                            className="w-16 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100 outline-none focus:border-indigo-400"
+                          />
+                          transactions
+                        </label>
+                      </div>
+                      {sumUpRecentTransactions.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedSumUpTransactionKeys.length > 0 ? (
+                            <p className="text-xs text-indigo-300">
+                              {selectedSumUpTransactionKeys.length} transaction(s) sélectionnée(s) · Montant cumulé {selectedSumUpTotal.toFixed(2)} EUR
+                            </p>
+                          ) : (
+                            <p className="text-xs text-zinc-500">Sélectionnez les transactions à considérer pour le calcul des points.</p>
+                          )}
+                          {sumUpRecentTransactions.map((item, index) => (
+                            <label
+                              key={item.id ?? item.transaction_code ?? `sumup-${index}`}
+                              className="flex items-center justify-between gap-3 rounded-lg border border-indigo-600/30 bg-indigo-500/10 px-2.5 py-2 text-left text-xs text-indigo-200"
+                            >
+                              <span className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))}
+                                  onChange={(event) => {
+                                    const key = transactionSelectionKey(item, index)
+                                    setSelectedSumUpTransactionKeys((previous) => {
+                                      if (event.target.checked) {
+                                        if (previous.includes(key)) return previous
+                                        return [...previous, key]
+                                      }
+
+                                      return previous.filter((entry) => entry !== key)
+                                    })
+                                  }}
+                                  className="h-4 w-4 rounded border-zinc-600 bg-zinc-900"
+                                />
+                                <span className="block">
+                                  <span className="block font-semibold">
+                                    {typeof item.amount === 'number' ? item.amount.toFixed(2) : '0.00'} {item.currency ?? 'EUR'}
+                                  </span>
+                                  <span className="block text-[11px] text-indigo-300/80">
+                                    {item.transaction_code ?? 'Sans code'}
+                                  </span>
+                                </span>
+                              </span>
+                              <span className="text-[11px] text-indigo-300/80">{formatRecentTimestamp(item.timestamp)}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-500">Aucune transaction réussie récente. Utilisez le flux manuel.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-zinc-500">
+                      Aucun compte SumUp actif détecté. Le comportement manuel reste inchangé.
+                    </p>
+                  )}
+                </div>
+
                 {validationMode === 'service' ? (
                   servicesLoading ? (
                     <div className="flex min-h-32 items-center justify-center">
