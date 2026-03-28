@@ -6,20 +6,20 @@ import { showToast } from '../../../shared/stores/toastStore'
 import { useSumUpConnection } from '../hooks/useSumUpConnection'
 
 type Props = {
-  fournisseurId: string
+  userId: string
 }
 
 function formatDate(date: Date): string {
   return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
-export function SumUpConnectionCard({ fournisseurId }: Props) {
+export function SumUpConnectionCard({ userId }: Props) {
   const queryClient = useQueryClient()
   const [searchParams, setSearchParams] = useSearchParams()
   const handledRef = useRef(false)
 
   const { connectionStatus, merchantName, merchantCode, connectedAt, isLoading, connect, disconnect } =
-    useSumUpConnection(fournisseurId)
+    useSumUpConnection(userId)
 
   // ── Handle OAuth callback return ──────────────────────────────────────────
   useEffect(() => {
@@ -31,7 +31,7 @@ export function SumUpConnectionCard({ fournisseurId }: Props) {
 
     if (sumupParam === 'connected') {
       showToast('SumUp connecté avec succès !', 'success')
-      void queryClient.invalidateQueries({ queryKey: ['sumup-connection', fournisseurId] })
+      void queryClient.invalidateQueries({ queryKey: ['sumup-connection', userId] })
     } else if (sumupParam === 'error') {
       const reason = searchParams.get('reason') ?? 'unknown'
       showToast(`Erreur lors de la connexion SumUp (${reason})`, 'error')

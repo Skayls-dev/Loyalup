@@ -116,7 +116,7 @@ export default function MerchantSettingsPage() {
         </section>
       </div>
 
-      <SumUpConnectionCard fournisseurId={merchantId} />
+      <SumUpConnectionCard userId={merchantId} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <section className="rounded-lg border border-gray-200 bg-white p-5">

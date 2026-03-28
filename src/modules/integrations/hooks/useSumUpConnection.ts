@@ -6,6 +6,7 @@ import type { SumUpConnectionStatus } from '../../../shared/types/integrations'
 
 type IntegrationRow = {
   id: string
+  fournisseur_id: string
   status: string
   sumup_merchant_code: string | null
   sumup_merchant_name: string | null
@@ -32,11 +33,23 @@ function deriveStatus(row: IntegrationRow | null | undefined): SumUpConnectionSt
   return 'error'
 }
 
-async function fetchIntegration(fournisseurId: string): Promise<IntegrationRow | null> {
+// userId = auth.uid() (the value available in MerchantSettingsPage as user?.id)
+// We resolve fournisseur_id automatically via the fournisseurs table.
+async function fetchIntegrationByUserId(userId: string): Promise<IntegrationRow | null> {
+  // 1. Resolve fournisseur.id from user_id
+  const { data: fournisseur, error: fErr } = await supabase
+    .from('fournisseurs')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle<{ id: string }>()
+
+  if (fErr || !fournisseur?.id) return null
+
+  // 2. Fetch integration row
   const { data, error } = await supabase
     .from('provider_integrations')
-    .select('id, status, sumup_merchant_code, sumup_merchant_name, created_at, expires_at')
-    .eq('fournisseur_id', fournisseurId)
+    .select('id, fournisseur_id, status, sumup_merchant_code, sumup_merchant_name, created_at, expires_at')
+    .eq('fournisseur_id', fournisseur.id)
     .eq('provider', 'sumup')
     .maybeSingle()
 
@@ -58,13 +71,13 @@ async function getAccessTokenOrThrow(): Promise<string> {
   return token
 }
 
-export function useSumUpConnection(fournisseurId: string): UseSumUpConnectionResult {
+export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
   const queryClient = useQueryClient()
 
   const query = useQuery<IntegrationRow | null>({
-    queryKey: ['sumup-connection', fournisseurId],
-    queryFn: () => fetchIntegration(fournisseurId),
-    enabled: Boolean(fournisseurId),
+    queryKey: ['sumup-connection', userId],
+    queryFn: () => fetchIntegrationByUserId(userId),
+    enabled: Boolean(userId),
     refetchInterval: false,
     staleTime: 60_000,
   })
@@ -109,7 +122,7 @@ export function useSumUpConnection(fournisseurId: string): UseSumUpConnectionRes
 
     if (error) throw new Error(error.message)
 
-    await queryClient.invalidateQueries({ queryKey: ['sumup-connection', fournisseurId] })
+    await queryClient.invalidateQueries({ queryKey: ['sumup-connection', userId] })
   }
 
   return useMemo(
@@ -123,6 +136,6 @@ export function useSumUpConnection(fournisseurId: string): UseSumUpConnectionRes
       disconnect,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [row, query.isLoading, fournisseurId],
+    [row, query.isLoading, userId],
   )
 }
