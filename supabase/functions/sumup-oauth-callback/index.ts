@@ -91,9 +91,12 @@ Deno.serve(async (req: Request) => {
   const expiresAt = new Date(Date.now() + (expires_in ?? 3600) * 1000).toISOString()
 
   // ── 3. Fetch merchant profile ────────────────────────────────────────────
-  let sumupMerchantCode: string | null = null
+  // SumUp already provides merchant_code as a query param in the callback URL.
+  // We capture it here so no extra API call (which would require user.profile_readonly) is needed.
+  let sumupMerchantCode: string | null = url.searchParams.get('merchant_code') ?? null
   let sumupMerchantName: string | null = null
 
+  // If we ever get the user.profile_readonly scope approved, this will also fill merchant_name.
   const merchantRes = await fetch(SUMUP_MERCHANT_URL, {
     headers: { Authorization: `Bearer ${access_token}` },
   })
@@ -105,7 +108,8 @@ Deno.serve(async (req: Request) => {
       company_name?: string
     }
 
-    sumupMerchantCode = merchantData.merchant_code ?? null
+    // Use API data as source of truth, URL param as fallback
+    sumupMerchantCode = merchantData.merchant_code ?? sumupMerchantCode
     sumupMerchantName = merchantData.business_name ?? merchantData.company_name ?? null
   } else {
     console.warn('SumUp merchant fetch skipped:', merchantRes.status)
