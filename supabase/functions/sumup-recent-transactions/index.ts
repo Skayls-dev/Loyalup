@@ -51,7 +51,7 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Server misconfiguration' }, 500)
   }
 
-  let body: { limit?: number; access_token?: string }
+  let body: { limit?: number; access_token?: string; pending_transaction_id?: string }
 
   try {
     body = await req.json()
@@ -59,32 +59,49 @@ Deno.serve(async (req: Request) => {
     body = {}
   }
 
+  const admin = createClient(supabaseUrl, serviceRoleKey)
+
   const authHeader = req.headers.get('Authorization')
     ?? req.headers.get('authorization')
   const userToken = authHeader?.replace(/^Bearer\s+/i, '')
     ?? body.access_token
-  if (!userToken) return json({ error: 'Missing Authorization header' }, 401)
 
-  const authClient = createClient(supabaseUrl, anonKey)
-  const { data: { user }, error: authError } = await authClient.auth.getUser(userToken)
-  if (authError || !user) return json({ error: 'Unauthorized' }, 401)
+  let fournisseur: { id: string } | null = null
 
-  const admin = createClient(supabaseUrl, serviceRoleKey)
+  // Try to resolve merchant from JWT user
+  if (userToken) {
+    const authClient = createClient(supabaseUrl, anonKey)
+    const { data: { user }, error: authError } = await authClient.auth.getUser(userToken)
+    if (!authError && user) {
+      const { data } = await admin
+        .from('fournisseurs')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle<{ id: string }>()
+      fournisseur = data ?? null
+    }
+  }
+
+  // Fallback: resolve merchant from pending_transaction_id (service role, no user auth needed)
+  if (!fournisseur?.id && body.pending_transaction_id) {
+    const { data } = await admin
+      .from('pending_transactions')
+      .select('fournisseur_id')
+      .eq('id', body.pending_transaction_id)
+      .maybeSingle<{ fournisseur_id: string }>()
+    if (data?.fournisseur_id) {
+      fournisseur = { id: data.fournisseur_id }
+    }
+  }
+
+  if (!fournisseur?.id) {
+    return json({ connected: false, reason: 'no_merchant_account', items: [] })
+  }
 
   const requestedLimit = Number(body.limit ?? DEFAULT_LIMIT)
   const limit = Number.isFinite(requestedLimit)
     ? Math.min(MAX_LIMIT, Math.max(1, Math.floor(requestedLimit)))
     : DEFAULT_LIMIT
-
-  const { data: fournisseur } = await admin
-    .from('fournisseurs')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle<{ id: string }>()
-
-  if (!fournisseur?.id) {
-    return json({ connected: false, reason: 'no_merchant_account', items: [] })
-  }
 
   const { data: integration } = await admin
     .from('provider_integrations')
