@@ -6,6 +6,7 @@ export interface MerchantTransactionsProps {
   merchantId: string
   limit?: number
   className?: string
+  headerAction?: React.ReactNode
 }
 
 const tierStyles: Record<MerchantTier, { bg: string; text: string }> = {
@@ -38,13 +39,14 @@ function relativeTime(dateIso: string): string {
   return formatDistanceToNow(parsed, { addSuffix: true, locale: fr })
 }
 
-export function MerchantTransactions({ merchantId, limit = 4, className = '' }: MerchantTransactionsProps) {
+export function MerchantTransactions({ merchantId, limit = 4, className = '', headerAction }: MerchantTransactionsProps) {
   const { transactions, loading, error } = useMerchantTransactions(merchantId, limit)
 
   return (
     <section className={`rounded-lg border border-gray-200 bg-white p-4 ${className}`}>
       <div className="mb-2 flex items-center justify-between">
         <p className="font-body text-xs uppercase tracking-[0.16em] text-gray-500">Transactions récentes</p>
+        {headerAction}
       </div>
 
       <div className="divide-y divide-gray-200">

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Badge, Button } from '../../../components/ui'
+import { useSumUpConnection } from '../hooks/useSumUpConnection'
 import { showToast } from '../../../shared/stores/toastStore'
 import { supabase } from '../../../shared/lib/supabaseClient'
 import { config } from '../../../shared/lib/env'
@@ -10,7 +11,7 @@ type Props = {
 
 type SimulationResult = {
   mode?: string
-  environment?: 'sandbox' | 'production'
+  environment?: 'sandbox'
   token_source?: string
   merchant_code?: string
   checkout_id?: string
@@ -43,14 +44,11 @@ function toErrorMessage(error: unknown): string {
 }
 
 function normalizeSandboxError(message: string): string {
-  if (message.includes('production_confirmation_required') || message.includes('explicit confirmation')) {
-    return 'Confirmation requise: cochez la case de confirmation avant de lancer un checkout en production.'
-  }
   if (message.includes('No SumUp integration found')) {
     return 'Aucune connexion SumUp trouvée pour ce compte. Connectez SumUp ou configurez la clé sandbox serveur.'
   }
   if (message.includes('missing_payments_scope')) {
-    return 'Le scope payments est manquant pour créer un checkout. En production, activez ce scope sur l\'app OAuth; en sandbox, configurez SUMUP_SANDBOX_API_KEY côté serveur.'
+    return 'La simulation sandbox nécessite une clé serveur SUMUP_SANDBOX_API_KEY côté serveur.'
   }
   return message
 }
@@ -101,32 +99,56 @@ async function copyToClipboard(value: string): Promise<void> {
 }
 
 export function SumUpSandboxSimulatorCard({ userId }: Props) {
-  const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox')
-  const [confirmProductionCheckout, setConfirmProductionCheckout] = useState(false)
+  const {
+    connectionStatus,
+    merchantCode: connectedMerchantCode,
+    sandboxMerchantCode,
+    saveSandboxMerchantCode,
+  } = useSumUpConnection(userId)
   const [amount, setAmount] = useState('12.34')
   const [currency, setCurrency] = useState('EUR')
   const [merchantCode, setMerchantCode] = useState('')
   const [historyOnly, setHistoryOnly] = useState(false)
   const [historyLimit, setHistoryLimit] = useState('10')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSavingMerchantCode, setIsSavingMerchantCode] = useState(false)
   const [result, setResult] = useState<SimulationResult | null>(null)
 
   const historyItems = (result?.history?.items ?? []).slice(0, 10)
+  const preferredMerchantCode = useMemo(
+    () => sandboxMerchantCode ?? connectedMerchantCode ?? null,
+    [sandboxMerchantCode, connectedMerchantCode],
+  )
+  const normalizedInputMerchantCode = merchantCode.trim()
+  const normalizedStoredSandboxCode = sandboxMerchantCode?.trim() ?? ''
+  const canPersistMerchantCode = normalizedInputMerchantCode !== normalizedStoredSandboxCode
+
+  useEffect(() => {
+    if (preferredMerchantCode && !merchantCode.trim()) {
+      setMerchantCode(preferredMerchantCode)
+    }
+  }, [preferredMerchantCode])
 
   if (!userId) return null
 
-  useEffect(() => {
-    if (environment !== 'production' || historyOnly) {
-      setConfirmProductionCheckout(false)
+  const persistMerchantCode = async () => {
+    setIsSavingMerchantCode(true)
+    try {
+      const persistenceMode = await saveSandboxMerchantCode(merchantCode)
+      showToast(
+        persistenceMode === 'remote'
+          ? 'Merchant code sandbox enregistré pour ce marchand.'
+          : 'Merchant code sandbox enregistré localement sur cet appareil.',
+        'success',
+      )
+    } catch (error) {
+      showToast(toErrorMessage(error), 'error')
+    } finally {
+      setIsSavingMerchantCode(false)
     }
-  }, [environment, historyOnly])
+  }
 
   const runSimulation = async () => {
-    if (environment === 'production' && !historyOnly && !confirmProductionCheckout) {
-      showToast('Confirmez la simulation checkout en production avant de lancer.', 'error')
-      return
-    }
-
     setIsSubmitting(true)
     try {
       const token = await getAccessTokenOrThrow()
@@ -138,8 +160,6 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
           apikey: config.supabaseAnonKey,
         },
         body: JSON.stringify({
-          environment,
-          confirm_production: environment === 'production' && !historyOnly ? confirmProductionCheckout : undefined,
           amount: Number(amount),
           currency: currency.trim().toUpperCase(),
           merchant_code: merchantCode.trim() || undefined,
@@ -155,10 +175,13 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
       }
 
       setResult(payload)
+      if (payload.merchant_code && !merchantCode.trim()) {
+        setMerchantCode(payload.merchant_code)
+      }
       if (payload.error) {
         showToast(payload.error, 'error')
       } else {
-        showToast(`Simulation ${environment} exécutée.`, 'success')
+        showToast('Simulation sandbox exécutée.', 'success')
       }
     } catch (error) {
       const message = normalizeSandboxError(toErrorMessage(error))
@@ -184,53 +207,34 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="font-body text-xs uppercase tracking-[0.16em] text-[#B7592C]">Simulation SumUp</p>
-          <h2 className="mt-2 font-display text-base font-semibold text-dark">Tester en sandbox ou en production</h2>
+          <h2 className="mt-2 font-display text-base font-semibold text-dark">Tester les transactions en sandbox</h2>
           <p className="mt-1 font-body text-sm text-gray-600">
-            Basculez d\'un environnement à l\'autre sans quitter l\'interface marchand.
+            Cette interface lance uniquement des simulations sandbox.
           </p>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button
-          variant={environment === 'sandbox' ? 'primary' : 'soft'}
-          size="sm"
-          onClick={() => setEnvironment('sandbox')}
-          disabled={isSubmitting}
-        >
-          Sandbox
-        </Button>
-        <Button
-          variant={environment === 'production' ? 'primary' : 'soft'}
-          size="sm"
-          onClick={() => setEnvironment('production')}
-          disabled={isSubmitting}
-        >
-          Production
-        </Button>
-      </div>
-
       <div className="mt-3">
-        <Badge variant={environment === 'sandbox' ? 'warning' : 'success'}>
-          Mode actif: {environment === 'sandbox' ? 'Sandbox' : 'Production'}
-        </Badge>
+        <Badge variant="warning">Mode actif: Sandbox</Badge>
       </div>
 
       <p className="mt-2 text-xs text-gray-600">
-        {environment === 'sandbox'
-          ? 'Sandbox: priorité à la clé serveur SUMUP_SANDBOX_API_KEY (ou SUM_UP_API_KEY_TEST).'
-          : 'Production: utilise uniquement le token OAuth du compte SumUp connecté du marchand.'}
+        Sandbox uniquement: la simulation utilise la clé serveur SUMUP_SANDBOX_API_KEY.
       </p>
 
       <div className="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Pré-requis</p>
-        {environment === 'sandbox' ? (
-          <p className="mt-1 text-sm text-gray-700">
-            Clé serveur sandbox recommandée. Sans clé, fallback OAuth possible si scope <strong>payments</strong> disponible.
-          </p>
-        ) : (
-          <p className="mt-1 text-sm text-gray-700">
-            Le marchand doit être connecté à SumUp avec un token OAuth actif et le scope <strong>payments</strong>.
+        <p className="mt-1 text-sm text-gray-700">
+          Cette carte exige une clé serveur sandbox côté Supabase.
+        </p>
+        {preferredMerchantCode && (
+          <p className="mt-2 text-xs text-gray-500">
+            Code détecté par défaut: <strong className="text-gray-800">{preferredMerchantCode}</strong>
+            {sandboxMerchantCode
+              ? ' (enregistré pour la sandbox)'
+              : connectedMerchantCode
+                ? ' (repris depuis la connexion SumUp)'
+                : ''}
           </p>
         )}
       </div>
@@ -262,7 +266,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm text-gray-700" htmlFor="sumup-sim-merchant-code">Merchant code (optionnel)</label>
+          <label className="mb-1 block text-sm text-gray-700" htmlFor="sumup-sim-merchant-code">Merchant code sandbox (optionnel)</label>
           <input
             id="sumup-sim-merchant-code"
             type="text"
@@ -271,6 +275,22 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
             placeholder="Ex: MWHAVKDV"
             className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
           />
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <Button
+              variant="soft"
+              size="sm"
+              loading={isSavingMerchantCode}
+              disabled={!canPersistMerchantCode}
+              onClick={() => void persistMerchantCode()}
+            >
+              {normalizedInputMerchantCode ? 'Enregistrer le code sandbox' : 'Effacer le code enregistré'}
+            </Button>
+            {sandboxMerchantCode && <Badge variant="info">Code sandbox enregistré</Badge>}
+            {!sandboxMerchantCode && connectedMerchantCode && <Badge variant="warning">Code repris depuis SumUp</Badge>}
+            {connectionStatus !== 'connected' && !sandboxMerchantCode && (
+              <span className="text-xs text-gray-500">Sans connexion SumUp active, le code est conservé localement sur cet appareil.</span>
+            )}
+          </div>
         </div>
 
         <div>
@@ -297,23 +317,9 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
         Lecture seule de transactions.history (sans créer de checkout)
       </label>
 
-      {environment === 'production' && !historyOnly && (
-        <label className="mt-3 inline-flex items-center gap-2 text-sm text-amber-800">
-          <input
-            type="checkbox"
-            checked={confirmProductionCheckout}
-            onChange={(event) => setConfirmProductionCheckout(event.target.checked)}
-            className="h-4 w-4 rounded border-amber-300"
-          />
-          Je confirme lancer une simulation checkout en production
-        </label>
-      )}
-
       <div className="mt-4">
         <Button variant="primary" size="sm" loading={isSubmitting} onClick={() => void runSimulation()}>
-          {historyOnly
-            ? `Lire transactions.history (${environment})`
-            : `Lancer simulation ${environment}`}
+          {historyOnly ? 'Lire transactions.history (sandbox)' : 'Lancer simulation sandbox'}
         </Button>
       </div>
 
@@ -324,7 +330,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
           ) : (
             <div className="grid grid-cols-1 gap-2 text-sm text-gray-700 md:grid-cols-2">
               <p><strong>Mode:</strong> {result.mode ?? 'simulate'}</p>
-              <p><strong>Environnement:</strong> {result.environment ?? environment}</p>
+              <p><strong>Environnement:</strong> {result.environment ?? 'sandbox'}</p>
               <p><strong>Token source:</strong> {result.token_source ?? 'unknown'}</p>
               <p><strong>Merchant code:</strong> {result.merchant_code ?? 'n/a'}</p>
               <p>

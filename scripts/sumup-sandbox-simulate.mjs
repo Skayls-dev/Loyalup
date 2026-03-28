@@ -22,7 +22,6 @@ function loadEnvFile(fileName) {
 
 function parseArgs(argv) {
   const args = {
-    environment: 'sandbox',
     amount: undefined,
     currency: undefined,
     merchantCode: undefined,
@@ -44,14 +43,7 @@ function parseArgs(argv) {
       continue
     }
 
-    if (value === '--environment') {
-      const envValue = String(argv[++index] ?? '').toLowerCase()
-      if (envValue !== 'sandbox' && envValue !== 'production') {
-        throw new Error(`Invalid --environment value: ${envValue}`)
-      }
-      args.environment = envValue
-    }
-    else if (value === '--amount') args.amount = Number(argv[++index])
+    if (value === '--amount') args.amount = Number(argv[++index])
     else if (value === '--currency') args.currency = argv[++index]
     else if (value === '--merchant-code') args.merchantCode = argv[++index]
     else if (value === '--list-limit') args.listLimit = Number(argv[++index])
@@ -69,7 +61,6 @@ function printHelp() {
   console.log('  node scripts/sumup-sandbox-simulate.mjs [options]')
   console.log('')
   console.log('Options:')
-  console.log('  --environment <mode>      sandbox | production (default: sandbox)')
   console.log('  --amount <number>         Checkout amount (default: env SUMUP_SANDBOX_AMOUNT or 12.34)')
   console.log('  --currency <code>         Currency code (default: env SUMUP_SANDBOX_CURRENCY or EUR)')
   console.log('  --merchant-code <code>    SumUp merchant code (default: env SUMUP_SANDBOX_MERCHANT_CODE)')
@@ -78,17 +69,12 @@ function printHelp() {
   console.log('  --history-only            Skip checkout creation and only read transactions.history')
   console.log('  --help                    Show this help')
   console.log('')
-  console.log('Environment files:')
-  console.log('  sandbox -> .env.local')
-  console.log('  production -> .env.production')
+  console.log('Environment file:')
+  console.log('  .env.local')
   console.log('')
-  console.log('Required env (sandbox mode):')
+  console.log('Required env:')
   console.log('  SUMUP_SANDBOX_API_KEY or SUMUP_SANDBOX_ACCESS_TOKEN')
   console.log('  SUMUP_SANDBOX_MERCHANT_CODE (if not passed with --merchant-code)')
-  console.log('')
-  console.log('Required env (production mode):')
-  console.log('  SUMUP_PRODUCTION_API_KEY or SUMUP_PRODUCTION_ACCESS_TOKEN (fallback: SUM_UP_API_KEY, SUMUP_ACCESS_TOKEN)')
-  console.log('  SUMUP_PRODUCTION_MERCHANT_CODE (fallback: SUMUP_MERCHANT_CODE, or pass --merchant-code)')
 }
 
 async function sumupFetch({ apiBase, token, pathName, method = 'GET', body }) {
@@ -212,55 +198,39 @@ async function main() {
     return
   }
 
-  const isProduction = args.environment === 'production'
-  const envFile = isProduction ? '.env.production' : '.env.local'
-  const env = loadEnvFile(envFile)
+  const env = loadEnvFile('.env.local')
 
   const apiBase = args.apiBase
-    ?? (isProduction ? env.SUMUP_PRODUCTION_API_BASE : env.SUMUP_SANDBOX_API_BASE)
+    ?? env.SUMUP_SANDBOX_API_BASE
     ?? 'https://api.sumup.com'
   const token =
-    (isProduction
-      ? (env.SUMUP_PRODUCTION_API_KEY
-        ?? env.SUMUP_PRODUCTION_ACCESS_TOKEN
-        ?? env.SUM_UP_API_KEY
-        ?? env.SUMUP_ACCESS_TOKEN)
-      : (env.SUMUP_SANDBOX_API_KEY
-        ?? env.SUMUP_SANDBOX_ACCESS_TOKEN
-        ?? env.SUM_UP_API_KEY_TEST
-        ?? env.SUM_UP_API_KEY))
+    (env.SUMUP_SANDBOX_API_KEY
+      ?? env.SUMUP_SANDBOX_ACCESS_TOKEN
+      ?? env.SUM_UP_API_KEY_TEST
+      ?? env.SUM_UP_API_KEY)
 
-  if (isProduction && (env.SUM_UP_API_KEY || env.SUMUP_ACCESS_TOKEN) && !env.SUMUP_PRODUCTION_API_KEY && !env.SUMUP_PRODUCTION_ACCESS_TOKEN) {
-    console.warn('[WARN] Using legacy production token variable; prefer SUMUP_PRODUCTION_API_KEY or SUMUP_PRODUCTION_ACCESS_TOKEN in .env.production')
-  }
-  if (!isProduction && (env.SUM_UP_API_KEY_TEST || env.SUM_UP_API_KEY) && !env.SUMUP_SANDBOX_API_KEY && !env.SUMUP_SANDBOX_ACCESS_TOKEN) {
+  if ((env.SUM_UP_API_KEY_TEST || env.SUM_UP_API_KEY) && !env.SUMUP_SANDBOX_API_KEY && !env.SUMUP_SANDBOX_ACCESS_TOKEN) {
     console.warn('[WARN] Using legacy sandbox token variable; prefer SUMUP_SANDBOX_API_KEY or SUMUP_SANDBOX_ACCESS_TOKEN in .env.local')
   }
   const merchantCode = args.merchantCode
-    ?? (isProduction ? env.SUMUP_PRODUCTION_MERCHANT_CODE ?? env.SUMUP_MERCHANT_CODE : env.SUMUP_SANDBOX_MERCHANT_CODE)
+    ?? env.SUMUP_SANDBOX_MERCHANT_CODE
   const currency = (args.currency
-    ?? (isProduction ? env.SUMUP_PRODUCTION_CURRENCY : env.SUMUP_SANDBOX_CURRENCY)
+    ?? env.SUMUP_SANDBOX_CURRENCY
     ?? 'EUR').toUpperCase()
-  const amount = Number(args.amount ?? (isProduction ? env.SUMUP_PRODUCTION_AMOUNT : env.SUMUP_SANDBOX_AMOUNT) ?? 12.34)
+  const amount = Number(args.amount ?? env.SUMUP_SANDBOX_AMOUNT ?? 12.34)
   const listLimit = Number.isFinite(args.listLimit) && args.listLimit > 0 ? args.listLimit : 10
 
   if (!token) {
     throw new Error(
       [
-        isProduction
-          ? 'Missing production SumUp token in .env.production (SUMUP_PRODUCTION_API_KEY, SUMUP_PRODUCTION_ACCESS_TOKEN, SUM_UP_API_KEY or SUMUP_ACCESS_TOKEN).'
-          : 'Missing sandbox SumUp token in .env.local (SUMUP_SANDBOX_API_KEY, SUMUP_SANDBOX_ACCESS_TOKEN, SUM_UP_API_KEY_TEST or SUM_UP_API_KEY).',
+        'Missing sandbox SumUp token in .env.local (SUMUP_SANDBOX_API_KEY, SUMUP_SANDBOX_ACCESS_TOKEN, SUM_UP_API_KEY_TEST or SUM_UP_API_KEY).',
         'Create an API key in SumUp Dashboard: https://me.sumup.com/settings/api-keys',
         'Important: SUMUP_CLIENT_SECRET is OAuth app secret and cannot be used as Bearer API key for this script.',
       ].join(' '),
     )
   }
   if (!merchantCode) {
-    throw new Error(
-      isProduction
-        ? 'Missing SUMUP_PRODUCTION_MERCHANT_CODE (or SUMUP_MERCHANT_CODE) in .env.production, or pass --merchant-code'
-        : 'Missing SUMUP_SANDBOX_MERCHANT_CODE in .env.local, or pass --merchant-code',
-    )
+    throw new Error('Missing SUMUP_SANDBOX_MERCHANT_CODE in .env.local, or pass --merchant-code')
   }
 
   if (args.historyOnly) {
@@ -291,7 +261,7 @@ async function main() {
     throw new Error('Amount must be a positive number')
   }
 
-  const checkoutReference = `looyaal-${args.environment}-${Date.now()}`
+  const checkoutReference = `looyaal-sandbox-${Date.now()}`
   console.log(`[1/4] Creating checkout ${checkoutReference}...`)
   const checkout = await sumupFetch({
     apiBase,

@@ -80,6 +80,14 @@ export function MerchantHome({
 
         <div className="flex flex-wrap items-center gap-3">
           <Button
+            variant="soft"
+            size="md"
+            className="border-[#FFD9CA] bg-[#FFF5EF] text-[#C84E20] hover:bg-[#FFEDE3]"
+            onClick={() => navigate('/merchant/settings?tab=integrations')}
+          >
+            Configurer SumUp
+          </Button>
+          <Button
             variant="ghost"
             size="md"
             className="border border-gray-200 text-gray-700"
@@ -125,7 +133,19 @@ export function MerchantHome({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <MerchantTransactions merchantId={merchantId} limit={6} />
+        <MerchantTransactions
+          merchantId={merchantId}
+          limit={6}
+          headerAction={(
+            <button
+              type="button"
+              onClick={() => navigate('/merchant/settings?tab=integrations')}
+              className="rounded-md border border-[#FFD9CA] bg-[#FFF5EF] px-2.5 py-1 text-xs font-medium text-[#C84E20] transition hover:bg-[#FFEDE3]"
+            >
+              Ouvrir Intégrations
+            </button>
+          )}
+        />
         <MerchantNetworks merchantId={merchantId} />
       </div>
 

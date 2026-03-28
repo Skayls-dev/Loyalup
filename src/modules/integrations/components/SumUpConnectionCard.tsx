@@ -18,7 +18,18 @@ export function SumUpConnectionCard({ userId }: Props) {
   const [searchParams, setSearchParams] = useSearchParams()
   const handledRef = useRef(false)
 
-  const { connectionStatus, merchantName, merchantCode, connectedAt, isLoading, connect, disconnect, verify, isVerifying } =
+  const {
+    connectionStatus,
+    merchantName,
+    merchantNameSource,
+    merchantCode,
+    connectedAt,
+    isLoading,
+    connect,
+    disconnect,
+    verify,
+    isVerifying,
+  } =
     useSumUpConnection(userId)
 
   // ── Handle OAuth callback return ──────────────────────────────────────────
@@ -161,6 +172,11 @@ export function SumUpConnectionCard({ userId }: Props) {
           {(merchantName ?? merchantCode) && (
             <p className="mt-1 truncate font-body text-sm text-gray-600">
               {[merchantName, merchantCode].filter(Boolean).join(' — ')}
+            </p>
+          )}
+          {merchantNameSource === 'local' && (
+            <p className="mt-1 font-body text-xs text-amber-700">
+              Nom boutique (Looyaal)
             </p>
           )}
           {connectedAt && (

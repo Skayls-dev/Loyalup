@@ -50,7 +50,7 @@ const activityNav: NavItem[] = [
 const accountNav: NavItem[] = [
   { key: 'history', label: 'Historique', to: '/history', icon: History },
   { key: 'onboarding', label: 'Onboarding', to: '/onboarding/1', icon: Users },
-  { key: 'settings', label: 'Parametres', to: '/settings', icon: Settings },
+  { key: 'settings', label: 'Parametres', to: '/settings?tab=profile', icon: Settings },
 ]
 
 function detectActiveFromPath(pathname: string): string {
@@ -100,7 +100,7 @@ function MobileBottomNav({
     { key: 'scanner', label: 'Scanner', to: '/scan', icon: QrCode },
     { key: 'offers', label: 'Offres', to: '/offers', icon: Tags },
     { key: 'networks', label: 'Reseaux', to: '/networks', icon: Network },
-    { key: 'settings', label: 'Profil', to: '/settings', icon: Settings },
+    { key: 'settings', label: 'Profil', to: '/settings?tab=profile', icon: Settings },
   ]
 
   return (
@@ -207,10 +207,17 @@ export function DashboardLayout({ children, activePage }: DashboardLayoutProps) 
             <div className="mt-3 hidden gap-2 lg:flex">
               <button
                 type="button"
-                onClick={() => navigate('/settings')}
+                onClick={() => navigate('/settings?tab=profile')}
                 className="inline-flex flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
               >
                 Profil
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/settings?tab=security')}
+                className="inline-flex flex-1 items-center justify-center rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 transition hover:bg-sky-100"
+              >
+                Sécurité
               </button>
               <button
                 type="button"

@@ -43,7 +43,7 @@ const analyticsNav: NavItem[] = [
 ]
 
 const shopNav: NavItem[] = [
-  { key: 'settings', label: 'Paramètres', to: '/merchant/settings', icon: Settings },
+  { key: 'settings', label: 'Paramètres', to: '/merchant/settings?tab=general', icon: Settings },
   { key: 'subscription', label: 'Abonnement', to: '/merchant/subscription', icon: ShoppingBag },
 ]
 
@@ -91,7 +91,7 @@ function MobileBottomNav({
     { key: 'qr', label: 'QR', to: '/merchant/qr', icon: QrCode },
     { key: 'catalog', label: 'Catalogue', to: '/merchant/catalog', icon: ShoppingBag },
     { key: 'clients', label: 'Clients', to: '/merchant/clients', icon: Users },
-    { key: 'settings', label: 'Profil', to: '/merchant/settings', icon: Settings },
+    { key: 'settings', label: 'Profil', to: '/merchant/settings?tab=general', icon: Settings },
   ]
 
   return (
@@ -199,7 +199,7 @@ export function MerchantLayout({ children, activePage }: MerchantLayoutProps) {
             <div className="mt-3 hidden gap-2 lg:flex">
               <button
                 type="button"
-                onClick={() => navigate('/merchant/settings')}
+                onClick={() => navigate('/merchant/settings?tab=general')}
                 className="inline-flex flex-1 items-center justify-center rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
               >
                 Profil

@@ -1,15 +1,35 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../../shared/lib/supabaseClient'
 import { config } from '../../../shared/lib/env'
 import type { SumUpConnectionStatus } from '../../../shared/types/integrations'
+
+const sandboxMerchantCodeStorageKey = (userId: string) => `looyaal:sumup-sandbox-merchant-code:${userId}`
+
+function readSandboxMerchantCodeFromStorage(userId: string): string | null {
+  if (!userId || typeof window === 'undefined') return null
+  const value = window.localStorage.getItem(sandboxMerchantCodeStorageKey(userId))?.trim()
+  return value || null
+}
+
+function writeSandboxMerchantCodeToStorage(userId: string, value: string | null): void {
+  if (!userId || typeof window === 'undefined') return
+  if (!value) {
+    window.localStorage.removeItem(sandboxMerchantCodeStorageKey(userId))
+    return
+  }
+
+  window.localStorage.setItem(sandboxMerchantCodeStorageKey(userId), value)
+}
 
 type IntegrationRow = {
   id: string
   fournisseur_id: string
   status: string
   sumup_merchant_code: string | null
+  sumup_sandbox_merchant_code: string | null
   sumup_merchant_name: string | null
+  local_merchant_name?: string | null
   created_at: string
   expires_at: string
 }
@@ -17,13 +37,16 @@ type IntegrationRow = {
 type UseSumUpConnectionResult = {
   connectionStatus: SumUpConnectionStatus
   merchantName: string | null
+  merchantNameSource: 'sumup' | 'local' | null
   merchantCode: string | null
+  sandboxMerchantCode: string | null
   connectedAt: Date | null
   isLoading: boolean
   isVerifying: boolean
   connect: () => Promise<void>
   disconnect: () => Promise<void>
   verify: () => Promise<{ alive: boolean; reason?: string }>
+  saveSandboxMerchantCode: (value: string) => Promise<'remote' | 'local'>
 }
 
 function deriveStatus(row: IntegrationRow | null | undefined): SumUpConnectionStatus {
@@ -41,22 +64,27 @@ async function fetchIntegrationByUserId(userId: string): Promise<IntegrationRow 
   // 1. Resolve fournisseur.id from user_id
   const { data: fournisseur, error: fErr } = await supabase
     .from('fournisseurs')
-    .select('id')
+    .select('id, nom_commerce')
     .eq('user_id', userId)
-    .maybeSingle<{ id: string }>()
+    .maybeSingle<{ id: string; nom_commerce?: string | null }>()
 
   if (fErr || !fournisseur?.id) return null
 
   // 2. Fetch integration row
   const { data, error } = await supabase
     .from('provider_integrations')
-    .select('id, fournisseur_id, status, sumup_merchant_code, sumup_merchant_name, created_at, expires_at')
+    .select('id, fournisseur_id, status, sumup_merchant_code, sumup_sandbox_merchant_code, sumup_merchant_name, created_at, expires_at')
     .eq('fournisseur_id', fournisseur.id)
     .eq('provider', 'sumup')
     .maybeSingle()
 
   if (error) throw new Error(error.message)
-  return data as IntegrationRow | null
+  if (!data) return null
+
+  return {
+    ...(data as IntegrationRow),
+    local_merchant_name: fournisseur.nom_commerce ?? null,
+  }
 }
 
 // Decode JWT exp claim to check if it has already expired.
@@ -91,6 +119,7 @@ async function getAccessTokenOrThrow(): Promise<string> {
 export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
   const queryClient = useQueryClient()
   const [isVerifying, setIsVerifying] = useState(false)
+  const [localSandboxMerchantCode, setLocalSandboxMerchantCode] = useState<string | null>(() => readSandboxMerchantCodeFromStorage(userId))
 
   const query = useQuery<IntegrationRow | null>({
     queryKey: ['sumup-connection', userId],
@@ -101,6 +130,19 @@ export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
   })
 
   const row = query.data ?? null
+  const sandboxMerchantCode = row
+    ? row.sumup_sandbox_merchant_code ?? null
+    : localSandboxMerchantCode ?? null
+
+  useEffect(() => {
+    setLocalSandboxMerchantCode(readSandboxMerchantCodeFromStorage(userId))
+  }, [userId])
+
+  useEffect(() => {
+    if (!row) return
+    writeSandboxMerchantCodeToStorage(userId, row.sumup_sandbox_merchant_code ?? null)
+    setLocalSandboxMerchantCode(row.sumup_sandbox_merchant_code ?? null)
+  }, [row, userId])
 
   // ── connect ──────────────────────────────────────────────────────────────
   async function connect(): Promise<void> {
@@ -173,19 +215,48 @@ export function useSumUpConnection(userId: string): UseSumUpConnectionResult {
     await queryClient.invalidateQueries({ queryKey: ['sumup-connection', userId] })
   }
 
+  async function saveSandboxMerchantCode(value: string): Promise<'remote' | 'local'> {
+    const normalizedValue = value.trim() || null
+
+    writeSandboxMerchantCodeToStorage(userId, normalizedValue)
+    setLocalSandboxMerchantCode(normalizedValue)
+
+    if (!row?.id) {
+      return 'local'
+    }
+
+    const { error } = await supabase
+      .from('provider_integrations')
+      .update({ sumup_sandbox_merchant_code: normalizedValue })
+      .eq('id', row.id)
+
+    if (error) throw new Error(error.message)
+
+    await queryClient.invalidateQueries({ queryKey: ['sumup-connection', userId] })
+    return 'remote'
+  }
+
   return useMemo(
     () => ({
+      // Prefer SumUp profile name when available, otherwise fallback to local merchant name.
+      merchantNameSource: row?.sumup_merchant_name
+        ? 'sumup'
+        : row?.local_merchant_name
+          ? 'local'
+          : null,
       connectionStatus: deriveStatus(row),
-      merchantName: row?.sumup_merchant_name ?? null,
+      merchantName: row?.sumup_merchant_name ?? row?.local_merchant_name ?? null,
       merchantCode: row?.sumup_merchant_code ?? null,
+      sandboxMerchantCode,
       connectedAt: row ? new Date(row.created_at) : null,
       isLoading: query.isLoading,
       isVerifying,
       connect,
       disconnect,
       verify,
+      saveSandboxMerchantCode,
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [row, query.isLoading, userId, isVerifying],
+    [row, sandboxMerchantCode, query.isLoading, userId, isVerifying],
   )
 }

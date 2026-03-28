@@ -10,6 +10,7 @@ export type ProviderIntegration = {
   refresh_token: string | null
   expires_at: string
   sumup_merchant_code: string | null
+  sumup_sandbox_merchant_code: string | null
   sumup_merchant_name: string | null
   scopes: string[] | null
   created_at: string
@@ -25,6 +26,7 @@ export type ProviderIntegrationInsert = {
   refresh_token?: string | null
   expires_at: string
   sumup_merchant_code?: string | null
+  sumup_sandbox_merchant_code?: string | null
   sumup_merchant_name?: string | null
   scopes?: string[]
   created_at?: string
