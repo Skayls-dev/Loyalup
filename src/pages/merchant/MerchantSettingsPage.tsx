@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui'
 import { useMerchantStats } from '../../hooks/useMerchantStats'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
+import { SumUpConnectionCard } from '../../modules/integrations/components/SumUpConnectionCard'
 
 function readProfileField(profile: unknown, key: string): string {
   if (!profile || typeof profile !== 'object') return 'Non renseigné'
@@ -114,6 +115,8 @@ export default function MerchantSettingsPage() {
           </div>
         </section>
       </div>
+
+      <SumUpConnectionCard fournisseurId={merchantId} />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <section className="rounded-lg border border-gray-200 bg-white p-5">
