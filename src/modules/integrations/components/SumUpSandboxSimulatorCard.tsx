@@ -47,6 +47,9 @@ function normalizeSandboxError(message: string): string {
   if (message.includes('No SumUp integration found')) {
     return 'Aucune connexion SumUp trouvée pour ce compte. Connectez SumUp ou configurez la clé sandbox serveur.'
   }
+  if (message.includes('Unauthorized') || message.includes('401')) {
+    return 'Session expirée ou invalide. Déconnectez-vous puis reconnectez-vous avant de relancer la simulation.'
+  }
   if (message.includes('missing_payments_scope')) {
     return 'La simulation sandbox nécessite une clé serveur SUMUP_SANDBOX_API_KEY côté serveur.'
   }
@@ -54,12 +57,22 @@ function normalizeSandboxError(message: string): string {
 }
 
 async function getAccessTokenOrThrow(): Promise<string> {
+  const isTokenAboutToExpire = (token: string, bufferSeconds = 60): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number }
+      const exp = typeof payload.exp === 'number' ? payload.exp : 0
+      return exp - Math.floor(Date.now() / 1000) < bufferSeconds
+    } catch {
+      return true
+    }
+  }
+
   const { data: refreshed } = await supabase.auth.refreshSession()
   if (refreshed.session?.access_token) return refreshed.session.access_token
 
   const { data: sessionData } = await supabase.auth.getSession()
   const token = sessionData.session?.access_token
-  if (!token) {
+  if (!token || isTokenAboutToExpire(token)) {
     throw new Error('Session expirée, veuillez vous reconnecter')
   }
 

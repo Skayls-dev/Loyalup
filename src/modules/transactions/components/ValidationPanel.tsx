@@ -42,12 +42,22 @@ function clampLimit(value: number): number {
 }
 
 async function getAccessTokenOrThrow(): Promise<string> {
+  const isTokenAboutToExpire = (token: string, bufferSeconds = 60): boolean => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number }
+      const exp = typeof payload.exp === 'number' ? payload.exp : 0
+      return exp - Math.floor(Date.now() / 1000) < bufferSeconds
+    } catch {
+      return true
+    }
+  }
+
   const { data: refreshed } = await supabase.auth.refreshSession()
   if (refreshed.session?.access_token) return refreshed.session.access_token
 
   const { data: sessionData } = await supabase.auth.getSession()
   const token = sessionData.session?.access_token
-  if (!token) throw new Error('Session expirée, veuillez vous reconnecter')
+  if (!token || isTokenAboutToExpire(token)) throw new Error('Session expirée, veuillez vous reconnecter')
   return token
 }
 
