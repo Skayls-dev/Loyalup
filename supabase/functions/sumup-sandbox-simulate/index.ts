@@ -128,34 +128,45 @@ Deno.serve(async (req: Request) => {
     body = {}
   }
 
+  const admin = createClient(supabaseUrl, serviceRoleKey)
   const authHeader = req.headers.get('Authorization')
     ?? req.headers.get('authorization')
   const userToken = authHeader?.replace(/^Bearer\s+/i, '')
     ?? body.access_token
-  if (!userToken) return json({ error: 'Missing Authorization header' }, 401)
 
-  const authClient = createClient(supabaseUrl, anonKey)
-  const { data: { user }, error: authError } = await authClient.auth.getUser(userToken)
-  if (authError || !user) return json({ error: 'Unauthorized' }, 401)
+  let fournisseur: { id: string; nom_commerce?: string | null } | null = null
 
-  const admin = createClient(supabaseUrl, serviceRoleKey)
+  if (userToken) {
+    const authClient = createClient(supabaseUrl, anonKey)
+    const { data: { user }, error: authError } = await authClient.auth.getUser(userToken)
 
-  const { data: fournisseur } = await admin
-    .from('fournisseurs')
-    .select('id, nom_commerce')
-    .eq('user_id', user.id)
-    .maybeSingle<{ id: string; nom_commerce?: string | null }>()
+    if (!authError && user) {
+      const { data } = await admin
+        .from('fournisseurs')
+        .select('id, nom_commerce')
+        .eq('user_id', user.id)
+        .maybeSingle<{ id: string; nom_commerce?: string | null }>()
 
-  if (!fournisseur?.id) {
-    return json({ error: 'No merchant account found' }, 404)
+      fournisseur = data ?? null
+    }
   }
 
-  const { data: integration } = await admin
-    .from('provider_integrations')
-    .select('sumup_merchant_code, sumup_sandbox_merchant_code, scopes')
-    .eq('fournisseur_id', fournisseur.id)
-    .eq('provider', 'sumup')
-    .maybeSingle<{ sumup_merchant_code: string | null; sumup_sandbox_merchant_code: string | null; scopes?: string[] | null }>()
+  if (!fournisseur?.id && !body.merchant_code) {
+    return json({
+      error: 'Missing Authorization header',
+      reason: 'auth_or_merchant_code_required',
+      hint: 'Provide Authorization Bearer token or merchant_code in request body for sandbox mode.',
+    }, 401)
+  }
+
+  const { data: integration } = fournisseur?.id
+    ? await admin
+      .from('provider_integrations')
+      .select('sumup_merchant_code, sumup_sandbox_merchant_code, scopes')
+      .eq('fournisseur_id', fournisseur.id)
+      .eq('provider', 'sumup')
+      .maybeSingle<{ sumup_merchant_code: string | null; sumup_sandbox_merchant_code: string | null; scopes?: string[] | null }>()
+    : { data: null }
 
   const amount = Number(body.amount ?? 12.34)
   const currency = String(body.currency ?? 'EUR').toUpperCase()
@@ -217,7 +228,7 @@ Deno.serve(async (req: Request) => {
         amount,
         currency,
         merchant_code: merchantCode,
-        description: `Looyaal sandbox simulation (${fournisseur.nom_commerce ?? 'merchant'})`,
+        description: `Looyaal sandbox simulation (${fournisseur?.nom_commerce ?? 'merchant'})`,
       },
     })
 
