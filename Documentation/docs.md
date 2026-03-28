@@ -4,11 +4,11 @@ provider1@Looyaal.test fournisseur created b02a0bc0-ffac-4789-bbd9-f70d31f74921
 provider2@Looyaal.test fournisseur created 5a89d6b9-3a3d-4f6a-a9f9-acc564bcb193
 admin1@Looyaal.test    admin       created 91a3ab5d-e6b2-4561-90cc-ab8a7d5bcb6e
 
-client1@Looyaal.test — role: client — password: Test1234!
-client2@Looyaal.test — role: client — password: Test1234!
-provider1@Looyaal.test — role: fournisseur — password: Test1234!
-provider2@Looyaal.test — role: fournisseur — password: Test1234!
-admin1@Looyaal.test — role: admin — password: Test1234! (login via /admin/auth)
+client1@Looyaal.test — role: client — password: <stored in secure vault>
+client2@Looyaal.test — role: client — password: <stored in secure vault>
+provider1@Looyaal.test — role: fournisseur — password: <stored in secure vault>
+provider2@Looyaal.test — role: fournisseur — password: <stored in secure vault>
+admin1@Looyaal.test — role: admin — password: <stored in secure vault> (login via /admin/auth)
 
 ---
 
@@ -16,14 +16,14 @@ Prod test accounts
 
 
 Email	Password
-client1@Looyaal.test	Test1234!
-client2@Looyaal.test	Test1234!
-provider1@Looyaal.test	Test1234!
-provider2@Looyaal.test	Test1234!
-admin1@Looyaal.test	Test1234!
-superadmin@Looyaal.test	SuperAdmin123!
+client1@Looyaal.test	<stored in secure vault>
+client2@Looyaal.test	<stored in secure vault>
+provider1@Looyaal.test	<stored in secure vault>
+provider2@Looyaal.test	<stored in secure vault>
+admin1@Looyaal.test	<stored in secure vault>
+superadmin@Looyaal.test	<stored in secure vault>
 
-📧 Email    : contact@afrocare.be  🔑 Mot passe: Afrocare2026!
+Contact account credentials are managed in secure vault (do not store here).
 
 
 Local test data provisioning
@@ -88,8 +88,8 @@ SDK docs:
 - Hosted dev quickstart: `public/docs/sdk.md`
 - Package source: `packages/Looyaal-sdk`
 
-supabase secrets set SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl5ZnRxaXZpenpndnZlZWN6YnB2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MjI1NDIwOSwiZXhwIjoyMDg3ODMwMjA5fQ.Ao1RnFN7yUHL-E8L5kgfDvY5-aPwWJY0UwW2_ZYtNn4
-supabase secrets set API_KEY_PEPPER=un_secret_aleatoire_32_chars
-supabase secrets set VAPID_PUBLIC_KEY=xxx
-supabase secrets set VAPID_PRIVATE_KEY=xxx
-supabase secrets set VAPID_EMAIL=mailto:admin@Looyaal.app
+supabase secrets set SUPABASE_SERVICE_ROLE_KEY=<value from secure vault>
+supabase secrets set API_KEY_PEPPER=<value from secure vault>
+supabase secrets set VAPID_PUBLIC_KEY=<value from secure vault>
+supabase secrets set VAPID_PRIVATE_KEY=<value from secure vault>
+supabase secrets set VAPID_EMAIL=mailto:<ops-email>

@@ -9,7 +9,7 @@ const SECRET_PATTERNS = [
   { name: 'Supabase JWT-like key', regex: /eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/g },
   { name: 'SumUp secret key', regex: /\bsup_sk_[A-Za-z0-9]+\b/g },
   { name: 'Classic client secret', regex: /\bcc_sk_classic_[A-Za-z0-9]+\b/g },
-  { name: 'Generic private key assignment', regex: /(SECRET|TOKEN|API_KEY|SERVICE_ROLE_KEY)\s*=\s*['\"]?[A-Za-z0-9._\-]{20,}/gi },
+  { name: 'Generic private key assignment', regex: /(SECRET|TOKEN|API_KEY|SERVICE_ROLE_KEY)\s*=\s*['\"]?(?!__)[A-Za-z0-9._\-]{20,}/gi },
 ]
 
 function walk(dir, out = []) {

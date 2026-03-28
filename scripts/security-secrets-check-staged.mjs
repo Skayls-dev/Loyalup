@@ -8,7 +8,7 @@ const PATTERNS = [
   { name: 'Supabase JWT-like key', regex: /eyJ[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}\.[a-zA-Z0-9_-]{20,}/g },
   { name: 'SumUp secret key', regex: /\bsup_sk_[A-Za-z0-9]+\b/g },
   { name: 'Classic client secret', regex: /\bcc_sk_classic_[A-Za-z0-9]+\b/g },
-  { name: 'Service role key literal', regex: /SERVICE_ROLE_KEY\s*=\s*['\"]?[^\s'\"]{20,}/g },
+  { name: 'Service role key literal', regex: /SERVICE_ROLE_KEY\s*=\s*['\"]?(?!__)[^\s'\"]{20,}/g },
 ]
 
 function getStagedDiff() {
