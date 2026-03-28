@@ -141,6 +141,7 @@ Deno.serve(async (req: Request) => {
     history_limit?: number
     history_only?: boolean
     environment?: 'sandbox' | 'production'
+    confirm_production?: boolean
   }
 
   try {
@@ -162,6 +163,7 @@ Deno.serve(async (req: Request) => {
   const historyOnly = Boolean(body.history_only)
   const environment = body.environment === 'production' ? 'production' : 'sandbox'
   const isProduction = environment === 'production'
+  const confirmProduction = Boolean(body.confirm_production)
   const merchantCode = body.merchant_code ?? integration?.sumup_merchant_code
 
   if (!historyOnly && !merchantCode) {
@@ -170,6 +172,16 @@ Deno.serve(async (req: Request) => {
 
   if (!historyOnly && (!Number.isFinite(amount) || amount <= 0)) {
     return json({ error: 'amount must be a positive number' }, 400)
+  }
+
+  if (isProduction && !historyOnly && !confirmProduction) {
+    return json(
+      {
+        error: 'Production checkout simulation requires explicit confirmation',
+        reason: 'production_confirmation_required',
+      },
+      400,
+    )
   }
 
   let tokenSource: 'sandbox_api_key' | 'oauth' = 'oauth'

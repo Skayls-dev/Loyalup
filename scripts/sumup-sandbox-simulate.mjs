@@ -85,6 +85,10 @@ function printHelp() {
   console.log('Required env (sandbox mode):')
   console.log('  SUMUP_SANDBOX_API_KEY or SUMUP_SANDBOX_ACCESS_TOKEN')
   console.log('  SUMUP_SANDBOX_MERCHANT_CODE (if not passed with --merchant-code)')
+  console.log('')
+  console.log('Required env (production mode):')
+  console.log('  SUMUP_PRODUCTION_API_KEY or SUMUP_PRODUCTION_ACCESS_TOKEN (fallback: SUM_UP_API_KEY, SUMUP_ACCESS_TOKEN)')
+  console.log('  SUMUP_PRODUCTION_MERCHANT_CODE (fallback: SUMUP_MERCHANT_CODE, or pass --merchant-code)')
 }
 
 async function sumupFetch({ apiBase, token, pathName, method = 'GET', body }) {
@@ -225,6 +229,13 @@ async function main() {
         ?? env.SUMUP_SANDBOX_ACCESS_TOKEN
         ?? env.SUM_UP_API_KEY_TEST
         ?? env.SUM_UP_API_KEY))
+
+  if (isProduction && (env.SUM_UP_API_KEY || env.SUMUP_ACCESS_TOKEN) && !env.SUMUP_PRODUCTION_API_KEY && !env.SUMUP_PRODUCTION_ACCESS_TOKEN) {
+    console.warn('[WARN] Using legacy production token variable; prefer SUMUP_PRODUCTION_API_KEY or SUMUP_PRODUCTION_ACCESS_TOKEN in .env.production')
+  }
+  if (!isProduction && (env.SUM_UP_API_KEY_TEST || env.SUM_UP_API_KEY) && !env.SUMUP_SANDBOX_API_KEY && !env.SUMUP_SANDBOX_ACCESS_TOKEN) {
+    console.warn('[WARN] Using legacy sandbox token variable; prefer SUMUP_SANDBOX_API_KEY or SUMUP_SANDBOX_ACCESS_TOKEN in .env.local')
+  }
   const merchantCode = args.merchantCode
     ?? (isProduction ? env.SUMUP_PRODUCTION_MERCHANT_CODE ?? env.SUMUP_MERCHANT_CODE : env.SUMUP_SANDBOX_MERCHANT_CODE)
   const currency = (args.currency

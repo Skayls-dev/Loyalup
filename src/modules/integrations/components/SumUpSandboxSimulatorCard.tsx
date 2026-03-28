@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Badge, Button } from '../../../components/ui'
 import { showToast } from '../../../shared/stores/toastStore'
 import { supabase } from '../../../shared/lib/supabaseClient'
@@ -43,6 +43,9 @@ function toErrorMessage(error: unknown): string {
 }
 
 function normalizeSandboxError(message: string): string {
+  if (message.includes('production_confirmation_required') || message.includes('explicit confirmation')) {
+    return 'Confirmation requise: cochez la case de confirmation avant de lancer un checkout en production.'
+  }
   if (message.includes('No SumUp integration found')) {
     return 'Aucune connexion SumUp trouvée pour ce compte. Connectez SumUp ou configurez la clé sandbox serveur.'
   }
@@ -99,6 +102,7 @@ async function copyToClipboard(value: string): Promise<void> {
 
 export function SumUpSandboxSimulatorCard({ userId }: Props) {
   const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox')
+  const [confirmProductionCheckout, setConfirmProductionCheckout] = useState(false)
   const [amount, setAmount] = useState('12.34')
   const [currency, setCurrency] = useState('EUR')
   const [merchantCode, setMerchantCode] = useState('')
@@ -111,7 +115,18 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
 
   if (!userId) return null
 
+  useEffect(() => {
+    if (environment !== 'production' || historyOnly) {
+      setConfirmProductionCheckout(false)
+    }
+  }, [environment, historyOnly])
+
   const runSimulation = async () => {
+    if (environment === 'production' && !historyOnly && !confirmProductionCheckout) {
+      showToast('Confirmez la simulation checkout en production avant de lancer.', 'error')
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const token = await getAccessTokenOrThrow()
@@ -124,6 +139,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
         },
         body: JSON.stringify({
           environment,
+          confirm_production: environment === 'production' && !historyOnly ? confirmProductionCheckout : undefined,
           amount: Number(amount),
           currency: currency.trim().toUpperCase(),
           merchant_code: merchantCode.trim() || undefined,
@@ -142,7 +158,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
       if (payload.error) {
         showToast(payload.error, 'error')
       } else {
-        showToast('Simulation sandbox exécutée.', 'success')
+        showToast(`Simulation ${environment} exécutée.`, 'success')
       }
     } catch (error) {
       const message = normalizeSandboxError(toErrorMessage(error))
@@ -194,11 +210,30 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
         </Button>
       </div>
 
+      <div className="mt-3">
+        <Badge variant={environment === 'sandbox' ? 'warning' : 'success'}>
+          Mode actif: {environment === 'sandbox' ? 'Sandbox' : 'Production'}
+        </Badge>
+      </div>
+
       <p className="mt-2 text-xs text-gray-600">
         {environment === 'sandbox'
           ? 'Sandbox: priorité à la clé serveur SUMUP_SANDBOX_API_KEY (ou SUM_UP_API_KEY_TEST).'
           : 'Production: utilise uniquement le token OAuth du compte SumUp connecté du marchand.'}
       </p>
+
+      <div className="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-gray-500">Pré-requis</p>
+        {environment === 'sandbox' ? (
+          <p className="mt-1 text-sm text-gray-700">
+            Clé serveur sandbox recommandée. Sans clé, fallback OAuth possible si scope <strong>payments</strong> disponible.
+          </p>
+        ) : (
+          <p className="mt-1 text-sm text-gray-700">
+            Le marchand doit être connecté à SumUp avec un token OAuth actif et le scope <strong>payments</strong>.
+          </p>
+        )}
+      </div>
 
       <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         <div>
@@ -261,6 +296,18 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
         />
         Lecture seule de transactions.history (sans créer de checkout)
       </label>
+
+      {environment === 'production' && !historyOnly && (
+        <label className="mt-3 inline-flex items-center gap-2 text-sm text-amber-800">
+          <input
+            type="checkbox"
+            checked={confirmProductionCheckout}
+            onChange={(event) => setConfirmProductionCheckout(event.target.checked)}
+            className="h-4 w-4 rounded border-amber-300"
+          />
+          Je confirme lancer une simulation checkout en production
+        </label>
+      )}
 
       <div className="mt-4">
         <Button variant="primary" size="sm" loading={isSubmitting} onClick={() => void runSimulation()}>
