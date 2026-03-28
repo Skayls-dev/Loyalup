@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '../../../components/ui'
+import { Badge, Button } from '../../../components/ui'
 import { showToast } from '../../../shared/stores/toastStore'
 import { supabase } from '../../../shared/lib/supabaseClient'
 import { config } from '../../../shared/lib/env'
@@ -18,9 +18,22 @@ type SimulationResult = {
   transaction_id?: string | null
   found_in_history?: boolean
   history_items?: number
+  history?: {
+    items?: HistoryItem[]
+  }
   error?: string
   message?: string
   next_step?: unknown
+}
+
+type HistoryItem = {
+  id?: string
+  transaction_code?: string
+  timestamp?: string
+  amount?: number
+  currency?: string
+  status?: string
+  payment_type?: string
 }
 
 function toErrorMessage(error: unknown): string {
@@ -41,6 +54,38 @@ async function getAccessTokenOrThrow(): Promise<string> {
   return token
 }
 
+function formatTimestamp(value?: string): string {
+  if (!value) return 'n/a'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('fr-FR')
+}
+
+function statusToBadgeVariant(status?: string): 'default' | 'success' | 'warning' | 'info' {
+  const normalized = String(status ?? '').toUpperCase()
+  if (normalized === 'SUCCESSFUL') return 'success'
+  if (normalized === 'PENDING') return 'warning'
+  if (normalized === 'FAILED' || normalized === 'CANCELLED' || normalized === 'CHARGE_BACK') return 'default'
+  return 'info'
+}
+
+async function copyToClipboard(value: string): Promise<void> {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(value)
+    return
+  }
+
+  // Fallback for older contexts where Clipboard API is unavailable.
+  const textarea = document.createElement('textarea')
+  textarea.value = value
+  textarea.style.position = 'fixed'
+  textarea.style.left = '-9999px'
+  document.body.appendChild(textarea)
+  textarea.select()
+  document.execCommand('copy')
+  document.body.removeChild(textarea)
+}
+
 export function SumUpSandboxSimulatorCard({ userId }: Props) {
   const [amount, setAmount] = useState('12.34')
   const [currency, setCurrency] = useState('EUR')
@@ -49,6 +94,8 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
   const [historyLimit, setHistoryLimit] = useState('10')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [result, setResult] = useState<SimulationResult | null>(null)
+
+  const historyItems = (result?.history?.items ?? []).slice(0, 10)
 
   if (!userId) return null
 
@@ -90,6 +137,16 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
       showToast(message, 'error')
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleCopyTransactionCode = async (code?: string | null) => {
+    if (!code) return
+    try {
+      await copyToClipboard(code)
+      showToast(`Code transaction copié: ${code}`, 'success')
+    } catch {
+      showToast('Impossible de copier le code transaction', 'error')
     }
   }
 
@@ -182,11 +239,72 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
               <p><strong>Mode:</strong> {result.mode ?? 'simulate'}</p>
               <p><strong>Token source:</strong> {result.token_source ?? 'unknown'}</p>
               <p><strong>Merchant code:</strong> {result.merchant_code ?? 'n/a'}</p>
-              <p><strong>Checkout status:</strong> {result.checkout_status ?? 'n/a'}</p>
-              <p><strong>Transaction code:</strong> {result.transaction_code ?? 'n/a'}</p>
+              <p>
+                <strong>Checkout status:</strong>{' '}
+                <Badge variant={statusToBadgeVariant(result.checkout_status)} className="align-middle">
+                  {result.checkout_status ?? 'n/a'}
+                </Badge>
+              </p>
+              <p className="flex items-center gap-2">
+                <strong>Transaction code:</strong> {result.transaction_code ?? 'n/a'}
+                {result.transaction_code && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-xs"
+                    onClick={() => void handleCopyTransactionCode(result.transaction_code)}
+                  >
+                    Copier
+                  </Button>
+                )}
+              </p>
               <p><strong>Trouvée dans history:</strong> {result.found_in_history ? 'oui' : 'non'}</p>
               <p><strong>Items history:</strong> {result.history_items ?? 0}</p>
               <p><strong>Checkout ID:</strong> {result.checkout_id ?? 'n/a'}</p>
+            </div>
+          )}
+
+          {!result.error && historyItems.length > 0 && (
+            <div className="mt-4 overflow-x-auto">
+              <p className="mb-2 text-sm font-medium text-gray-700">10 dernières transactions history</p>
+              <table className="min-w-full border-collapse text-left text-xs sm:text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 text-gray-500">
+                    <th className="px-2 py-2 font-medium">Date</th>
+                    <th className="px-2 py-2 font-medium">Code</th>
+                    <th className="px-2 py-2 font-medium">Montant</th>
+                    <th className="px-2 py-2 font-medium">Type</th>
+                    <th className="px-2 py-2 font-medium">Statut</th>
+                    <th className="px-2 py-2 font-medium">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyItems.map((item, index) => (
+                    <tr key={item.id ?? item.transaction_code ?? `${index}`} className="border-b border-gray-100">
+                      <td className="whitespace-nowrap px-2 py-2 text-gray-700">{formatTimestamp(item.timestamp)}</td>
+                      <td className="whitespace-nowrap px-2 py-2 font-medium text-gray-800">{item.transaction_code ?? 'n/a'}</td>
+                      <td className="whitespace-nowrap px-2 py-2 text-gray-700">
+                        {typeof item.amount === 'number' ? item.amount.toFixed(2) : 'n/a'} {item.currency ?? ''}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2 text-gray-700">{item.payment_type ?? 'n/a'}</td>
+                      <td className="whitespace-nowrap px-2 py-2">
+                        <Badge variant={statusToBadgeVariant(item.status)}>{item.status ?? 'UNKNOWN'}</Badge>
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={!item.transaction_code}
+                          className="h-7 px-2 text-xs"
+                          onClick={() => void handleCopyTransactionCode(item.transaction_code)}
+                        >
+                          Copier
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           )}
 
