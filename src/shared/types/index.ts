@@ -80,3 +80,4 @@ export type AuthState = {
 
 export * from './webhooks'
 export * from './partnerIdentity'
+export * from './integrations'
