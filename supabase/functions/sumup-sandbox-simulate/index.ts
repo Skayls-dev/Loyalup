@@ -107,6 +107,8 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
   const sandboxApiKey = Deno.env.get('SUMUP_SANDBOX_API_KEY')
+    ?? Deno.env.get('SUM_UP_API_KEY_TEST')
+    ?? Deno.env.get('SUM_UP_API_KEY')
 
   if (!supabaseUrl || !serviceRoleKey || !anonKey) {
     return json({ error: 'Server misconfiguration' }, 500)
@@ -153,15 +155,15 @@ Deno.serve(async (req: Request) => {
     .eq('provider', 'sumup')
     .maybeSingle<{ sumup_merchant_code: string | null; scopes?: string[] | null }>()
 
-  const merchantCode = body.merchant_code ?? integration?.sumup_merchant_code
-  if (!merchantCode) {
-    return json({ error: 'Missing merchant_code (connect SumUp first or provide merchant_code)' }, 400)
-  }
-
   const amount = Number(body.amount ?? 12.34)
   const currency = String(body.currency ?? 'EUR').toUpperCase()
   const historyLimit = Number(body.history_limit ?? 10)
   const historyOnly = Boolean(body.history_only)
+  const merchantCode = body.merchant_code ?? integration?.sumup_merchant_code
+
+  if (!historyOnly && !merchantCode) {
+    return json({ error: 'Missing merchant_code (connect SumUp first or provide merchant_code)' }, 400)
+  }
 
   if (!historyOnly && (!Number.isFinite(amount) || amount <= 0)) {
     return json({ error: 'amount must be a positive number' }, 400)
@@ -186,6 +188,15 @@ Deno.serve(async (req: Request) => {
       sumupToken = await getValidSumUpToken(admin, fournisseur.id)
     } catch (error) {
       if (error instanceof SumUpTokenError) {
+        if (error.code === 'no_integration') {
+          return json(
+            {
+              error: 'No SumUp integration found for this merchant. Connect SumUp first, or set SUMUP_SANDBOX_API_KEY in Supabase secrets.',
+              reason: 'no_integration',
+            },
+            400,
+          )
+        }
         return json({ error: error.message, reason: error.code }, 400)
       }
       return json({ error: 'Unable to obtain SumUp token' }, 500)

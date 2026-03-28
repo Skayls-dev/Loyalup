@@ -41,6 +41,16 @@ function toErrorMessage(error: unknown): string {
   return 'Erreur inconnue pendant la simulation sandbox'
 }
 
+function normalizeSandboxError(message: string): string {
+  if (message.includes('No SumUp integration found')) {
+    return 'Aucune connexion SumUp trouvée pour ce compte. Connectez SumUp ou configurez la clé sandbox serveur.'
+  }
+  if (message.includes('missing_payments_scope')) {
+    return 'Le scope payments est manquant pour créer un checkout. Configurez SUMUP_SANDBOX_API_KEY côté serveur.'
+  }
+  return message
+}
+
 async function getAccessTokenOrThrow(): Promise<string> {
   const { data: refreshed } = await supabase.auth.refreshSession()
   if (refreshed.session?.access_token) return refreshed.session.access_token
@@ -132,7 +142,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
         showToast('Simulation sandbox exécutée.', 'success')
       }
     } catch (error) {
-      const message = toErrorMessage(error)
+      const message = normalizeSandboxError(toErrorMessage(error))
       setResult({ error: message })
       showToast(message, 'error')
     } finally {
