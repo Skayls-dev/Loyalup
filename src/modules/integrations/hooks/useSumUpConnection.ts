@@ -44,38 +44,18 @@ async function fetchIntegration(fournisseurId: string): Promise<IntegrationRow |
   return data as IntegrationRow | null
 }
 
-// Decode a base64url-encoded JWT segment (handles `-` and `_`, adds padding)
-function decodeJwtPayload(token: string): { exp?: number } {
-  try {
-    const segment = token.split('.')[1]
-    if (!segment) return {}
-    // base64url → base64: replace URL-safe chars and add padding
-    const base64 = segment.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, '=')
-    return JSON.parse(atob(padded)) as { exp?: number }
-  } catch {
-    return {}
-  }
-}
-
-// Helper: get a fresh access token, proactively refresh if near expiry or decode fails
+// Always obtain a server-fresh token by calling refreshSession().
+// getSession() only reads localStorage and can return stale/invalidated tokens.
 async function getAccessTokenOrThrow(): Promise<string> {
-  const { data: sessionData } = await supabase.auth.getSession()
-  const session = sessionData?.session
-  if (!session?.access_token) throw new Error('Non authentifié')
-
-  const payload = decodeJwtPayload(session.access_token)
-  const exp = payload.exp
-  // Refresh if: exp unknown, token expired, or expires within 60 s
-  const needsRefresh = !exp || exp * 1000 - Date.now() < 60_000
-
-  if (needsRefresh) {
-    const { data: refreshed, error } = await supabase.auth.refreshSession()
-    if (error || !refreshed.session?.access_token) throw new Error('Impossible de renouveler la session')
-    return refreshed.session.access_token
+  const { data, error } = await supabase.auth.refreshSession()
+  if (!error && data.session?.access_token) {
+    return data.session.access_token
   }
-
-  return session.access_token
+  // Fallback: use the cached session (refresh_token may have been absent)
+  const { data: sessionData } = await supabase.auth.getSession()
+  const token = sessionData?.session?.access_token
+  if (!token) throw new Error('Non authentifié — veuillez vous reconnecter')
+  return token
 }
 
 export function useSumUpConnection(fournisseurId: string): UseSumUpConnectionResult {
@@ -109,7 +89,7 @@ export function useSumUpConnection(fournisseurId: string): UseSumUpConnectionRes
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({})) as { error?: string }
-      throw new Error(body.error ?? "Impossible d'initier la connexion SumUp")
+      throw new Error(body.error ?? `Erreur ${res.status} lors de la connexion SumUp`)
     }
 
     const data = await res.json() as { authorize_url?: string }
