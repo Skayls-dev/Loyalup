@@ -79,9 +79,10 @@ Deno.serve(async (req: Request) => {
     refresh_token?: string
     expires_in?: number
     token_type: string
+    scope?: string
   }
 
-  const { access_token, refresh_token, expires_in } = tokenData
+  const { access_token, refresh_token, expires_in, scope } = tokenData
 
   if (!access_token) {
     return redirect({ sumup: 'error', reason: 'no_access_token' })
@@ -90,27 +91,30 @@ Deno.serve(async (req: Request) => {
   const expiresAt = new Date(Date.now() + (expires_in ?? 3600) * 1000).toISOString()
 
   // ── 3. Fetch merchant profile ────────────────────────────────────────────
+  let sumupMerchantCode: string | null = null
+  let sumupMerchantName: string | null = null
+
   const merchantRes = await fetch(SUMUP_MERCHANT_URL, {
     headers: { Authorization: `Bearer ${access_token}` },
   })
 
-  if (!merchantRes.ok) {
-    console.error('SumUp merchant fetch failed:', merchantRes.status)
-    return redirect({ sumup: 'error', reason: 'merchant_fetch_failed' })
+  if (merchantRes.ok) {
+    const merchantData = await merchantRes.json() as {
+      merchant_code?: string
+      business_name?: string
+      company_name?: string
+    }
+
+    sumupMerchantCode = merchantData.merchant_code ?? null
+    sumupMerchantName = merchantData.business_name ?? merchantData.company_name ?? null
+  } else {
+    console.warn('SumUp merchant fetch skipped:', merchantRes.status)
   }
 
-  const merchantData = await merchantRes.json() as {
-    merchant_code?: string
-    business_name?: string
-    company_name?: string
-  }
-
-  const sumupMerchantCode = merchantData.merchant_code
-  const sumupMerchantName = merchantData.business_name ?? merchantData.company_name ?? null
-
-  if (!sumupMerchantCode) {
-    return redirect({ sumup: 'error', reason: 'no_merchant_code' })
-  }
+  const grantedScopes = scope
+    ?.split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean) ?? null
 
   // ── 4. Upsert provider_integrations ─────────────────────────────────────
   const { error: upsertError } = await admin
@@ -125,6 +129,7 @@ Deno.serve(async (req: Request) => {
         expires_at: expiresAt,
         sumup_merchant_code: sumupMerchantCode,
         sumup_merchant_name: sumupMerchantName,
+        scopes: grantedScopes,
       },
       { onConflict: 'fournisseur_id,provider' },
     )
