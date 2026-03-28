@@ -56,7 +56,7 @@ function normalizeSandboxError(message: string): string {
   return message
 }
 
-async function getAccessTokenOrThrow(): Promise<string> {
+async function getAccessTokenOrThrow(forceRefresh = false): Promise<string> {
   const isTokenAboutToExpire = (token: string, bufferSeconds = 60): boolean => {
     try {
       const payload = JSON.parse(atob(token.split('.')[1])) as { exp?: number }
@@ -67,12 +67,25 @@ async function getAccessTokenOrThrow(): Promise<string> {
     }
   }
 
-  const { data: refreshed } = await supabase.auth.refreshSession()
-  if (refreshed.session?.access_token) return refreshed.session.access_token
+  const isLikelyJwt = (token: string): boolean => /^[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+\.[A-Za-z0-9-_]+$/.test(token)
+
+  if (forceRefresh) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    const refreshedToken = refreshed.session?.access_token
+    if (refreshedToken && isLikelyJwt(refreshedToken) && !isTokenAboutToExpire(refreshedToken)) {
+      return refreshedToken
+    }
+  }
 
   const { data: sessionData } = await supabase.auth.getSession()
-  const token = sessionData.session?.access_token
-  if (!token || isTokenAboutToExpire(token)) {
+  const cachedToken = sessionData.session?.access_token
+  if (cachedToken && isLikelyJwt(cachedToken) && !isTokenAboutToExpire(cachedToken)) {
+    return cachedToken
+  }
+
+  const { data: refreshed } = await supabase.auth.refreshSession()
+  const token = refreshed.session?.access_token
+  if (!token || !isLikelyJwt(token) || isTokenAboutToExpire(token)) {
     throw new Error('Session expirée, veuillez vous reconnecter')
   }
 
@@ -164,12 +177,12 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
   const runSimulation = async () => {
     setIsSubmitting(true)
     try {
-      const token = await getAccessTokenOrThrow()
-      const response = await fetch(`${config.supabaseUrl}/functions/v1/sumup-sandbox-simulate`, {
+      const callSimulation = async (token: string) => fetch(`${config.supabaseUrl}/functions/v1/sumup-sandbox-simulate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
+          authorization: `Bearer ${token}`,
           apikey: config.supabaseAnonKey,
         },
         body: JSON.stringify({
@@ -181,7 +194,22 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
         }),
       })
 
-      const payload = await response.json().catch(() => ({})) as SimulationResult
+      let token = await getAccessTokenOrThrow(false)
+      let response = await callSimulation(token)
+      let payload = await response.json().catch(() => ({})) as SimulationResult
+
+      const authError = `${payload.error ?? payload.message ?? ''}`
+      const shouldRetryAuth = response.status === 401 && (
+        authError.includes('Missing authorization header')
+        || authError.includes('Invalid JWT')
+        || authError.includes('Unauthorized')
+      )
+
+      if (shouldRetryAuth) {
+        token = await getAccessTokenOrThrow(true)
+        response = await callSimulation(token)
+        payload = await response.json().catch(() => ({})) as SimulationResult
+      }
 
       if (!response.ok) {
         throw new Error(payload.error ?? payload.message ?? `Erreur ${response.status}`)
