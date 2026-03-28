@@ -191,6 +191,7 @@ export function SumUpSandboxSimulatorCard({ userId }: Props) {
           merchant_code: merchantCode.trim() || undefined,
           history_limit: Number(historyLimit) || 10,
           history_only: historyOnly,
+          access_token: token,
         }),
       })
 

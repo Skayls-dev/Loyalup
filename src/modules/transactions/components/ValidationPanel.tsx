@@ -217,7 +217,11 @@ export function ValidationPanel({
             authorization: `Bearer ${token}`,
             apikey: config.supabaseAnonKey,
           },
-          body: JSON.stringify({ pending_transaction_id: pendingTransaction.id, limit: sumUpFetchLimit }),
+          body: JSON.stringify({
+            pending_transaction_id: pendingTransaction.id,
+            limit: sumUpFetchLimit,
+            access_token: token,
+          }),
         })
 
         let token = await getAccessTokenOrThrow(false)

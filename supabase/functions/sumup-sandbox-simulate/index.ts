@@ -113,8 +113,25 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Server misconfiguration' }, 500)
   }
 
+  let body: {
+    amount?: number
+    currency?: string
+    merchant_code?: string
+    history_limit?: number
+    history_only?: boolean
+    access_token?: string
+  }
+
+  try {
+    body = await req.json()
+  } catch {
+    body = {}
+  }
+
   const authHeader = req.headers.get('Authorization')
+    ?? req.headers.get('authorization')
   const userToken = authHeader?.replace(/^Bearer\s+/i, '')
+    ?? body.access_token
   if (!userToken) return json({ error: 'Missing Authorization header' }, 401)
 
   const authClient = createClient(supabaseUrl, anonKey)
@@ -131,20 +148,6 @@ Deno.serve(async (req: Request) => {
 
   if (!fournisseur?.id) {
     return json({ error: 'No merchant account found' }, 404)
-  }
-
-  let body: {
-    amount?: number
-    currency?: string
-    merchant_code?: string
-    history_limit?: number
-    history_only?: boolean
-  }
-
-  try {
-    body = await req.json()
-  } catch {
-    body = {}
   }
 
   const { data: integration } = await admin

@@ -51,8 +51,18 @@ Deno.serve(async (req: Request) => {
     return json({ error: 'Server misconfiguration' }, 500)
   }
 
+  let body: { limit?: number; access_token?: string }
+
+  try {
+    body = await req.json()
+  } catch {
+    body = {}
+  }
+
   const authHeader = req.headers.get('Authorization')
+    ?? req.headers.get('authorization')
   const userToken = authHeader?.replace(/^Bearer\s+/i, '')
+    ?? body.access_token
   if (!userToken) return json({ error: 'Missing Authorization header' }, 401)
 
   const authClient = createClient(supabaseUrl, anonKey)
@@ -60,13 +70,6 @@ Deno.serve(async (req: Request) => {
   if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
   const admin = createClient(supabaseUrl, serviceRoleKey)
-  let body: { limit?: number }
-
-  try {
-    body = await req.json()
-  } catch {
-    body = {}
-  }
 
   const requestedLimit = Number(body.limit ?? DEFAULT_LIMIT)
   const limit = Number.isFinite(requestedLimit)

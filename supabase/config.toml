@@ -91,6 +91,12 @@ verify_jwt = false
 [functions.api-v1-sandbox]
 verify_jwt = false
 
+[functions.sumup-sandbox-simulate]
+verify_jwt = false
+
+[functions.sumup-recent-transactions]
+verify_jwt = false
+
 [api]
 enabled = true
 # Port to use for the API URL.
