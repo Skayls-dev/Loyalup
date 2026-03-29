@@ -135,14 +135,42 @@ export function ValidationPanel({
   const [selectedProductServiceIds, setSelectedProductServiceIds] = useState<string[]>([])
   const [productLinkingLabel, setProductLinkingLabel] = useState('')
   const [paymentChannel, setPaymentChannel] = useState<'sumup' | 'manual'>('manual')
+  const [manualServiceSearch, setManualServiceSearch] = useState('')
+  const [productServiceSearch, setProductServiceSearch] = useState('')
+  const [showAllProductServices, setShowAllProductServices] = useState(false)
+
+  const filteredManualServices = useMemo(() => {
+    const query = manualServiceSearch.trim().toLowerCase()
+    if (!query) return services
+    return services.filter((service) => service.nom.toLowerCase().includes(query))
+  }, [manualServiceSearch, services])
+
+  const linkableServices = useMemo(
+    () => services.filter((service) => service.prix_defaut && service.prix_defaut > 0),
+    [services],
+  )
+
+  const filteredLinkableServices = useMemo(() => {
+    const query = productServiceSearch.trim().toLowerCase()
+    if (!query) return linkableServices
+    return linkableServices.filter((service) => service.nom.toLowerCase().includes(query))
+  }, [productServiceSearch, linkableServices])
 
   const visibleServices = useMemo(() => {
     if (showAllServices) {
-      return services
+      return filteredManualServices
     }
 
-    return services.slice(0, 3)
-  }, [services, showAllServices])
+    return filteredManualServices.slice(0, 3)
+  }, [filteredManualServices, showAllServices])
+
+  const visibleProductServices = useMemo(() => {
+    if (showAllProductServices) {
+      return filteredLinkableServices
+    }
+
+    return filteredLinkableServices.slice(0, 8)
+  }, [filteredLinkableServices, showAllProductServices])
 
   // Auto-select first non-custom service when services load
   useEffect(() => {
@@ -153,12 +181,13 @@ export function ValidationPanel({
 
   // Ensure selected service remains visible in collapsed mode
   useEffect(() => {
+    if (manualServiceSearch.trim()) return
     if (!selectedService || showAllServices) return
-    const isVisible = services.slice(0, 3).some((service) => service.id === selectedService.id)
+    const isVisible = filteredManualServices.slice(0, 3).some((service) => service.id === selectedService.id)
     if (!isVisible) {
       setShowAllServices(true)
     }
-  }, [selectedService, services, showAllServices])
+  }, [selectedService, filteredManualServices, manualServiceSearch, showAllServices])
 
 
   useEffect(() => {
@@ -619,6 +648,8 @@ export function ValidationPanel({
                         onClick={() => {
                           setProductLinkingMode('catalog')
                           setSelectedProductServiceIds([])
+                          setProductServiceSearch('')
+                          setShowAllProductServices(false)
                         }}
                         className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${
                           productLinkingMode === 'catalog'
@@ -648,14 +679,34 @@ export function ValidationPanel({
                     {productLinkingMode === 'catalog' ? (
                       <div className="space-y-2">
                         <p className="text-xs text-zinc-400">Sélectionnez des services pour atteindre exactement {selectedSumUpTotal.toFixed(2)} EUR</p>
-                        {services.filter((s) => s.prix_defaut && s.prix_defaut > 0).length === 0 ? (
+                        {linkableServices.length === 0 ? (
                           <p className="text-xs text-zinc-500">Aucun service avec prix disponible. Utilisez le texte libre.</p>
                         ) : (
                           <>
-                            <div className="space-y-1.5">
-                              {services
-                                .filter((s) => s.prix_defaut && s.prix_defaut > 0)
-                                .map((service) => (
+                            {linkableServices.length > 8 ? (
+                              <div>
+                                <label htmlFor="product-service-search" className="mb-1 block text-[11px] uppercase tracking-[0.08em] text-zinc-500">
+                                  Rechercher un service
+                                </label>
+                                <input
+                                  id="product-service-search"
+                                  type="text"
+                                  value={productServiceSearch}
+                                  onChange={(event) => {
+                                    setProductServiceSearch(event.target.value)
+                                    setShowAllProductServices(false)
+                                  }}
+                                  placeholder="Nom du service"
+                                  className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 outline-none transition focus:border-amber-400"
+                                />
+                              </div>
+                            ) : null}
+                            {filteredLinkableServices.length === 0 ? (
+                              <p className="text-xs text-zinc-500">Aucun service ne correspond à la recherche.</p>
+                            ) : (
+                              <>
+                                <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                                  {visibleProductServices.map((service) => (
                                   <label
                                     key={service.id}
                                     className="flex items-center gap-2 rounded-lg border border-amber-600/30 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-200 cursor-pointer hover:bg-amber-500/15 transition"
@@ -675,8 +726,21 @@ export function ValidationPanel({
                                     <span>{service.emoji ?? '•'} {service.nom}</span>
                                     <span className="ml-auto font-semibold">{(service.prix_defaut ?? 0).toFixed(2)} EUR</span>
                                   </label>
-                                ))}
-                            </div>
+                                  ))}
+                                </div>
+                                {filteredLinkableServices.length > 8 ? (
+                                  <div className="mt-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => setShowAllProductServices((prev) => !prev)}
+                                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
+                                    >
+                                      {showAllProductServices ? 'Réduire la liste' : `Afficher tout (${filteredLinkableServices.length})`}
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </>
+                            )}
                             <div className="mt-2 rounded-lg bg-zinc-900 p-2">
                               <div className="flex items-center justify-between mb-1">
                                 <span className="text-[11px] text-zinc-500">Total:</span>
@@ -725,31 +789,51 @@ export function ValidationPanel({
                         <div className="flex min-h-32 items-center justify-center">
                           <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
                         </div>
-                      ) : services.length > 0 ? (
+                      ) : filteredManualServices.length > 0 ? (
                         <>
+                          {services.length > 8 ? (
+                            <div>
+                              <label htmlFor="manual-service-search" className="mb-1 block text-[11px] uppercase tracking-[0.08em] text-zinc-500">
+                                Rechercher un service
+                              </label>
+                              <input
+                                id="manual-service-search"
+                                type="text"
+                                value={manualServiceSearch}
+                                onChange={(event) => {
+                                  setManualServiceSearch(event.target.value)
+                                  setShowAllServices(false)
+                                }}
+                                placeholder="Nom du service"
+                                className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 outline-none transition focus:border-teal-400"
+                              />
+                            </div>
+                          ) : null}
                           <ServiceSelector
                             services={visibleServices}
                             selectedService={selectedService}
                             onSelect={selectService}
-                            density={services.length >= 6 ? 'dense' : ('normal' as const)}
+                            density={filteredManualServices.length >= 6 ? 'dense' : ('normal' as const)}
                           />
-                          {services.length > 2 ? (
+                          {filteredManualServices.length > 2 ? (
                             <p className="mt-2 text-xs text-zinc-500">Faites glisser horizontalement pour voir les autres services.</p>
                           ) : null}
-                          {services.length > 3 ? (
+                          {filteredManualServices.length > 3 ? (
                             <div className="mt-2">
                               <button
                                 type="button"
                                 onClick={() => setShowAllServices((prev) => !prev)}
                                 className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
                               >
-                                {showAllServices ? 'Réduire la liste' : `Afficher tout (${services.length})`}
+                                {showAllServices ? 'Réduire la liste' : `Afficher tout (${filteredManualServices.length})`}
                               </button>
                             </div>
                           ) : null}
                         </>
                       ) : (
-                        <p className="py-4 text-center text-sm text-zinc-400">Aucun service configuré. Utilisez le montant libre.</p>
+                        <p className="py-4 text-center text-sm text-zinc-400">
+                          {services.length > 0 ? 'Aucun service ne correspond à la recherche.' : 'Aucun service configuré. Utilisez le montant libre.'}
+                        </p>
                       )
                     ) : (
                       <div>
