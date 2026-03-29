@@ -23,6 +23,8 @@ type UseValidationResult = {
       freeAmountLabel?: string
       sumupTransactionIds?: string[]
       sumupTransactionCodes?: string[]
+      service_ids?: string[]
+      product_label?: string
     },
   ) => Promise<CreditPointsResponse>
   cancel: (pending_transaction_id: string) => Promise<void>
@@ -89,6 +91,8 @@ export function useValidation(): UseValidationResult {
       freeAmountLabel?: string
       sumupTransactionIds?: string[]
       sumupTransactionCodes?: string[]
+      service_ids?: string[]
+      product_label?: string
     },
   ): Promise<CreditPointsResponse> => {
     const value = Number.parseFloat(montant)
@@ -108,6 +112,8 @@ export function useValidation(): UseValidationResult {
         montant: value,
         sumup_transaction_ids: options?.sumupTransactionIds,
         sumup_transaction_codes: options?.sumupTransactionCodes,
+        service_ids: options?.service_ids,
+        product_label: options?.product_label,
       })
 
       setIsSuccess(true)

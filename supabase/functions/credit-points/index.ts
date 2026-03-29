@@ -13,6 +13,8 @@ type CreditPointsRequest = {
   access_token?: string
   sumup_transaction_ids?: string[] | null
   sumup_transaction_codes?: string[] | null
+  service_ids?: string[] | null
+  product_label?: string | null
 }
 
 type ComputeNetworkBonusRow = {
@@ -213,6 +215,27 @@ Deno.serve(async (req) => {
 
       if (sumupLinkError) {
         return new Response(JSON.stringify({ error: sumupLinkError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
+
+    // Persist service linking (catalog services or free-text product label)
+    const serviceIds = normalizeStringArray(payload.service_ids)
+    const productLabel = typeof payload.product_label === 'string' ? payload.product_label.trim() : null
+
+    if (serviceIds.length > 0 || productLabel) {
+      const { error: serviceLinkError } = await adminClient
+        .from('transactions')
+        .update({
+          service_ids: serviceIds.length > 0 ? serviceIds : null,
+          product_label: productLabel,
+        })
+        .eq('id', result.transaction_id)
+
+      if (serviceLinkError) {
+        return new Response(JSON.stringify({ error: serviceLinkError.message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })

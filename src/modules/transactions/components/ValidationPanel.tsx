@@ -131,6 +131,9 @@ export function ValidationPanel({
   })
   const [sumUpRecentTransactions, setSumUpRecentTransactions] = useState<SumUpRecentTransaction[]>([])
   const [selectedSumUpTransactionKeys, setSelectedSumUpTransactionKeys] = useState<string[]>([])
+  const [productLinkingMode, setProductLinkingMode] = useState<'catalog' | 'free-text'>('catalog')
+  const [selectedProductServiceIds, setSelectedProductServiceIds] = useState<string[]>([])
+  const [productLinkingLabel, setProductLinkingLabel] = useState('')
 
   const visibleServices = useMemo(() => {
     if (showAllServices) {
@@ -315,6 +318,39 @@ export function ValidationPanel({
     return Number(total.toFixed(2))
   }, [sumUpConnected, selectedSumUpTransactionKeys, sumUpRecentTransactions])
 
+  const selectedProductServicesTotal = useMemo(() => {
+    if (productLinkingMode !== 'catalog' || selectedProductServiceIds.length === 0) return 0
+
+    let total = 0
+    selectedProductServiceIds.forEach((serviceId) => {
+      const service = services.find((s) => s.id === serviceId)
+      if (service?.prix_defaut && typeof service.prix_defaut === 'number' && service.prix_defaut > 0) {
+        total += service.prix_defaut
+      }
+    })
+
+    return Number(total.toFixed(2))
+  }, [productLinkingMode, selectedProductServiceIds, services])
+
+  const productLinkingValidation = useMemo(() => {
+    if (selectedSumUpTotal <= 0) return null
+
+    if (productLinkingMode === 'catalog') {
+      return {
+        isValid: selectedProductServicesTotal === selectedSumUpTotal,
+        total: selectedProductServicesTotal,
+        target: selectedSumUpTotal,
+      }
+    }
+
+    // Free-text mode: always valid if a label exists
+    return {
+      isValid: Boolean(productLinkingLabel.trim()),
+      total: selectedSumUpTotal,
+      target: selectedSumUpTotal,
+    }
+  }, [productLinkingMode, selectedProductServicesTotal, productLinkingLabel, selectedSumUpTotal])
+
   useEffect(() => {
     if (!sumUpConnected || selectedSumUpTotal <= 0) return
     setMontant(selectedSumUpTotal.toFixed(2))
@@ -384,6 +420,8 @@ export function ValidationPanel({
         freeAmountLabel: freeLabel,
         sumupTransactionIds,
         sumupTransactionCodes,
+        service_ids: selectedProductServiceIds.length > 0 ? selectedProductServiceIds : undefined,
+        product_label: productLinkingLabel.trim() || undefined,
       })
       const amount = Number.parseFloat(montant || '0')
 
@@ -538,6 +576,121 @@ export function ValidationPanel({
                   )}
                 </div>
 
+                {/* Product Linking Section (appears when SumUp transactions are selected) */}
+                {sumUpConnected && selectedSumUpTotal > 0 ? (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                      <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Liaison produits</p>
+                      <span className="rounded-full border border-amber-600/40 bg-amber-500/10 px-2 py-0.5 text-[11px] text-amber-300">
+                        {selectedSumUpTotal.toFixed(2)} EUR à justifier
+                      </span>
+                    </div>
+
+                    {/* Mode Toggle */}
+                    <div className="flex gap-2 mb-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductLinkingMode('catalog')
+                          setSelectedProductServiceIds([])
+                        }}
+                        className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${
+                          productLinkingMode === 'catalog'
+                            ? 'border-amber-500 bg-amber-500/15 text-amber-200'
+                            : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
+                        }`}
+                      >
+                        📦 Catalogue
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductLinkingMode('free-text')
+                          setProductLinkingLabel('')
+                        }}
+                        className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${
+                          productLinkingMode === 'free-text'
+                            ? 'border-amber-500 bg-amber-500/15 text-amber-200'
+                            : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
+                        }`}
+                      >
+                        📝 Texte libre
+                      </button>
+                    </div>
+
+                    {/* Catalog Mode */}
+                    {productLinkingMode === 'catalog' ? (
+                      <div className="space-y-2">
+                        <p className="text-xs text-zinc-400">Sélectionnez des services pour atteindre exactement {selectedSumUpTotal.toFixed(2)} EUR</p>
+                        {services.filter((s) => s.prix_defaut && s.prix_defaut > 0).length === 0 ? (
+                          <p className="text-xs text-zinc-500">Aucun service avec prix disponible. Utilisez le texte libre.</p>
+                        ) : (
+                          <>
+                            <div className="space-y-1.5">
+                              {services
+                                .filter((s) => s.prix_defaut && s.prix_defaut > 0)
+                                .map((service) => (
+                                  <label
+                                    key={service.id}
+                                    className="flex items-center gap-2 rounded-lg border border-amber-600/30 bg-amber-500/10 px-2.5 py-2 text-xs text-amber-200 cursor-pointer hover:bg-amber-500/15 transition"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedProductServiceIds.includes(service.id)}
+                                      onChange={(e) => {
+                                        if (e.target.checked) {
+                                          setSelectedProductServiceIds((prev) => [...prev, service.id])
+                                        } else {
+                                          setSelectedProductServiceIds((prev) => prev.filter((id) => id !== service.id))
+                                        }
+                                      }}
+                                      className="h-4 w-4 rounded border-amber-600 bg-zinc-900"
+                                    />
+                                    <span>{service.emoji ?? '•'} {service.nom}</span>
+                                    <span className="ml-auto font-semibold">{(service.prix_defaut ?? 0).toFixed(2)} EUR</span>
+                                  </label>
+                                ))}
+                            </div>
+                            <div className="mt-2 rounded-lg bg-zinc-900 p-2">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[11px] text-zinc-500">Total:</span>
+                                <span className={`text-sm font-semibold ${productLinkingValidation?.isValid ? 'text-emerald-400' : 'text-amber-400'}`}>
+                                  {selectedProductServicesTotal.toFixed(2)} / {selectedSumUpTotal.toFixed(2)} EUR
+                                </span>
+                              </div>
+                              <div className="w-full bg-zinc-800 rounded-full h-2">
+                                <div
+                                  className={`h-full rounded-full transition-all ${productLinkingValidation?.isValid ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                                  style={{
+                                    width: `${Math.min(100, (selectedProductServicesTotal / selectedSumUpTotal) * 100)}%`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <label htmlFor="product-label" className="block text-xs text-zinc-400">
+                          Libellé du service/produit
+                        </label>
+                        <input
+                          id="product-label"
+                          type="text"
+                          value={productLinkingLabel}
+                          onChange={(e) => setProductLinkingLabel(e.target.value)}
+                          placeholder="Ex: Achat en boutique, Service réparation..."
+                          className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-100 outline-none transition focus:border-amber-400"
+                        />
+                        <div className="rounded-lg bg-zinc-950 px-3 py-2 text-xs text-zinc-400">
+                          Montant: <span className="font-semibold text-zinc-100">{selectedSumUpTotal.toFixed(2)} EUR</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+
                 {validationMode === 'service' ? (
                   servicesLoading ? (
                     <div className="flex min-h-32 items-center justify-center">
@@ -643,7 +796,8 @@ export function ValidationPanel({
         <button
           type="button"
           onClick={handleValidate}
-          disabled={!canValidate || isSubmitting || (validationMode === 'service' && servicesLoading)}
+          disabled={!canValidate || isSubmitting || (validationMode === 'service' && servicesLoading) || (selectedSumUpTotal > 0 && !productLinkingValidation?.isValid)}
+          title={selectedSumUpTotal > 0 && !productLinkingValidation?.isValid ? 'Complétez la liaison produits' : undefined}
           className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           ✓ Valider
