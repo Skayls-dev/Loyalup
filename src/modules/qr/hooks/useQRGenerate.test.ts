@@ -97,4 +97,29 @@ describe('useQRGenerate', () => {
     expect(result.current.token).toBe('QR-RECOVERY')
     expect(result.current.warning).toBeNull()
   })
+
+  it('clears stale token on online regeneration failure', async () => {
+    generateTokenMock
+      .mockResolvedValueOnce({
+        token: 'QR-INITIAL',
+        expires_at: new Date(Date.now() + 180_000).toISOString(),
+      })
+      .mockRejectedValueOnce(new Error('Backend unavailable'))
+
+    const { result } = renderHook(() => useQRGenerate())
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(result.current.token).toBe('QR-INITIAL')
+
+    await act(async () => {
+      vi.advanceTimersByTime(170_000)
+      await Promise.resolve()
+    })
+
+    expect(result.current.token).toBeNull()
+    expect(result.current.warning).toBe('Backend unavailable')
+  })
 })

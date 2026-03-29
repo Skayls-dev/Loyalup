@@ -129,6 +129,12 @@ export function useQRGenerate(options: UseQRGenerateOptions = {}): UseQRGenerate
         }
       }
 
+      // Never keep showing a potentially consumed QR token after an online refresh failure.
+      setToken(null)
+      setManualCode(null)
+      setExpiresAt(null)
+      setSecondsLeft(0)
+
       setWarning(message)
 
       if (autoRetryRef.current && navigator.onLine) {
