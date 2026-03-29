@@ -29,6 +29,8 @@ type AdminAction =
   | 'LIST_SCAN_ADS'
   | 'UPSERT_SCAN_AD'
   | 'DELETE_SCAN_AD'
+  | 'LIST_SYSTEM_SECRETS'
+  | 'SET_SYSTEM_SECRET'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -36,6 +38,15 @@ const corsHeaders = {
 }
 
 const LOYALUP_PROD_BASE_URL = 'https://looyaal.com'
+const SUPABASE_MANAGEMENT_API_BASE = 'https://api.supabase.com/v1'
+const MANAGED_SECRET_NAMES = [
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'SUMUP_CLIENT_ID',
+  'SUMUP_CLIENT_SECRET',
+  'SUMUP_REDIRECT_URI',
+  'SUMUP_OAUTH_SCOPES',
+  'SUMUP_SANDBOX_API_KEY',
+] as const
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -88,6 +99,11 @@ Deno.serve(async (req) => {
     metadataRole === 'super_admin' ||
     metadataSuperAdmin
 
+  const isSuperAdminActor =
+    profile?.role === 'super_admin' ||
+    metadataRole === 'super_admin' ||
+    metadataSuperAdmin
+
   if (profileError || !isAdminActor) {
     return json({ error: 'Forbidden' }, 403)
   }
@@ -100,6 +116,10 @@ Deno.serve(async (req) => {
   }
 
   const action = String(body.action ?? '') as AdminAction
+
+  if ((action === 'LIST_SYSTEM_SECRETS' || action === 'SET_SYSTEM_SECRET') && !isSuperAdminActor) {
+    return json({ error: 'Forbidden: super_admin required' }, 403)
+  }
 
   if (action === 'GET_OVERVIEW') {
     const [
@@ -1722,8 +1742,103 @@ Deno.serve(async (req) => {
     return json({ success: true, id: adId })
   }
 
+  if (action === 'LIST_SYSTEM_SECRETS') {
+    const managementToken = Deno.env.get('SUPABASE_MANAGEMENT_API_TOKEN')
+    const projectRef = Deno.env.get('SUPABASE_PROJECT_REF') ?? resolveProjectRef(supabaseUrl)
+
+    if (!managementToken || !projectRef) {
+      return json({ error: 'Missing SUPABASE_MANAGEMENT_API_TOKEN or project ref' }, 500)
+    }
+
+    const response = await fetch(`${SUPABASE_MANAGEMENT_API_BASE}/projects/${projectRef}/secrets`, {
+      headers: {
+        Authorization: `Bearer ${managementToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      return json({ error: `Failed to list secrets (${response.status})`, detail }, 500)
+    }
+
+    const payload = await response.json() as Array<{ name?: string; updated_at?: string | null }> | { secrets?: Array<{ name?: string; updated_at?: string | null }> }
+    const rows = Array.isArray(payload) ? payload : (payload.secrets ?? [])
+
+    const byName = new Map<string, { updated_at: string | null }>()
+    for (const row of rows) {
+      const name = String(row?.name ?? '').trim()
+      if (!name) continue
+      byName.set(name, { updated_at: row?.updated_at ?? null })
+    }
+
+    const secrets = MANAGED_SECRET_NAMES.map((name) => {
+      const hit = byName.get(name)
+      return {
+        name,
+        is_set: Boolean(hit),
+        updated_at: hit?.updated_at ?? null,
+      }
+    })
+
+    return json({ success: true, secrets })
+  }
+
+  if (action === 'SET_SYSTEM_SECRET') {
+    const managementToken = Deno.env.get('SUPABASE_MANAGEMENT_API_TOKEN')
+    const projectRef = Deno.env.get('SUPABASE_PROJECT_REF') ?? resolveProjectRef(supabaseUrl)
+
+    if (!managementToken || !projectRef) {
+      return json({ error: 'Missing SUPABASE_MANAGEMENT_API_TOKEN or project ref' }, 500)
+    }
+
+    const name = String(body.name ?? '').trim()
+    const value = String(body.value ?? '')
+
+    if (!name || !MANAGED_SECRET_NAMES.includes(name as (typeof MANAGED_SECRET_NAMES)[number])) {
+      return json({ error: 'Secret name is not allowed' }, 400)
+    }
+
+    if (!value.trim()) {
+      return json({ error: 'Secret value cannot be empty' }, 400)
+    }
+
+    const response = await fetch(`${SUPABASE_MANAGEMENT_API_BASE}/projects/${projectRef}/secrets`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${managementToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify([{ name, value }]),
+    })
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      return json({ error: `Failed to update secret (${response.status})`, detail }, 500)
+    }
+
+    await writeAuditLog(admin, {
+      adminUserId,
+      action: 'SET_SYSTEM_SECRET',
+      success: true,
+      metadata: { secret_name: name },
+    })
+
+    return json({ success: true, name })
+  }
+
   return json({ error: 'Unsupported action' }, 400)
 })
+
+function resolveProjectRef(supabaseUrl: string): string | null {
+  try {
+    const hostname = new URL(supabaseUrl).hostname
+    const firstSegment = hostname.split('.')[0]?.trim()
+    return firstSegment || null
+  } catch {
+    return null
+  }
+}
 
 async function signPayload(secret: string, message: string) {
   const encoder = new TextEncoder()

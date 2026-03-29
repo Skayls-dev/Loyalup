@@ -129,6 +129,12 @@ export type PartnerAccessRequestRow = {
   partner_name: string
 }
 
+export type SystemSecretItem = {
+  name: string
+  is_set: boolean
+  updated_at: string | null
+}
+
 export type AdminRelatedProviderRow = {
   fournisseur_id: string
   provider_user_id: string | null
@@ -396,6 +402,19 @@ export async function reviewPartnerAccessRequest(payload: {
   return invoke<{ reviewed: boolean }>({
     action: 'REVIEW_PARTNER_ACCESS_REQUEST',
     ...payload,
+  })
+}
+
+export async function listSystemSecrets() {
+  const data = await invoke<{ secrets: SystemSecretItem[] }>({ action: 'LIST_SYSTEM_SECRETS' })
+  return data.secrets ?? []
+}
+
+export async function setSystemSecret(name: string, value: string) {
+  return invoke<{ success: true; name: string }>({
+    action: 'SET_SYSTEM_SECRET',
+    name,
+    value,
   })
 }
 

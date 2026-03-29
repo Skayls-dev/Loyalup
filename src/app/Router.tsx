@@ -32,6 +32,9 @@ const NetworkCreatePage = lazy(() =>
 const NetworkConfigPage = lazy(() =>
   import('../pages/admin/NetworkConfigPage').then((module) => ({ default: module.default })),
 )
+const AdminSecretsPage = lazy(() =>
+  import('../pages/admin/AdminSecretsPage').then((module) => ({ default: module.default })),
+)
 const AdminLayout = lazy(() =>
   import('../views/admin/AdminLayout').then((module) => ({ default: module.AdminLayout })),
 )
@@ -857,6 +860,7 @@ export function Router() {
             <Route path="/admin/networks" element={<NetworksListPage />} />
             <Route path="/admin/networks/new" element={<NetworkCreatePage />} />
             <Route path="/admin/networks/:id" element={<NetworkConfigPage />} />
+            <Route path="/admin/secrets" element={<AdminSecretsPage />} />
           </Route>
         </Route>
 

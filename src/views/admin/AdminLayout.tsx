@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, LayoutGrid, LogOut, Network } from 'lucide-react'
+import { ChevronLeft, ChevronRight, KeyRound, LayoutGrid, LogOut, Network } from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
@@ -9,6 +9,7 @@ type NavItem = { to: string; label: string; icon: typeof LayoutGrid; exact?: boo
 const adminMainMenu: NavItem[] = [
   { to: '/admin', label: 'Vue d\'ensemble', icon: LayoutGrid, exact: true },
   { to: '/admin/networks', label: 'Réseaux', icon: Network },
+  { to: '/admin/secrets', label: 'Secrets', icon: KeyRound },
 ]
 
 export function AdminLayout() {
@@ -123,7 +124,10 @@ export function AdminLayout() {
       </main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-700 bg-slate-900/95 backdrop-blur lg:hidden" aria-label="Navigation mobile admin">
-        <div className="grid grid-cols-3 px-2 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]">
+        <div
+          className="grid px-2 py-1 pb-[max(0.25rem,env(safe-area-inset-bottom))]"
+          style={{ gridTemplateColumns: `repeat(${adminMainMenu.length + 1}, minmax(0, 1fr))` }}
+        >
           {adminMainMenu.map((item) => {
             const Icon = item.icon
             const isActive = item.exact
