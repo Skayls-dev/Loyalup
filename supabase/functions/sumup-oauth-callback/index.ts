@@ -150,9 +150,14 @@ Deno.serve(async (req: Request) => {
     .maybeSingle<{ sumup_sandbox_merchant_code?: string | null }>()
 
   const sandboxMerchantCode = existingIntegration?.sumup_sandbox_merchant_code?.trim() ?? null
+  let sandboxAccountDetected = false
   if (sandboxMerchantCode && sumupMerchantCode && sandboxMerchantCode === sumupMerchantCode) {
-    await admin.from('oauth_states').delete().eq('state', state)
-    return redirect({ sumup: 'error', reason: 'sandbox_account_detected' })
+    sandboxAccountDetected = true
+    console.warn('SumUp OAuth warning: sandbox merchant code detected during production connect attempt', {
+      fournisseurId,
+      sumupMerchantCode,
+      sandboxMerchantCode,
+    })
   }
 
   // ── 4. Upsert provider_integrations ─────────────────────────────────────
@@ -182,5 +187,9 @@ Deno.serve(async (req: Request) => {
   await admin.from('oauth_states').delete().eq('state', state)
 
   // ── 6. Redirect to success ───────────────────────────────────────────────
-  return redirect({ sumup: 'connected' })
+  return redirect(
+    sandboxAccountDetected
+      ? { sumup: 'connected', sumup_warning: 'sandbox_account_detected' }
+      : { sumup: 'connected' },
+  )
 })

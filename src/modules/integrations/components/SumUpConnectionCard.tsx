@@ -36,12 +36,16 @@ export function SumUpConnectionCard({ userId }: Props) {
   useEffect(() => {
     if (handledRef.current) return
     const sumupParam = searchParams.get('sumup')
+    const sumupWarning = searchParams.get('sumup_warning')
     if (!sumupParam) return
 
     handledRef.current = true
 
     if (sumupParam === 'connected') {
       showToast('SumUp connecté avec succès !', 'success')
+      if (sumupWarning === 'sandbox_account_detected') {
+        showToast('Attention: ce compte semble sandbox. Vérifiez le compte SumUp actif.', 'info')
+      }
       void queryClient.invalidateQueries({ queryKey: ['sumup-connection', userId] })
     } else if (sumupParam === 'error') {
       const reason = searchParams.get('reason') ?? 'unknown'
@@ -59,6 +63,7 @@ export function SumUpConnectionCard({ userId }: Props) {
     // Clean query params without navigating
     const next = new URLSearchParams(searchParams)
     next.delete('sumup')
+    next.delete('sumup_warning')
     next.delete('reason')
     setSearchParams(next, { replace: true })
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
