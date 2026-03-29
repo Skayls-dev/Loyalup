@@ -134,6 +134,7 @@ export function ValidationPanel({
   const [productLinkingMode, setProductLinkingMode] = useState<'catalog' | 'free-text'>('catalog')
   const [selectedProductServiceIds, setSelectedProductServiceIds] = useState<string[]>([])
   const [productLinkingLabel, setProductLinkingLabel] = useState('')
+  const [paymentChannel, setPaymentChannel] = useState<'sumup' | 'manual'>('manual')
 
   const visibleServices = useMemo(() => {
     if (showAllServices) {
@@ -352,11 +353,18 @@ export function ValidationPanel({
   }, [productLinkingMode, selectedProductServicesTotal, productLinkingLabel, selectedSumUpTotal])
 
   useEffect(() => {
-    if (!sumUpConnected || selectedSumUpTotal <= 0) return
+    if (paymentChannel !== 'sumup' || !sumUpConnected || selectedSumUpTotal <= 0) return
     setMontant(selectedSumUpTotal.toFixed(2))
     // The setters come from a custom hook and are intentionally omitted to prevent rerun loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sumUpConnected, selectedSumUpTotal])
+  }, [paymentChannel, sumUpConnected, selectedSumUpTotal])
+
+  // Auto-switch to SumUp channel when SumUp is detected as connected
+  useEffect(() => {
+    if (!isSumUpLoading && sumUpConnected) {
+      setPaymentChannel('sumup')
+    }
+  }, [isSumUpLoading, sumUpConnected])
 
   const [successData, setSuccessData] = useState<{
     serviceName: string
@@ -406,9 +414,10 @@ export function ValidationPanel({
   const handleValidate = async () => {
     try {
       const freeLabel = validationMode === 'amount' ? customServiceName.trim() || undefined : undefined
-      const selectedItems = sumUpRecentTransactions.filter((item, index) => (
+      const isSumUpChannel = paymentChannel === 'sumup'
+      const selectedItems = isSumUpChannel ? sumUpRecentTransactions.filter((item, index) => (
         selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))
-      ))
+      )) : []
       const sumupTransactionIds = selectedItems
         .map((item) => item.id)
         .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
@@ -420,8 +429,8 @@ export function ValidationPanel({
         freeAmountLabel: freeLabel,
         sumupTransactionIds,
         sumupTransactionCodes,
-        service_ids: selectedProductServiceIds.length > 0 ? selectedProductServiceIds : undefined,
-        product_label: productLinkingLabel.trim() || undefined,
+        service_ids: isSumUpChannel && selectedProductServiceIds.length > 0 ? selectedProductServiceIds : undefined,
+        product_label: isSumUpChannel ? productLinkingLabel.trim() || undefined : undefined,
       })
       const amount = Number.parseFloat(montant || '0')
 
@@ -484,100 +493,117 @@ export function ValidationPanel({
           <>
             <div className="order-2 min-w-0 xl:order-3 xl:col-span-2">
               <div className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
-                <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Mode de validation</p>
+                {/* Channel toggle: SumUp vs Manual */}
+                {(isSumUpLoading || sumUpConnected) ? (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
                     {isSumUpLoading ? (
-                      <span className="text-xs text-zinc-500">Détection SumUp...</span>
-                    ) : sumUpConnected ? (
-                      <span className="rounded-full border border-indigo-600/40 bg-indigo-500/10 px-2 py-0.5 text-[11px] text-indigo-300">
-                        SumUp connecté
+                      <span className="flex items-center gap-2 text-xs text-zinc-500">
+                        <span className="h-3 w-3 animate-spin rounded-full border border-zinc-400 border-t-transparent" />
+                        Détection SumUp...
                       </span>
                     ) : (
-                      <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[11px] text-zinc-400">
-                        Flux manuel
-                      </span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentChannel('sumup') }}
+                          className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                            paymentChannel === 'sumup'
+                              ? 'border-indigo-500 bg-indigo-500/15 text-indigo-200'
+                              : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
+                          }`}
+                        >
+                          💳 Avec SumUp
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentChannel('manual') }}
+                          className={`flex-1 rounded-lg border px-3 py-2 text-xs font-medium transition ${
+                            paymentChannel === 'manual'
+                              ? 'border-zinc-500 bg-zinc-700/40 text-zinc-200'
+                              : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
+                          }`}
+                        >
+                          🔧 Manuel
+                        </button>
+                      </div>
                     )}
                   </div>
+                ) : null}
 
-                  {sumUpConnected ? (
-                    <div className="mt-2 space-y-2">
-                      <div className="flex flex-wrap items-center justify-between gap-2">
-                        <p className="text-xs text-zinc-400">
-                          Transactions SumUp récentes ({sumUpLookbackMinutes} min)
-                        </p>
-                        <label className="flex items-center gap-2 text-xs text-zinc-400">
-                          Afficher
-                          <input
-                            type="number"
-                            min={1}
-                            max={50}
-                            value={sumUpFetchLimit}
-                            onChange={(event) => {
-                              setSumUpFetchLimit(clampLimit(Number(event.target.value)))
-                            }}
-                            className="w-16 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100 outline-none focus:border-indigo-400"
-                          />
-                          transactions
-                        </label>
-                      </div>
-                      {sumUpRecentTransactions.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedSumUpTransactionKeys.length > 0 ? (
-                            <p className="text-xs text-indigo-300">
-                              {selectedSumUpTransactionKeys.length} transaction(s) sélectionnée(s) · Montant cumulé {selectedSumUpTotal.toFixed(2)} EUR
-                            </p>
-                          ) : (
-                            <p className="text-xs text-zinc-500">Sélectionnez les transactions à considérer pour le calcul des points.</p>
-                          )}
-                          {sumUpRecentTransactions.map((item, index) => (
-                            <label
-                              key={item.id ?? item.transaction_code ?? `sumup-${index}`}
-                              className="flex items-center justify-between gap-3 rounded-lg border border-indigo-600/30 bg-indigo-500/10 px-2.5 py-2 text-left text-xs text-indigo-200"
-                            >
-                              <span className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))}
-                                  onChange={(event) => {
-                                    const key = transactionSelectionKey(item, index)
-                                    setSelectedSumUpTransactionKeys((previous) => {
-                                      if (event.target.checked) {
-                                        if (previous.includes(key)) return previous
-                                        return [...previous, key]
-                                      }
+                {/* SumUp transaction list — only in SumUp channel */}
+                {paymentChannel === 'sumup' && sumUpConnected ? (
+                  <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3 space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs text-zinc-400">
+                        Transactions SumUp récentes ({sumUpLookbackMinutes} min)
+                      </p>
+                      <label className="flex items-center gap-2 text-xs text-zinc-400">
+                        Afficher
+                        <input
+                          type="number"
+                          min={1}
+                          max={50}
+                          value={sumUpFetchLimit}
+                          onChange={(event) => {
+                            setSumUpFetchLimit(clampLimit(Number(event.target.value)))
+                          }}
+                          className="w-16 rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-100 outline-none focus:border-indigo-400"
+                        />
+                        transactions
+                      </label>
+                    </div>
+                    {sumUpRecentTransactions.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedSumUpTransactionKeys.length > 0 ? (
+                          <p className="text-xs text-indigo-300">
+                            {selectedSumUpTransactionKeys.length} transaction(s) sélectionnée(s) · Montant cumulé {selectedSumUpTotal.toFixed(2)} EUR
+                          </p>
+                        ) : (
+                          <p className="text-xs text-zinc-500">Sélectionnez les transactions à considérer pour le calcul des points.</p>
+                        )}
+                        {sumUpRecentTransactions.map((item, index) => (
+                          <label
+                            key={item.id ?? item.transaction_code ?? `sumup-${index}`}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-indigo-600/30 bg-indigo-500/10 px-2.5 py-2 text-left text-xs text-indigo-200"
+                          >
+                            <span className="flex items-center gap-2">
+                              <input
+                                type="checkbox"
+                                checked={selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))}
+                                onChange={(event) => {
+                                  const key = transactionSelectionKey(item, index)
+                                  setSelectedSumUpTransactionKeys((previous) => {
+                                    if (event.target.checked) {
+                                      if (previous.includes(key)) return previous
+                                      return [...previous, key]
+                                    }
 
-                                      return previous.filter((entry) => entry !== key)
-                                    })
-                                  }}
-                                  className="h-4 w-4 rounded border-zinc-600 bg-zinc-900"
-                                />
-                                <span className="block">
-                                  <span className="block font-semibold">
-                                    {typeof item.amount === 'number' ? item.amount.toFixed(2) : '0.00'} {item.currency ?? 'EUR'}
-                                  </span>
-                                  <span className="block text-[11px] text-indigo-300/80">
-                                    {item.transaction_code ?? 'Sans code'}
-                                  </span>
+                                    return previous.filter((entry) => entry !== key)
+                                  })
+                                }}
+                                className="h-4 w-4 rounded border-zinc-600 bg-zinc-900"
+                              />
+                              <span className="block">
+                                <span className="block font-semibold">
+                                  {typeof item.amount === 'number' ? item.amount.toFixed(2) : '0.00'} {item.currency ?? 'EUR'}
+                                </span>
+                                <span className="block text-[11px] text-indigo-300/80">
+                                  {item.transaction_code ?? 'Sans code'}
                                 </span>
                               </span>
-                              <span className="text-[11px] text-indigo-300/80">{formatRecentTimestamp(item.timestamp)}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-zinc-500">Aucune transaction réussie récente. Utilisez le flux manuel.</p>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-zinc-500">
-                      Aucun compte SumUp actif détecté. Le comportement manuel reste inchangé.
-                    </p>
-                  )}
-                </div>
+                            </span>
+                            <span className="text-[11px] text-indigo-300/80">{formatRecentTimestamp(item.timestamp)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-zinc-500">Aucune transaction réussie récente.</p>
+                    )}
+                  </div>
+                ) : null}
 
-                {/* Product Linking Section (appears when SumUp transactions are selected) */}
-                {sumUpConnected && selectedSumUpTotal > 0 ? (
+                {/* Product linking — only in SumUp channel */}
+                {paymentChannel === 'sumup' && selectedSumUpTotal > 0 ? (
                   <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                       <p className="text-xs uppercase tracking-[0.14em] text-zinc-500">Liaison produits</p>
@@ -691,94 +717,101 @@ export function ValidationPanel({
                   </div>
                 ) : null}
 
-                {validationMode === 'service' ? (
-                  servicesLoading ? (
-                    <div className="flex min-h-32 items-center justify-center">
-                      <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
-                    </div>
-                  ) : services.length > 0 ? (
-                    <>
-                      <ServiceSelector
-                        services={visibleServices}
-                        selectedService={selectedService}
-                        onSelect={selectService}
-                        density={services.length >= 6 ? 'dense' : ('normal' as const)}
-                      />
-                      {services.length > 2 ? (
-                        <p className="mt-2 text-xs text-zinc-500">Faites glisser horizontalement pour voir les autres services.</p>
-                      ) : null}
-                      {services.length > 3 ? (
-                        <div className="mt-2">
-                          <button
-                            type="button"
-                            onClick={() => setShowAllServices((prev) => !prev)}
-                            className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
-                          >
-                            {showAllServices ? 'Réduire la liste' : `Afficher tout (${services.length})`}
-                          </button>
+                {/* Service selector and mode buttons — only in Manual channel */}
+                {paymentChannel === 'manual' ? (
+                  <>
+                    {validationMode === 'service' ? (
+                      servicesLoading ? (
+                        <div className="flex min-h-32 items-center justify-center">
+                          <span className="h-5 w-5 animate-spin rounded-full border-2 border-zinc-100 border-t-transparent" />
                         </div>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="py-4 text-center text-sm text-zinc-400">Aucun service configuré. Utilisez le montant libre.</p>
-                  )
-                ) : (
-                  <div>
-                    <label htmlFor="custom-service-name" className="mb-2 block text-sm font-medium text-zinc-300">
-                      Nom du service (optionnel)
-                    </label>
-                    <input
-                      id="custom-service-name"
-                      type="text"
-                      value={customServiceName}
-                      onChange={(event) => setCustomServiceName(event.target.value)}
-                      placeholder="Ex: Achat boutique"
-                      className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-amber-400"
-                    />
-                  </div>
-                )}
+                      ) : services.length > 0 ? (
+                        <>
+                          <ServiceSelector
+                            services={visibleServices}
+                            selectedService={selectedService}
+                            onSelect={selectService}
+                            density={services.length >= 6 ? 'dense' : ('normal' as const)}
+                          />
+                          {services.length > 2 ? (
+                            <p className="mt-2 text-xs text-zinc-500">Faites glisser horizontalement pour voir les autres services.</p>
+                          ) : null}
+                          {services.length > 3 ? (
+                            <div className="mt-2">
+                              <button
+                                type="button"
+                                onClick={() => setShowAllServices((prev) => !prev)}
+                                className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
+                              >
+                                {showAllServices ? 'Réduire la liste' : `Afficher tout (${services.length})`}
+                              </button>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : (
+                        <p className="py-4 text-center text-sm text-zinc-400">Aucun service configuré. Utilisez le montant libre.</p>
+                      )
+                    ) : (
+                      <div>
+                        <label htmlFor="custom-service-name" className="mb-2 block text-sm font-medium text-zinc-300">
+                          Nom du service (optionnel)
+                        </label>
+                        <input
+                          id="custom-service-name"
+                          type="text"
+                          value={customServiceName}
+                          onChange={(event) => setCustomServiceName(event.target.value)}
+                          placeholder="Ex: Achat boutique"
+                          className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm text-zinc-100 outline-none transition focus:border-amber-400"
+                        />
+                      </div>
+                    )}
 
-                <div className="flex flex-wrap gap-2 border-t border-zinc-800 pt-3">
-                  {validationMode !== 'amount' ? (
-                    <button
-                      type="button"
-                      onClick={() => handleModeChange('amount')}
-                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-amber-500/50 hover:text-amber-300"
-                    >
-                      Montant libre
-                    </button>
-                  ) : services.length > 0 ? (
-                    <button
-                      type="button"
-                      onClick={() => handleModeChange('service')}
-                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-zinc-500 hover:text-zinc-200"
-                    >
-                      ← Retour catalogue
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => handleModeChange('redemption')}
-                    className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                      availableRewardsCount > 0
-                        ? 'border-teal-500/40 bg-teal-500/10 text-teal-300 hover:border-teal-400 hover:text-teal-200'
-                        : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
-                    }`}
-                  >
-                    🎁 Offres disponibles ({availableRewardsCount})
-                  </button>
-                </div>
+                    <div className="flex flex-wrap gap-2 border-t border-zinc-800 pt-3">
+                      {validationMode !== 'amount' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleModeChange('amount')}
+                          className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-amber-500/50 hover:text-amber-300"
+                        >
+                          Montant libre
+                        </button>
+                      ) : services.length > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => handleModeChange('service')}
+                          className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-400 transition hover:border-zinc-500 hover:text-zinc-200"
+                        >
+                          ← Retour catalogue
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => handleModeChange('redemption')}
+                        className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                          availableRewardsCount > 0
+                            ? 'border-teal-500/40 bg-teal-500/10 text-teal-300 hover:border-teal-400 hover:text-teal-200'
+                            : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                        }`}
+                      >
+                        🎁 Offres disponibles ({availableRewardsCount})
+                      </button>
+                    </div>
+                  </>
+                ) : null}
               </div>
             </div>
 
-            <div className="order-3 min-w-0 xl:order-2">
-              <PriceInput
-                montant={montant}
-                onMontantChange={setMontant}
-                pointsPreview={pointsPreview}
-                selectedService={selectedService}
-              />
-            </div>
+            {paymentChannel === 'manual' ? (
+              <div className="order-3 min-w-0 xl:order-2">
+                <PriceInput
+                  montant={montant}
+                  onMontantChange={setMontant}
+                  pointsPreview={pointsPreview}
+                  selectedService={selectedService}
+                />
+              </div>
+            ) : null}
           </>
         )}
       </div>
@@ -796,8 +829,13 @@ export function ValidationPanel({
         <button
           type="button"
           onClick={handleValidate}
-          disabled={!canValidate || isSubmitting || (validationMode === 'service' && servicesLoading) || (selectedSumUpTotal > 0 && !productLinkingValidation?.isValid)}
-          title={selectedSumUpTotal > 0 && !productLinkingValidation?.isValid ? 'Complétez la liaison produits' : undefined}
+          disabled={
+            isSubmitting ||
+            (paymentChannel === 'sumup'
+              ? selectedSumUpTotal <= 0 || !productLinkingValidation?.isValid
+              : !canValidate || (validationMode === 'service' && servicesLoading))
+          }
+          title={paymentChannel === 'sumup' && !productLinkingValidation?.isValid ? 'Complétez la liaison produits' : undefined}
           className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
         >
           ✓ Valider
