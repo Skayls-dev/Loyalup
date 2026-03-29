@@ -31,6 +31,7 @@ type AdminAction =
   | 'DELETE_SCAN_AD'
   | 'LIST_SYSTEM_SECRETS'
   | 'SET_SYSTEM_SECRET'
+  | 'TEST_SYSTEM_SECRETS_CONFIG'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -117,7 +118,7 @@ Deno.serve(async (req) => {
 
   const action = String(body.action ?? '') as AdminAction
 
-  if ((action === 'LIST_SYSTEM_SECRETS' || action === 'SET_SYSTEM_SECRET') && !isSuperAdminActor) {
+  if ((action === 'LIST_SYSTEM_SECRETS' || action === 'SET_SYSTEM_SECRET' || action === 'TEST_SYSTEM_SECRETS_CONFIG') && !isSuperAdminActor) {
     return json({ error: 'Forbidden: super_admin required' }, 403)
   }
 
@@ -1825,6 +1826,50 @@ Deno.serve(async (req) => {
     })
 
     return json({ success: true, name })
+  }
+
+  if (action === 'TEST_SYSTEM_SECRETS_CONFIG') {
+    const managementToken = Deno.env.get('SUPABASE_MANAGEMENT_API_TOKEN')
+    const projectRef = Deno.env.get('SUPABASE_PROJECT_REF') ?? resolveProjectRef(supabaseUrl)
+
+    if (!managementToken || !projectRef) {
+      return json({
+        success: false,
+        config_ok: false,
+        project_ref: projectRef,
+        can_access_management_api: false,
+        missing: {
+          management_token: !managementToken,
+          project_ref: !projectRef,
+        },
+      }, 200)
+    }
+
+    const response = await fetch(`${SUPABASE_MANAGEMENT_API_BASE}/projects/${projectRef}/secrets`, {
+      headers: {
+        Authorization: `Bearer ${managementToken}`,
+        'Content-Type': 'application/json',
+      },
+    })
+
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '')
+      return json({
+        success: false,
+        config_ok: false,
+        project_ref: projectRef,
+        can_access_management_api: false,
+        status: response.status,
+        detail,
+      }, 200)
+    }
+
+    return json({
+      success: true,
+      config_ok: true,
+      project_ref: projectRef,
+      can_access_management_api: true,
+    })
   }
 
   return json({ error: 'Unsupported action' }, 400)

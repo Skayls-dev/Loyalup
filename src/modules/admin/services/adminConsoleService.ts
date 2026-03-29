@@ -418,6 +418,21 @@ export async function setSystemSecret(name: string, value: string) {
   })
 }
 
+export async function testSystemSecretsConfig() {
+  return invoke<{
+    success: boolean
+    config_ok: boolean
+    project_ref: string | null
+    can_access_management_api: boolean
+    status?: number
+    detail?: string
+    missing?: {
+      management_token?: boolean
+      project_ref?: boolean
+    }
+  }>({ action: 'TEST_SYSTEM_SECRETS_CONFIG' })
+}
+
 async function invoke<TData = Record<string, unknown>>(body: Record<string, unknown>) {
   const { data, error } = await supabase.functions.invoke('admin-console', {
     method: 'POST',

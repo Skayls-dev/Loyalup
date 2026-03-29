@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, CheckCircle2, KeyRound, RefreshCw, ShieldAlert } from 'lucide-react'
 import { useAuth } from '../../modules/auth/hooks/useAuth'
-import { listSystemSecrets, setSystemSecret, type SystemSecretItem } from '../../modules/admin/services/adminConsoleService'
+import { listSystemSecrets, setSystemSecret, testSystemSecretsConfig, type SystemSecretItem } from '../../modules/admin/services/adminConsoleService'
 
 function formatDate(value: string | null): string {
   if (!value) return 'Jamais'
@@ -17,6 +17,11 @@ export default function AdminSecretsPage() {
   const [selectedName, setSelectedName] = useState('SUMUP_CLIENT_ID')
   const [secretValue, setSecretValue] = useState('')
   const [busy, setBusy] = useState(false)
+  const [testingConfig, setTestingConfig] = useState(false)
+  const [configStatus, setConfigStatus] = useState<{
+    ok: boolean
+    message: string
+  } | null>(null)
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
   const isSuperAdmin = profile?.role === 'super_admin'
@@ -70,15 +75,60 @@ export default function AdminSecretsPage() {
           <h1 className="font-display text-3xl font-extrabold text-slate-900">Secrets système</h1>
           <p className="mt-1 text-sm text-slate-500">Gestion sécurisée des secrets Supabase (valeurs jamais affichées).</p>
         </div>
-        <button
-          type="button"
-          onClick={() => void secretsQuery.refetch()}
-          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              setTestingConfig(true)
+              setConfigStatus(null)
+              try {
+                const result = await testSystemSecretsConfig()
+                if (result.config_ok) {
+                  setConfigStatus({
+                    ok: true,
+                    message: `Configuration valide (project_ref: ${result.project_ref ?? 'n/a'}).`,
+                  })
+                } else if (result.missing?.management_token) {
+                  setConfigStatus({
+                    ok: false,
+                    message: 'Configuration invalide: SUPABASE_MANAGEMENT_API_TOKEN manquant.',
+                  })
+                } else {
+                  setConfigStatus({
+                    ok: false,
+                    message: `Accès API management impossible (${result.status ?? 'n/a'}). Vérifiez le PAT et les permissions.`,
+                  })
+                }
+              } catch (error) {
+                setConfigStatus({
+                  ok: false,
+                  message: error instanceof Error ? error.message : 'Test de configuration impossible',
+                })
+              } finally {
+                setTestingConfig(false)
+              }
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            <ShieldAlert className="h-4 w-4" />
+            {testingConfig ? 'Test…' : 'Tester la config'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void secretsQuery.refetch()}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Actualiser
+          </button>
+        </div>
       </header>
+
+      {configStatus ? (
+        <div className={`rounded-2xl border px-4 py-3 text-sm ${configStatus.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
+          {configStatus.message}
+        </div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
