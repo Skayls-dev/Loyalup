@@ -135,6 +135,8 @@ export function ValidationPanel({
   const [selectedProductServiceIds, setSelectedProductServiceIds] = useState<string[]>([])
   const [productLinkingLabel, setProductLinkingLabel] = useState('')
   const [paymentChannel, setPaymentChannel] = useState<'sumup' | 'manual'>('manual')
+  const [manualSelectionMode, setManualSelectionMode] = useState<'single' | 'multi'>('single')
+  const [selectedManualServiceIds, setSelectedManualServiceIds] = useState<string[]>([])
   const [manualServiceSearch, setManualServiceSearch] = useState('')
   const [productServiceSearch, setProductServiceSearch] = useState('')
   const [showAllProductServices, setShowAllProductServices] = useState(false)
@@ -171,6 +173,20 @@ export function ValidationPanel({
 
     return filteredLinkableServices.slice(0, 8)
   }, [filteredLinkableServices, showAllProductServices])
+
+  const selectedManualServicesTotal = useMemo(() => {
+    if (manualSelectionMode !== 'multi' || selectedManualServiceIds.length === 0) return 0
+
+    let total = 0
+    selectedManualServiceIds.forEach((serviceId) => {
+      const service = services.find((item) => item.id === serviceId)
+      if (service?.prix_defaut && service.prix_defaut > 0) {
+        total += service.prix_defaut
+      }
+    })
+
+    return Number(total.toFixed(2))
+  }, [manualSelectionMode, selectedManualServiceIds, services])
 
   // Auto-select first non-custom service when services load
   useEffect(() => {
@@ -388,6 +404,18 @@ export function ValidationPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paymentChannel, sumUpConnected, selectedSumUpTotal])
 
+  useEffect(() => {
+    if (paymentChannel !== 'manual' || manualSelectionMode !== 'multi') return
+    if (selectedManualServicesTotal <= 0) {
+      setMontant('')
+      return
+    }
+
+    setMontant(selectedManualServicesTotal.toFixed(2))
+    // The setter comes from a custom hook and is intentionally omitted to prevent rerun loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentChannel, manualSelectionMode, selectedManualServicesTotal])
+
   // Auto-switch to SumUp channel when SumUp is detected as connected
   useEffect(() => {
     if (!isSumUpLoading && sumUpConnected) {
@@ -407,6 +435,16 @@ export function ValidationPanel({
   const displayError = error ?? servicesError
 
   const selectedServiceName = useMemo(() => {
+    if (paymentChannel === 'manual' && manualSelectionMode === 'multi' && selectedManualServiceIds.length > 0) {
+      const names = services
+        .filter((service) => selectedManualServiceIds.includes(service.id))
+        .map((service) => service.nom)
+
+      if (names.length > 0) {
+        return names.join(', ')
+      }
+    }
+
     if (validationMode === 'amount') {
       const trimmed = customServiceName.trim()
       return trimmed || 'Achat libre'
@@ -417,18 +455,20 @@ export function ValidationPanel({
     }
 
     return 'Personnalisé'
-  }, [selectedService, validationMode, customServiceName])
+  }, [paymentChannel, manualSelectionMode, selectedManualServiceIds, services, selectedService, validationMode, customServiceName])
 
   const handleModeChange = (mode: ValidationMode) => {
     setValidationMode(mode)
 
     if (mode === 'amount') {
       clearSelectedService()
+      setSelectedManualServiceIds([])
       return
     }
 
     if (mode === 'redemption') {
       clearSelectedService()
+      setSelectedManualServiceIds([])
       return
     }
 
@@ -444,6 +484,7 @@ export function ValidationPanel({
     try {
       const freeLabel = validationMode === 'amount' ? customServiceName.trim() || undefined : undefined
       const isSumUpChannel = paymentChannel === 'sumup'
+      const isManualMulti = paymentChannel === 'manual' && validationMode === 'service' && manualSelectionMode === 'multi'
       const selectedItems = isSumUpChannel ? sumUpRecentTransactions.filter((item, index) => (
         selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))
       )) : []
@@ -458,7 +499,11 @@ export function ValidationPanel({
         freeAmountLabel: freeLabel,
         sumupTransactionIds,
         sumupTransactionCodes,
-        service_ids: isSumUpChannel && selectedProductServiceIds.length > 0 ? selectedProductServiceIds : undefined,
+        service_ids: isSumUpChannel && selectedProductServiceIds.length > 0
+          ? selectedProductServiceIds
+          : isManualMulti && selectedManualServiceIds.length > 0
+            ? selectedManualServiceIds
+            : undefined,
         product_label: isSumUpChannel ? productLinkingLabel.trim() || undefined : undefined,
       })
       const amount = Number.parseFloat(montant || '0')
@@ -791,6 +836,36 @@ export function ValidationPanel({
                         </div>
                       ) : filteredManualServices.length > 0 ? (
                         <>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualSelectionMode('single')
+                                setSelectedManualServiceIds([])
+                              }}
+                              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                manualSelectionMode === 'single'
+                                  ? 'border-teal-500/50 bg-teal-500/15 text-teal-200'
+                                  : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                              }`}
+                            >
+                              Un service
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setManualSelectionMode('multi')
+                                clearSelectedService()
+                              }}
+                              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                manualSelectionMode === 'multi'
+                                  ? 'border-teal-500/50 bg-teal-500/15 text-teal-200'
+                                  : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
+                              }`}
+                            >
+                              Plusieurs services
+                            </button>
+                          </div>
                           {services.length > 8 ? (
                             <div>
                               <label htmlFor="manual-service-search" className="mb-1 block text-[11px] uppercase tracking-[0.08em] text-zinc-500">
@@ -809,14 +884,43 @@ export function ValidationPanel({
                               />
                             </div>
                           ) : null}
-                          <ServiceSelector
-                            services={visibleServices}
-                            selectedService={selectedService}
-                            onSelect={selectService}
-                            density={filteredManualServices.length >= 6 ? 'dense' : ('normal' as const)}
-                          />
-                          {filteredManualServices.length > 2 ? (
+                          {manualSelectionMode === 'single' ? (
+                            <ServiceSelector
+                              services={visibleServices}
+                              selectedService={selectedService}
+                              onSelect={selectService}
+                              density={filteredManualServices.length >= 6 ? 'dense' : ('normal' as const)}
+                            />
+                          ) : (
+                            <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                              {visibleServices.map((service) => (
+                                <label
+                                  key={service.id}
+                                  className="flex items-center gap-2 rounded-lg border border-teal-600/30 bg-teal-500/10 px-2.5 py-2 text-xs text-teal-200 cursor-pointer hover:bg-teal-500/15 transition"
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedManualServiceIds.includes(service.id)}
+                                    onChange={(event) => {
+                                      if (event.target.checked) {
+                                        setSelectedManualServiceIds((previous) => [...previous, service.id])
+                                      } else {
+                                        setSelectedManualServiceIds((previous) => previous.filter((id) => id !== service.id))
+                                      }
+                                    }}
+                                    className="h-4 w-4 rounded border-teal-600 bg-zinc-900"
+                                  />
+                                  <span>{service.emoji ?? '•'} {service.nom}</span>
+                                  <span className="ml-auto font-semibold">{(service.prix_defaut ?? 0).toFixed(2)} EUR</span>
+                                </label>
+                              ))}
+                            </div>
+                          )}
+                          {manualSelectionMode === 'single' && filteredManualServices.length > 2 ? (
                             <p className="mt-2 text-xs text-zinc-500">Faites glisser horizontalement pour voir les autres services.</p>
+                          ) : null}
+                          {manualSelectionMode === 'multi' && filteredManualServices.length > 8 ? (
+                            <p className="mt-2 text-xs text-zinc-500">Faites défiler la liste pour voir les autres services.</p>
                           ) : null}
                           {filteredManualServices.length > 3 ? (
                             <div className="mt-2">
@@ -827,6 +931,14 @@ export function ValidationPanel({
                               >
                                 {showAllServices ? 'Réduire la liste' : `Afficher tout (${filteredManualServices.length})`}
                               </button>
+                            </div>
+                          ) : null}
+                          {manualSelectionMode === 'multi' && selectedManualServiceIds.length > 0 ? (
+                            <div className="mt-2 rounded-lg bg-zinc-900 p-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] text-zinc-500">Total sélection:</span>
+                                <span className="text-sm font-semibold text-teal-300">{selectedManualServicesTotal.toFixed(2)} EUR</span>
+                              </div>
                             </div>
                           ) : null}
                         </>
