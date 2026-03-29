@@ -118,7 +118,6 @@ export function ValidationPanel({
   const [validationMode, setValidationMode] = useState<ValidationMode>('service')
   const [customServiceName, setCustomServiceName] = useState('')
   const [availableRewardsCount, setAvailableRewardsCount] = useState(0)
-  const [showAllServices, setShowAllServices] = useState(false)
   const [isSumUpLoading, setIsSumUpLoading] = useState(false)
   const [sumUpConnected, setSumUpConnected] = useState(false)
   const [sumUpLookbackMinutes, setSumUpLookbackMinutes] = useState(30)
@@ -155,13 +154,7 @@ export function ValidationPanel({
     return linkableServices.filter((service) => service.nom.toLowerCase().includes(query))
   }, [productServiceSearch, linkableServices])
 
-  const visibleServices = useMemo(() => {
-    if (showAllServices) {
-      return filteredManualServices
-    }
-
-    return filteredManualServices.slice(0, 8)
-  }, [filteredManualServices, showAllServices])
+  const visibleServices = filteredManualServices
 
   const visibleProductServices = useMemo(() => {
     if (showAllProductServices) {
@@ -184,17 +177,6 @@ export function ValidationPanel({
 
     return Number(total.toFixed(2))
   }, [selectedManualServiceIds, services])
-
-  // Keep long manual lists expanded if selected items are outside the preview slice.
-  useEffect(() => {
-    if (manualServiceSearch.trim() || showAllServices) return
-    const previewIds = filteredManualServices.slice(0, 8).map((service) => service.id)
-    const hasHiddenSelection = selectedManualServiceIds.some((id) => !previewIds.includes(id))
-    if (hasHiddenSelection) {
-      setShowAllServices(true)
-    }
-  }, [filteredManualServices, manualServiceSearch, selectedManualServiceIds, showAllServices])
-
 
   useEffect(() => {
     let cancelled = false
@@ -462,7 +444,6 @@ export function ValidationPanel({
       return
     }
 
-    setShowAllServices(false)
     clearSelectedService()
   }
 
@@ -833,14 +814,13 @@ export function ValidationPanel({
                                 value={manualServiceSearch}
                                 onChange={(event) => {
                                   setManualServiceSearch(event.target.value)
-                                  setShowAllServices(false)
                                 }}
                                 placeholder="Nom du service"
                                 className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 outline-none transition focus:border-teal-400"
                               />
                             </div>
                           ) : null}
-                          <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                          <div className={`space-y-1.5 overflow-y-auto pr-1 ${filteredManualServices.length > 5 ? 'max-h-60' : ''}`}>
                             {visibleServices.map((service) => (
                               <label
                                 key={service.id}
@@ -863,19 +843,8 @@ export function ValidationPanel({
                               </label>
                             ))}
                           </div>
-                          {filteredManualServices.length > 8 ? (
+                          {filteredManualServices.length > 5 ? (
                             <p className="mt-2 text-xs text-zinc-500">Faites défiler la liste pour voir les autres services.</p>
-                          ) : null}
-                          {filteredManualServices.length > 8 ? (
-                            <div className="mt-2">
-                              <button
-                                type="button"
-                                onClick={() => setShowAllServices((prev) => !prev)}
-                                className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
-                              >
-                                {showAllServices ? 'Réduire la liste' : `Afficher tout (${filteredManualServices.length})`}
-                              </button>
-                            </div>
                           ) : null}
                           {selectedManualServiceIds.length > 0 ? (
                             <div className="mt-2 rounded-lg bg-zinc-900 p-2">
