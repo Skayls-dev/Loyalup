@@ -18,6 +18,18 @@ export default function AdminSecretsPage() {
   const [secretValue, setSecretValue] = useState('')
   const [busy, setBusy] = useState(false)
   const [testingConfig, setTestingConfig] = useState(false)
+  const [configResult, setConfigResult] = useState<{
+    success: boolean
+    config_ok: boolean
+    project_ref: string | null
+    can_access_management_api: boolean
+    status?: number
+    detail?: string
+    missing?: {
+      management_token?: boolean
+      project_ref?: boolean
+    }
+  } | null>(null)
   const [configStatus, setConfigStatus] = useState<{
     ok: boolean
     message: string
@@ -81,8 +93,10 @@ export default function AdminSecretsPage() {
             onClick={async () => {
               setTestingConfig(true)
               setConfigStatus(null)
+              setConfigResult(null)
               try {
                 const result = await testSystemSecretsConfig()
+                setConfigResult(result)
                 if (result.config_ok) {
                   setConfigStatus({
                     ok: true,
@@ -126,7 +140,28 @@ export default function AdminSecretsPage() {
 
       {configStatus ? (
         <div className={`rounded-2xl border px-4 py-3 text-sm ${configStatus.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-amber-200 bg-amber-50 text-amber-800'}`}>
-          {configStatus.message}
+          <p>{configStatus.message}</p>
+
+          {configResult ? (
+            <details className="mt-2">
+              <summary className="cursor-pointer select-none text-xs font-semibold uppercase tracking-wider opacity-90">
+                Détails techniques
+              </summary>
+              <div className="mt-2 grid grid-cols-1 gap-1 rounded-lg border border-black/10 bg-white/50 p-2 text-xs">
+                <div><span className="font-semibold">project_ref:</span> {configResult.project_ref ?? 'n/a'}</div>
+                <div><span className="font-semibold">config_ok:</span> {String(configResult.config_ok)}</div>
+                <div><span className="font-semibold">management_api:</span> {String(configResult.can_access_management_api)}</div>
+                <div><span className="font-semibold">http_status:</span> {String(configResult.status ?? 'n/a')}</div>
+                <div><span className="font-semibold">missing.management_token:</span> {String(Boolean(configResult.missing?.management_token))}</div>
+                <div><span className="font-semibold">missing.project_ref:</span> {String(Boolean(configResult.missing?.project_ref))}</div>
+                {configResult.detail ? (
+                  <div className="break-all">
+                    <span className="font-semibold">detail:</span> {configResult.detail}
+                  </div>
+                ) : null}
+              </div>
+            </details>
+          ) : null}
         </div>
       ) : null}
 
