@@ -45,7 +45,11 @@ export function SumUpConnectionCard({ userId }: Props) {
       void queryClient.invalidateQueries({ queryKey: ['sumup-connection', userId] })
     } else if (sumupParam === 'error') {
       const reason = searchParams.get('reason') ?? 'unknown'
-      showToast(`Erreur lors de la connexion SumUp (${reason})`, 'error')
+      if (reason === 'sandbox_account_detected') {
+        showToast('Compte sandbox détecté. Connectez un compte SumUp production pour activer la caisse.', 'error')
+      } else {
+        showToast(`Erreur lors de la connexion SumUp (${reason})`, 'error')
+      }
     }
 
     // Clean query params without navigating
