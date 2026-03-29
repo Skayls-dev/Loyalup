@@ -205,13 +205,7 @@ async function main() {
     ?? 'https://api.sumup.com'
   const token =
     (env.SUMUP_SANDBOX_API_KEY
-      ?? env.SUMUP_SANDBOX_ACCESS_TOKEN
-      ?? env.SUM_UP_API_KEY_TEST
-      ?? env.SUM_UP_API_KEY)
-
-  if ((env.SUM_UP_API_KEY_TEST || env.SUM_UP_API_KEY) && !env.SUMUP_SANDBOX_API_KEY && !env.SUMUP_SANDBOX_ACCESS_TOKEN) {
-    console.warn('[WARN] Using legacy sandbox token variable; prefer SUMUP_SANDBOX_API_KEY or SUMUP_SANDBOX_ACCESS_TOKEN in .env.local')
-  }
+      ?? env.SUMUP_SANDBOX_ACCESS_TOKEN)
   const merchantCode = args.merchantCode
     ?? env.SUMUP_SANDBOX_MERCHANT_CODE
   const currency = (args.currency
@@ -223,7 +217,7 @@ async function main() {
   if (!token) {
     throw new Error(
       [
-        'Missing sandbox SumUp token in .env.local (SUMUP_SANDBOX_API_KEY, SUMUP_SANDBOX_ACCESS_TOKEN, SUM_UP_API_KEY_TEST or SUM_UP_API_KEY).',
+        'Missing sandbox SumUp token in .env.local (SUMUP_SANDBOX_API_KEY or SUMUP_SANDBOX_ACCESS_TOKEN).',
         'Create an API key in SumUp Dashboard: https://me.sumup.com/settings/api-keys',
         'Important: SUMUP_CLIENT_SECRET is OAuth app secret and cannot be used as Bearer API key for this script.',
       ].join(' '),

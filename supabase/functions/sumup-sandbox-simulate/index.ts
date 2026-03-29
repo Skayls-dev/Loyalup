@@ -106,8 +106,6 @@ Deno.serve(async (req: Request) => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')
   const sandboxApiKey = Deno.env.get('SUMUP_SANDBOX_API_KEY')
-    ?? Deno.env.get('SUM_UP_API_KEY_TEST')
-    ?? Deno.env.get('SUM_UP_API_KEY')
 
   if (!supabaseUrl || !serviceRoleKey || !anonKey) {
     return json({ error: 'Server misconfiguration' }, 500)
