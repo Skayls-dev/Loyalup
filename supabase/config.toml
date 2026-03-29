@@ -97,6 +97,9 @@ verify_jwt = false
 [functions.sumup-recent-transactions]
 verify_jwt = false
 
+[functions.sumup-oauth-callback]
+verify_jwt = false
+
 [api]
 enabled = true
 # Port to use for the API URL.
