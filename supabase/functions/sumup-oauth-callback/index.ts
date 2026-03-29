@@ -10,6 +10,14 @@ function redirect(params: Record<string, string>) {
   return Response.redirect(url.toString(), 302)
 }
 
+function toReasonSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 48)
+}
+
 Deno.serve(async (req: Request) => {
   // Only GET is accepted for OAuth callbacks
   if (req.method !== 'GET') {
@@ -69,9 +77,21 @@ Deno.serve(async (req: Request) => {
   })
 
   if (!tokenRes.ok) {
-    const body = await tokenRes.text().catch(() => '')
-    console.error('SumUp token exchange failed:', tokenRes.status, body)
-    return redirect({ sumup: 'error', reason: 'token_exchange_failed' })
+    const raw = await tokenRes.text().catch(() => '')
+    let upstreamError = ''
+
+    try {
+      const parsed = JSON.parse(raw) as { error?: string; error_description?: string }
+      upstreamError = String(parsed.error ?? parsed.error_description ?? '').trim()
+    } catch {
+      upstreamError = raw.trim()
+    }
+
+    console.error('SumUp token exchange failed:', tokenRes.status, raw)
+
+    const statusPart = `http_${tokenRes.status}`
+    const errorPart = upstreamError ? toReasonSlug(upstreamError) : 'unknown'
+    return redirect({ sumup: 'error', reason: `token_exchange_failed_${statusPart}_${errorPart}` })
   }
 
   const tokenData = await tokenRes.json() as {

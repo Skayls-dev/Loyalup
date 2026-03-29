@@ -47,6 +47,10 @@ export function SumUpConnectionCard({ userId }: Props) {
       const reason = searchParams.get('reason') ?? 'unknown'
       if (reason === 'sandbox_account_detected') {
         showToast('Compte sandbox détecté. Connectez un compte SumUp production pour activer la caisse.', 'error')
+      } else if (reason.includes('invalid_client')) {
+        showToast('Échec OAuth SumUp: client_id/client_secret invalide côté serveur.', 'error')
+      } else if (reason.includes('invalid_grant')) {
+        showToast('Échec OAuth SumUp: code expiré ou déjà utilisé. Relancez la connexion.', 'error')
       } else {
         showToast(`Erreur lors de la connexion SumUp (${reason})`, 'error')
       }
