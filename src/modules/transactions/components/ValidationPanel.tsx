@@ -8,7 +8,6 @@ import { useValidation } from '../hooks/useValidation'
 import { ClientPreview } from './ClientPreview'
 import { PriceInput } from './PriceInput'
 import { RedemptionPanel } from './RedemptionPanel'
-import { ServiceSelector } from './ServiceSelector'
 import { TransactionSuccess } from './TransactionSuccess'
 
 type ValidationMode = 'service' | 'amount' | 'redemption'
@@ -110,7 +109,6 @@ export function ValidationPanel({
     isSuccess,
     error,
     canValidate,
-    selectService,
     clearSelectedService,
     setMontant,
     validate,
@@ -135,7 +133,6 @@ export function ValidationPanel({
   const [selectedProductServiceIds, setSelectedProductServiceIds] = useState<string[]>([])
   const [productLinkingLabel, setProductLinkingLabel] = useState('')
   const [paymentChannel, setPaymentChannel] = useState<'sumup' | 'manual'>('manual')
-  const [manualSelectionMode, setManualSelectionMode] = useState<'single' | 'multi'>('single')
   const [selectedManualServiceIds, setSelectedManualServiceIds] = useState<string[]>([])
   const [manualServiceSearch, setManualServiceSearch] = useState('')
   const [productServiceSearch, setProductServiceSearch] = useState('')
@@ -163,7 +160,7 @@ export function ValidationPanel({
       return filteredManualServices
     }
 
-    return filteredManualServices.slice(0, 3)
+    return filteredManualServices.slice(0, 8)
   }, [filteredManualServices, showAllServices])
 
   const visibleProductServices = useMemo(() => {
@@ -175,7 +172,7 @@ export function ValidationPanel({
   }, [filteredLinkableServices, showAllProductServices])
 
   const selectedManualServicesTotal = useMemo(() => {
-    if (manualSelectionMode !== 'multi' || selectedManualServiceIds.length === 0) return 0
+    if (selectedManualServiceIds.length === 0) return 0
 
     let total = 0
     selectedManualServiceIds.forEach((serviceId) => {
@@ -186,24 +183,17 @@ export function ValidationPanel({
     })
 
     return Number(total.toFixed(2))
-  }, [manualSelectionMode, selectedManualServiceIds, services])
+  }, [selectedManualServiceIds, services])
 
-  // Auto-select first non-custom service when services load
+  // Keep long manual lists expanded if selected items are outside the preview slice.
   useEffect(() => {
-    if (validationMode !== 'service' || selectedService || servicesLoading || services.length === 0) return
-    const first = services.find((s) => s.nom !== 'Personnalisé') ?? services[0]
-    if (first) selectService(first)
-  }, [services, servicesLoading, selectedService, selectService, validationMode])
-
-  // Ensure selected service remains visible in collapsed mode
-  useEffect(() => {
-    if (manualServiceSearch.trim()) return
-    if (!selectedService || showAllServices) return
-    const isVisible = filteredManualServices.slice(0, 3).some((service) => service.id === selectedService.id)
-    if (!isVisible) {
+    if (manualServiceSearch.trim() || showAllServices) return
+    const previewIds = filteredManualServices.slice(0, 8).map((service) => service.id)
+    const hasHiddenSelection = selectedManualServiceIds.some((id) => !previewIds.includes(id))
+    if (hasHiddenSelection) {
       setShowAllServices(true)
     }
-  }, [selectedService, filteredManualServices, manualServiceSearch, showAllServices])
+  }, [filteredManualServices, manualServiceSearch, selectedManualServiceIds, showAllServices])
 
 
   useEffect(() => {
@@ -405,7 +395,7 @@ export function ValidationPanel({
   }, [paymentChannel, sumUpConnected, selectedSumUpTotal])
 
   useEffect(() => {
-    if (paymentChannel !== 'manual' || manualSelectionMode !== 'multi') return
+    if (paymentChannel !== 'manual' || validationMode !== 'service') return
     if (selectedManualServicesTotal <= 0) {
       setMontant('')
       return
@@ -414,7 +404,7 @@ export function ValidationPanel({
     setMontant(selectedManualServicesTotal.toFixed(2))
     // The setter comes from a custom hook and is intentionally omitted to prevent rerun loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentChannel, manualSelectionMode, selectedManualServicesTotal])
+  }, [paymentChannel, validationMode, selectedManualServicesTotal])
 
   // Auto-switch to SumUp channel when SumUp is detected as connected
   useEffect(() => {
@@ -435,7 +425,7 @@ export function ValidationPanel({
   const displayError = error ?? servicesError
 
   const selectedServiceName = useMemo(() => {
-    if (paymentChannel === 'manual' && manualSelectionMode === 'multi' && selectedManualServiceIds.length > 0) {
+    if (paymentChannel === 'manual' && validationMode === 'service' && selectedManualServiceIds.length > 0) {
       const names = services
         .filter((service) => selectedManualServiceIds.includes(service.id))
         .map((service) => service.nom)
@@ -455,7 +445,7 @@ export function ValidationPanel({
     }
 
     return 'Personnalisé'
-  }, [paymentChannel, manualSelectionMode, selectedManualServiceIds, services, selectedService, validationMode, customServiceName])
+  }, [paymentChannel, selectedManualServiceIds, services, selectedService, validationMode, customServiceName])
 
   const handleModeChange = (mode: ValidationMode) => {
     setValidationMode(mode)
@@ -473,18 +463,14 @@ export function ValidationPanel({
     }
 
     setShowAllServices(false)
-
-    const first = services.find((service) => service.nom !== 'Personnalisé') ?? services[0] ?? null
-    if (first) {
-      selectService(first)
-    }
+    clearSelectedService()
   }
 
   const handleValidate = async () => {
     try {
       const freeLabel = validationMode === 'amount' ? customServiceName.trim() || undefined : undefined
       const isSumUpChannel = paymentChannel === 'sumup'
-      const isManualMulti = paymentChannel === 'manual' && validationMode === 'service' && manualSelectionMode === 'multi'
+      const isManualServiceSelection = paymentChannel === 'manual' && validationMode === 'service'
       const selectedItems = isSumUpChannel ? sumUpRecentTransactions.filter((item, index) => (
         selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))
       )) : []
@@ -501,7 +487,7 @@ export function ValidationPanel({
         sumupTransactionCodes,
         service_ids: isSumUpChannel && selectedProductServiceIds.length > 0
           ? selectedProductServiceIds
-          : isManualMulti && selectedManualServiceIds.length > 0
+          : isManualServiceSelection && selectedManualServiceIds.length > 0
             ? selectedManualServiceIds
             : undefined,
         product_label: isSumUpChannel ? productLinkingLabel.trim() || undefined : undefined,
@@ -836,36 +822,6 @@ export function ValidationPanel({
                         </div>
                       ) : filteredManualServices.length > 0 ? (
                         <>
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setManualSelectionMode('single')
-                                setSelectedManualServiceIds([])
-                              }}
-                              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                                manualSelectionMode === 'single'
-                                  ? 'border-teal-500/50 bg-teal-500/15 text-teal-200'
-                                  : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
-                              }`}
-                            >
-                              Un service
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setManualSelectionMode('multi')
-                                clearSelectedService()
-                              }}
-                              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                                manualSelectionMode === 'multi'
-                                  ? 'border-teal-500/50 bg-teal-500/15 text-teal-200'
-                                  : 'border-zinc-700 bg-zinc-950 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200'
-                              }`}
-                            >
-                              Plusieurs services
-                            </button>
-                          </div>
                           {services.length > 8 ? (
                             <div>
                               <label htmlFor="manual-service-search" className="mb-1 block text-[11px] uppercase tracking-[0.08em] text-zinc-500">
@@ -884,45 +840,33 @@ export function ValidationPanel({
                               />
                             </div>
                           ) : null}
-                          {manualSelectionMode === 'single' ? (
-                            <ServiceSelector
-                              services={visibleServices}
-                              selectedService={selectedService}
-                              onSelect={selectService}
-                              density={filteredManualServices.length >= 6 ? 'dense' : ('normal' as const)}
-                            />
-                          ) : (
-                            <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
-                              {visibleServices.map((service) => (
-                                <label
-                                  key={service.id}
-                                  className="flex items-center gap-2 rounded-lg border border-teal-600/30 bg-teal-500/10 px-2.5 py-2 text-xs text-teal-200 cursor-pointer hover:bg-teal-500/15 transition"
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedManualServiceIds.includes(service.id)}
-                                    onChange={(event) => {
-                                      if (event.target.checked) {
-                                        setSelectedManualServiceIds((previous) => [...previous, service.id])
-                                      } else {
-                                        setSelectedManualServiceIds((previous) => previous.filter((id) => id !== service.id))
-                                      }
-                                    }}
-                                    className="h-4 w-4 rounded border-teal-600 bg-zinc-900"
-                                  />
-                                  <span>{service.emoji ?? '•'} {service.nom}</span>
-                                  <span className="ml-auto font-semibold">{(service.prix_defaut ?? 0).toFixed(2)} EUR</span>
-                                </label>
-                              ))}
-                            </div>
-                          )}
-                          {manualSelectionMode === 'single' && filteredManualServices.length > 2 ? (
-                            <p className="mt-2 text-xs text-zinc-500">Faites glisser horizontalement pour voir les autres services.</p>
-                          ) : null}
-                          {manualSelectionMode === 'multi' && filteredManualServices.length > 8 ? (
+                          <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                            {visibleServices.map((service) => (
+                              <label
+                                key={service.id}
+                                className="flex items-center gap-2 rounded-lg border border-teal-600/30 bg-teal-500/10 px-2.5 py-2 text-xs text-teal-200 cursor-pointer hover:bg-teal-500/15 transition"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedManualServiceIds.includes(service.id)}
+                                  onChange={(event) => {
+                                    if (event.target.checked) {
+                                      setSelectedManualServiceIds((previous) => [...previous, service.id])
+                                    } else {
+                                      setSelectedManualServiceIds((previous) => previous.filter((id) => id !== service.id))
+                                    }
+                                  }}
+                                  className="h-4 w-4 rounded border-teal-600 bg-zinc-900"
+                                />
+                                <span>{service.emoji ?? '•'} {service.nom}</span>
+                                <span className="ml-auto font-semibold">{(service.prix_defaut ?? 0).toFixed(2)} EUR</span>
+                              </label>
+                            ))}
+                          </div>
+                          {filteredManualServices.length > 8 ? (
                             <p className="mt-2 text-xs text-zinc-500">Faites défiler la liste pour voir les autres services.</p>
                           ) : null}
-                          {filteredManualServices.length > 3 ? (
+                          {filteredManualServices.length > 8 ? (
                             <div className="mt-2">
                               <button
                                 type="button"
@@ -933,7 +877,7 @@ export function ValidationPanel({
                               </button>
                             </div>
                           ) : null}
-                          {manualSelectionMode === 'multi' && selectedManualServiceIds.length > 0 ? (
+                          {selectedManualServiceIds.length > 0 ? (
                             <div className="mt-2 rounded-lg bg-zinc-900 p-2">
                               <div className="flex items-center justify-between">
                                 <span className="text-[11px] text-zinc-500">Total sélection:</span>
