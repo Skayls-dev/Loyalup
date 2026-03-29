@@ -545,9 +545,9 @@ export function ValidationPanel({
   }
 
   return (
-    <section className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 p-3 text-zinc-100 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-4 md:p-5">
+    <section className="relative flex max-h-[calc(100dvh-0.5rem)] w-full max-w-6xl flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 p-2 text-zinc-100 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:rounded-2xl sm:p-4 md:p-5">
       <div className="min-h-0 flex-1 overflow-y-auto pr-1 sm:pr-2">
-      <div className={`gap-4 ${validationMode === 'redemption' ? 'flex flex-col' : 'grid xl:grid-cols-2'}`}>
+      <div className={`gap-3 sm:gap-4 ${validationMode === 'redemption' ? 'flex flex-col' : 'grid xl:grid-cols-2'}`}>
         <div className="space-y-4">
           <ClientPreview
             clientProfile={clientProfile}
@@ -575,7 +575,7 @@ export function ValidationPanel({
         ) : (
           <>
             <div className="order-2 min-w-0 xl:order-3 xl:col-span-2">
-              <div className="space-y-4 rounded-2xl border border-zinc-800 bg-zinc-900 p-4">
+              <div className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3 sm:space-y-4 sm:rounded-2xl sm:p-4">
                 {/* Channel toggle: SumUp vs Manual */}
                 {(isSumUpLoading || sumUpConnected) ? (
                   <div className="rounded-xl border border-zinc-800 bg-zinc-950/50 p-3">
@@ -1017,13 +1017,13 @@ export function ValidationPanel({
       </div>
 
       {validationMode !== 'redemption' ? (
-        <div className="mt-4 shrink-0 border-t border-zinc-800 pt-3 sm:mt-5 sm:pt-4">
+        <div className="mt-3 shrink-0 border-t border-zinc-800 pt-3 sm:mt-5 sm:pt-4">
         <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={handleCancel}
           disabled={isSubmitting}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+          className="inline-flex w-full items-center justify-center rounded-xl bg-red-600 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto sm:px-4 sm:py-3 sm:text-sm"
         >
           ✗ Annuler
         </button>
@@ -1037,7 +1037,7 @@ export function ValidationPanel({
               : !canValidate || (validationMode === 'service' && servicesLoading))
           }
           title={paymentChannel === 'sumup' && !productLinkingValidation?.isValid ? 'Complétez la liaison produits' : undefined}
-          className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-600 px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-60 sm:px-4 sm:py-3 sm:text-sm"
         >
           ✓ Valider
         </button>

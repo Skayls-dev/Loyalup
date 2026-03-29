@@ -117,7 +117,7 @@ export function AdminLayout({ children, activePage, networksCount = 0 }: AdminLa
 
   return (
     <AdminGuard>
-      <div className="h-screen overflow-hidden bg-gray-50">
+      <div className="min-h-[100dvh] overflow-hidden bg-gray-50">
         <aside className="fixed inset-y-0 left-0 z-30 flex w-[220px] flex-col border-r border-gray-200 bg-white">
           <div className="flex h-16 items-center border-b border-gray-200 px-5">
             <Link to="/admin" className="inline-flex items-center gap-2.5">
@@ -169,7 +169,7 @@ export function AdminLayout({ children, activePage, networksCount = 0 }: AdminLa
           </footer>
         </aside>
 
-        <main className="ml-[220px] h-screen overflow-y-auto p-8">{children}</main>
+        <main className="ml-[220px] min-h-[100dvh] overflow-y-auto p-8">{children}</main>
       </div>
     </AdminGuard>
   )

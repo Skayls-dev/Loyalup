@@ -146,7 +146,7 @@ export function MerchantLayout({ children, activePage }: MerchantLayoutProps) {
     .join('') || 'LM'
 
   return (
-    <div className="h-screen overflow-hidden bg-gray-50">
+    <div className="min-h-[100dvh] overflow-hidden bg-gray-50">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-20 flex-col border-r border-gray-200 bg-white lg:flex lg:w-[220px]">
         <div className="flex h-16 items-center justify-center border-b border-gray-200 px-3 lg:justify-start lg:px-5">
           <Link to="/merchant" className="inline-flex items-center gap-2">
@@ -218,7 +218,7 @@ export function MerchantLayout({ children, activePage }: MerchantLayoutProps) {
         </div>
       </aside>
 
-      <main className="h-screen overflow-y-auto p-4 pb-28 lg:ml-[220px] lg:p-8 lg:pb-8">{children}</main>
+      <main className="min-h-[100dvh] overflow-y-auto p-4 pb-28 lg:ml-[220px] lg:p-8 lg:pb-8">{children}</main>
       <MobileBottomNav
         currentActive={currentActive}
         onLogout={() => void logout()}
