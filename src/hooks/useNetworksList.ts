@@ -117,21 +117,6 @@ async function loadDailyPoints(networkIds: string[]): Promise<Map<string, number
 
   const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-  const txRes = await supabase
-    .from('transactions')
-    .select('network_id, points, points_credited, created_at')
-    .in('network_id', networkIds)
-    .gte('created_at', since)
-
-  if (!txRes.error) {
-    const totals = new Map<string, number>()
-    for (const row of (txRes.data ?? []) as Array<{ network_id: string; points?: number | null; points_credited?: number | null }>) {
-      const amount = Number(row.points ?? row.points_credited ?? 0)
-      totals.set(row.network_id, (totals.get(row.network_id) ?? 0) + amount)
-    }
-    return totals
-  }
-
   const fallback = await supabase
     .from('network_point_events')
     .select('network_id, base_points, bonus_points, created_at')
