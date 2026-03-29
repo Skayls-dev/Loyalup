@@ -545,7 +545,8 @@ export function ValidationPanel({
   }
 
   return (
-    <section className="relative w-full max-w-6xl rounded-2xl border border-zinc-800 bg-zinc-900 p-3 text-zinc-100 shadow-2xl sm:p-4 md:p-5">
+    <section className="relative flex max-h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 p-3 text-zinc-100 shadow-2xl sm:max-h-[calc(100dvh-2rem)] sm:p-4 md:p-5">
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1 sm:pr-2">
       <div className={`gap-4 ${validationMode === 'redemption' ? 'flex flex-col' : 'grid xl:grid-cols-2'}`}>
         <div className="space-y-4">
           <ClientPreview
@@ -1013,9 +1014,11 @@ export function ValidationPanel({
           </>
         )}
       </div>
+      </div>
 
       {validationMode !== 'redemption' ? (
-        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+        <div className="mt-4 shrink-0 border-t border-zinc-800 pt-3 sm:mt-5 sm:pt-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
         <button
           type="button"
           onClick={handleCancel}
@@ -1038,6 +1041,7 @@ export function ValidationPanel({
         >
           ✓ Valider
         </button>
+        </div>
         </div>
       ) : null}
 

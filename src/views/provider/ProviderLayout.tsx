@@ -246,8 +246,8 @@ export function ProviderLayout() {
       </main>
 
       {incomingValidation ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-6xl">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-2 sm:items-center sm:p-4">
+          <div className="my-2 w-full max-w-6xl sm:my-6">
             <ValidationPanel
               pendingTransaction={incomingValidation.pendingTransaction}
               clientProfile={incomingValidation.clientProfile}
