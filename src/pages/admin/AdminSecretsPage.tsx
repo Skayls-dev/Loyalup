@@ -12,7 +12,7 @@ function formatDate(value: string | null): string {
 }
 
 export default function AdminSecretsPage() {
-  const { profile } = useAuth()
+  const { profile, role, user } = useAuth()
   const queryClient = useQueryClient()
   const [selectedName, setSelectedName] = useState('SUMUP_CLIENT_ID')
   const [secretValue, setSecretValue] = useState('')
@@ -36,7 +36,13 @@ export default function AdminSecretsPage() {
   } | null>(null)
   const [status, setStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
 
-  const isSuperAdmin = profile?.role === 'super_admin'
+  const metadataRole = String(user?.app_metadata?.role ?? user?.user_metadata?.role ?? '').trim()
+  const metadataSuperAdmin = Boolean(user?.app_metadata?.super_admin ?? user?.user_metadata?.super_admin)
+  const isSuperAdmin =
+    role === 'super_admin'
+    || profile?.role === 'super_admin'
+    || metadataRole === 'super_admin'
+    || metadataSuperAdmin
 
   const secretsQuery = useQuery({
     queryKey: ['admin-system-secrets'],
