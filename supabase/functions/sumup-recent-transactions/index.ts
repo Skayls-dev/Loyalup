@@ -34,6 +34,18 @@ function parseTimestamp(value?: string): number | null {
   return Number.isFinite(timestamp) ? timestamp : null
 }
 
+function normalizeTextArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  const normalized: string[] = []
+  for (const entry of value) {
+    if (typeof entry !== 'string') continue
+    const trimmed = entry.trim()
+    if (!trimmed) continue
+    normalized.push(trimmed)
+  }
+  return normalized
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders })
@@ -148,7 +160,7 @@ Deno.serve(async (req: Request) => {
     }
 
     const payload = await response.json() as { items?: SumUpHistoryItem[] }
-    const items = (payload.items ?? [])
+    const itemsRaw = (payload.items ?? [])
       .filter((item) => String(item.status ?? '').toUpperCase() === 'SUCCESSFUL')
       .filter((item) => {
         const ts = parseTimestamp(item.timestamp)
@@ -163,6 +175,36 @@ Deno.serve(async (req: Request) => {
         status: item.status ?? null,
         payment_type: item.payment_type ?? null,
       }))
+
+    const lookbackForUsed = new Date(now - 7 * 24 * 60 * 60 * 1000).toISOString()
+    const { data: usedLinks } = await admin
+      .from('transactions')
+      .select('sumup_transaction_ids, sumup_transaction_codes, created_at')
+      .eq('fournisseur_id', fournisseur.id)
+      .eq('status', 'validated')
+      .gte('created_at', lookbackForUsed)
+
+    const usedIds = new Set<string>()
+    const usedCodes = new Set<string>()
+    for (const row of (usedLinks ?? []) as Array<{
+      sumup_transaction_ids?: unknown
+      sumup_transaction_codes?: unknown
+    }>) {
+      for (const id of normalizeTextArray(row.sumup_transaction_ids)) {
+        usedIds.add(id)
+      }
+      for (const code of normalizeTextArray(row.sumup_transaction_codes)) {
+        usedCodes.add(code)
+      }
+    }
+
+    const items = itemsRaw.filter((item) => {
+      const id = typeof item.id === 'string' ? item.id.trim() : ''
+      const code = typeof item.transaction_code === 'string' ? item.transaction_code.trim() : ''
+      if (id && usedIds.has(id)) return false
+      if (code && usedCodes.has(code)) return false
+      return true
+    })
 
     const recommended = items.find((item) => typeof item.amount === 'number' && item.amount > 0) ?? null
 

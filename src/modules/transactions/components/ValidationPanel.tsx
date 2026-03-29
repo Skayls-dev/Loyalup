@@ -317,8 +317,6 @@ export function ValidationPanel({
 
   useEffect(() => {
     if (!sumUpConnected || selectedSumUpTotal <= 0) return
-    clearSelectedService()
-    setValidationMode('amount')
     setMontant(selectedSumUpTotal.toFixed(2))
     // The setters come from a custom hook and are intentionally omitted to prevent rerun loops.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -372,7 +370,21 @@ export function ValidationPanel({
   const handleValidate = async () => {
     try {
       const freeLabel = validationMode === 'amount' ? customServiceName.trim() || undefined : undefined
-      const response = await validate(pendingTransaction.id, freeLabel)
+      const selectedItems = sumUpRecentTransactions.filter((item, index) => (
+        selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))
+      ))
+      const sumupTransactionIds = selectedItems
+        .map((item) => item.id)
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+      const sumupTransactionCodes = selectedItems
+        .map((item) => item.transaction_code)
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+
+      const response = await validate(pendingTransaction.id, {
+        freeAmountLabel: freeLabel,
+        sumupTransactionIds,
+        sumupTransactionCodes,
+      })
       const amount = Number.parseFloat(montant || '0')
 
       setSuccessData({

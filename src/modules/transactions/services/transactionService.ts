@@ -40,6 +40,8 @@ export type CreditPointsParams = {
   service_id?: string
   service_nom_libre?: string
   montant: number
+  sumup_transaction_ids?: string[]
+  sumup_transaction_codes?: string[]
 }
 
 export type CreditPointsResponse = {
@@ -71,6 +73,8 @@ export async function creditPoints(params: CreditPointsParams): Promise<CreditPo
         service_id: params.service_id ?? null,
         service_nom_libre: params.service_nom_libre ?? null,
         montant: params.montant,
+        sumup_transaction_ids: params.sumup_transaction_ids ?? null,
+        sumup_transaction_codes: params.sumup_transaction_codes ?? null,
         access_token: accessToken,
       },
     })

@@ -11,6 +11,8 @@ type CreditPointsRequest = {
   service_nom_libre?: string | null
   montant?: number
   access_token?: string
+  sumup_transaction_ids?: string[] | null
+  sumup_transaction_codes?: string[] | null
 }
 
 type ComputeNetworkBonusRow = {
@@ -57,6 +59,20 @@ const safeFloor = (value: number): number => {
   }
 
   return Math.floor(value)
+}
+
+const normalizeStringArray = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return []
+
+  const unique = new Set<string>()
+  for (const item of value) {
+    if (typeof item !== 'string') continue
+    const normalized = item.trim()
+    if (!normalized) continue
+    unique.add(normalized)
+  }
+
+  return Array.from(unique).slice(0, 50)
 }
 
 Deno.serve(async (req) => {
@@ -182,6 +198,26 @@ Deno.serve(async (req) => {
     }
 
     const basePoints = Number(result.points_credited ?? 0)
+
+    const sumupTransactionIds = normalizeStringArray(payload.sumup_transaction_ids)
+    const sumupTransactionCodes = normalizeStringArray(payload.sumup_transaction_codes)
+
+    if (sumupTransactionIds.length > 0 || sumupTransactionCodes.length > 0) {
+      const { error: sumupLinkError } = await adminClient
+        .from('transactions')
+        .update({
+          sumup_transaction_ids: sumupTransactionIds.length > 0 ? sumupTransactionIds : null,
+          sumup_transaction_codes: sumupTransactionCodes.length > 0 ? sumupTransactionCodes : null,
+        })
+        .eq('id', result.transaction_id)
+
+      if (sumupLinkError) {
+        return new Response(JSON.stringify({ error: sumupLinkError.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    }
 
     const { data: rawNetworkBonuses, error: networkBonusError } = await adminClient.rpc('compute_network_bonus', {
       p_fournisseur_id: transactionData.fournisseur_id,
