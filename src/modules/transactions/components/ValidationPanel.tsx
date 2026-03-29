@@ -31,6 +31,10 @@ type SumUpRecentTransactionsResponse = {
   recommended?: SumUpRecentTransaction | null
 }
 
+const MANUAL_PAGE_SIZE = 5
+const SUMUP_TRANSACTIONS_PAGE_SIZE = 5
+const PRODUCT_CATALOG_PAGE_SIZE = 5
+
 function transactionSelectionKey(item: SumUpRecentTransaction, index: number): string {
   return item.id ?? item.transaction_code ?? `index-${index}`
 }
@@ -135,7 +139,9 @@ export function ValidationPanel({
   const [selectedManualServiceIds, setSelectedManualServiceIds] = useState<string[]>([])
   const [manualServiceSearch, setManualServiceSearch] = useState('')
   const [productServiceSearch, setProductServiceSearch] = useState('')
-  const [showAllProductServices, setShowAllProductServices] = useState(false)
+  const [manualPage, setManualPage] = useState(1)
+  const [sumUpTransactionsPage, setSumUpTransactionsPage] = useState(1)
+  const [productCatalogPage, setProductCatalogPage] = useState(1)
 
   const filteredManualServices = useMemo(() => {
     const query = manualServiceSearch.trim().toLowerCase()
@@ -154,15 +160,26 @@ export function ValidationPanel({
     return linkableServices.filter((service) => service.nom.toLowerCase().includes(query))
   }, [productServiceSearch, linkableServices])
 
-  const visibleServices = filteredManualServices
+  const manualTotalPages = Math.max(1, Math.ceil(filteredManualServices.length / MANUAL_PAGE_SIZE))
+  const visibleServices = useMemo(() => {
+    const start = (manualPage - 1) * MANUAL_PAGE_SIZE
+    return filteredManualServices.slice(start, start + MANUAL_PAGE_SIZE)
+  }, [filteredManualServices, manualPage])
 
+  const sumUpTotalPages = Math.max(1, Math.ceil(sumUpRecentTransactions.length / SUMUP_TRANSACTIONS_PAGE_SIZE))
+  const visibleSumUpTransactions = useMemo(() => {
+    const start = (sumUpTransactionsPage - 1) * SUMUP_TRANSACTIONS_PAGE_SIZE
+    return sumUpRecentTransactions.slice(start, start + SUMUP_TRANSACTIONS_PAGE_SIZE).map((item, localIndex) => ({
+      item,
+      absoluteIndex: start + localIndex,
+    }))
+  }, [sumUpRecentTransactions, sumUpTransactionsPage])
+
+  const productCatalogTotalPages = Math.max(1, Math.ceil(filteredLinkableServices.length / PRODUCT_CATALOG_PAGE_SIZE))
   const visibleProductServices = useMemo(() => {
-    if (showAllProductServices) {
-      return filteredLinkableServices
-    }
-
-    return filteredLinkableServices.slice(0, 8)
-  }, [filteredLinkableServices, showAllProductServices])
+    const start = (productCatalogPage - 1) * PRODUCT_CATALOG_PAGE_SIZE
+    return filteredLinkableServices.slice(start, start + PRODUCT_CATALOG_PAGE_SIZE)
+  }, [filteredLinkableServices, productCatalogPage])
 
   const selectedManualServicesTotal = useMemo(() => {
     if (selectedManualServiceIds.length === 0) return 0
@@ -177,6 +194,30 @@ export function ValidationPanel({
 
     return Number(total.toFixed(2))
   }, [selectedManualServiceIds, services])
+
+  useEffect(() => {
+    setManualPage(1)
+  }, [manualServiceSearch])
+
+  useEffect(() => {
+    setSumUpTransactionsPage(1)
+  }, [sumUpRecentTransactions])
+
+  useEffect(() => {
+    setProductCatalogPage(1)
+  }, [productServiceSearch, productLinkingMode])
+
+  useEffect(() => {
+    setManualPage((previous) => Math.min(previous, manualTotalPages))
+  }, [manualTotalPages])
+
+  useEffect(() => {
+    setSumUpTransactionsPage((previous) => Math.min(previous, sumUpTotalPages))
+  }, [sumUpTotalPages])
+
+  useEffect(() => {
+    setProductCatalogPage((previous) => Math.min(previous, productCatalogTotalPages))
+  }, [productCatalogTotalPages])
 
   useEffect(() => {
     let cancelled = false
@@ -602,17 +643,17 @@ export function ValidationPanel({
                         ) : (
                           <p className="text-xs text-zinc-500">Sélectionnez les transactions à considérer pour le calcul des points.</p>
                         )}
-                        {sumUpRecentTransactions.map((item, index) => (
+                        {visibleSumUpTransactions.map(({ item, absoluteIndex }) => (
                           <label
-                            key={item.id ?? item.transaction_code ?? `sumup-${index}`}
+                            key={item.id ?? item.transaction_code ?? `sumup-${absoluteIndex}`}
                             className="flex items-center justify-between gap-3 rounded-lg border border-indigo-600/30 bg-indigo-500/10 px-2.5 py-2 text-left text-xs text-indigo-200"
                           >
                             <span className="flex items-center gap-2">
                               <input
                                 type="checkbox"
-                                checked={selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, index))}
+                                checked={selectedSumUpTransactionKeys.includes(transactionSelectionKey(item, absoluteIndex))}
                                 onChange={(event) => {
-                                  const key = transactionSelectionKey(item, index)
+                                  const key = transactionSelectionKey(item, absoluteIndex)
                                   setSelectedSumUpTransactionKeys((previous) => {
                                     if (event.target.checked) {
                                       if (previous.includes(key)) return previous
@@ -636,6 +677,27 @@ export function ValidationPanel({
                             <span className="text-[11px] text-indigo-300/80">{formatRecentTimestamp(item.timestamp)}</span>
                           </label>
                         ))}
+                        {sumUpTotalPages > 1 ? (
+                          <div className="mt-2 flex items-center justify-between gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setSumUpTransactionsPage((previous) => Math.max(1, previous - 1))}
+                              disabled={sumUpTransactionsPage === 1}
+                              className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              ← Precedent
+                            </button>
+                            <span className="text-[11px] text-zinc-500">Page {sumUpTransactionsPage}/{sumUpTotalPages}</span>
+                            <button
+                              type="button"
+                              onClick={() => setSumUpTransactionsPage((previous) => Math.min(sumUpTotalPages, previous + 1))}
+                              disabled={sumUpTransactionsPage === sumUpTotalPages}
+                              className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                              Suivant →
+                            </button>
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <p className="text-xs text-zinc-500">Aucune transaction réussie récente.</p>
@@ -661,7 +723,7 @@ export function ValidationPanel({
                           setProductLinkingMode('catalog')
                           setSelectedProductServiceIds([])
                           setProductServiceSearch('')
-                          setShowAllProductServices(false)
+                          setProductCatalogPage(1)
                         }}
                         className={`flex-1 rounded-lg px-3 py-2 text-xs font-medium transition ${
                           productLinkingMode === 'catalog'
@@ -706,7 +768,6 @@ export function ValidationPanel({
                                   value={productServiceSearch}
                                   onChange={(event) => {
                                     setProductServiceSearch(event.target.value)
-                                    setShowAllProductServices(false)
                                   }}
                                   placeholder="Nom du service"
                                   className="w-full rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-100 outline-none transition focus:border-amber-400"
@@ -717,7 +778,7 @@ export function ValidationPanel({
                               <p className="text-xs text-zinc-500">Aucun service ne correspond à la recherche.</p>
                             ) : (
                               <>
-                                <div className="max-h-64 space-y-1.5 overflow-y-auto pr-1">
+                                <div className="space-y-1.5 pr-1">
                                   {visibleProductServices.map((service) => (
                                   <label
                                     key={service.id}
@@ -740,14 +801,24 @@ export function ValidationPanel({
                                   </label>
                                   ))}
                                 </div>
-                                {filteredLinkableServices.length > 8 ? (
-                                  <div className="mt-2">
+                                {productCatalogTotalPages > 1 ? (
+                                  <div className="mt-2 flex items-center justify-between gap-2">
                                     <button
                                       type="button"
-                                      onClick={() => setShowAllProductServices((prev) => !prev)}
-                                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100"
+                                      onClick={() => setProductCatalogPage((previous) => Math.max(1, previous - 1))}
+                                      disabled={productCatalogPage === 1}
+                                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
                                     >
-                                      {showAllProductServices ? 'Réduire la liste' : `Afficher tout (${filteredLinkableServices.length})`}
+                                      ← Precedent
+                                    </button>
+                                    <span className="text-[11px] text-zinc-500">Page {productCatalogPage}/{productCatalogTotalPages}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => setProductCatalogPage((previous) => Math.min(productCatalogTotalPages, previous + 1))}
+                                      disabled={productCatalogPage === productCatalogTotalPages}
+                                      className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                      Suivant →
                                     </button>
                                   </div>
                                 ) : null}
@@ -820,7 +891,7 @@ export function ValidationPanel({
                               />
                             </div>
                           ) : null}
-                          <div className={`space-y-1.5 overflow-y-auto pr-1 ${filteredManualServices.length > 5 ? 'max-h-60' : ''}`}>
+                          <div className="space-y-1.5 pr-1">
                             {visibleServices.map((service) => (
                               <label
                                 key={service.id}
@@ -843,8 +914,26 @@ export function ValidationPanel({
                               </label>
                             ))}
                           </div>
-                          {filteredManualServices.length > 5 ? (
-                            <p className="mt-2 text-xs text-zinc-500">Faites défiler la liste pour voir les autres services.</p>
+                          {manualTotalPages > 1 ? (
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setManualPage((previous) => Math.max(1, previous - 1))}
+                                disabled={manualPage === 1}
+                                className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                ← Precedent
+                              </button>
+                              <span className="text-[11px] text-zinc-500">Page {manualPage}/{manualTotalPages}</span>
+                              <button
+                                type="button"
+                                onClick={() => setManualPage((previous) => Math.min(manualTotalPages, previous + 1))}
+                                disabled={manualPage === manualTotalPages}
+                                className="inline-flex items-center rounded-full border border-zinc-700 bg-zinc-950 px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-zinc-500 hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                Suivant →
+                              </button>
+                            </div>
                           ) : null}
                           {selectedManualServiceIds.length > 0 ? (
                             <div className="mt-2 rounded-lg bg-zinc-900 p-2">
