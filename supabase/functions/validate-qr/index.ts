@@ -9,12 +9,16 @@ type ValidateBody = {
   token?: string
 }
 
-type QrTokenRow = {
-  id: string
-  token: string
+type ConsumeQrResult = {
   fournisseur_id: string
-  status: 'active' | 'used' | 'expired'
-  expires_at: string
+  transaction_id: string
+}
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  })
 }
 
 Deno.serve(async (req) => {
@@ -23,10 +27,7 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+    return json({ error: 'Method not allowed' }, 405)
   }
 
   try {
@@ -35,178 +36,76 @@ Deno.serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
     if (!supabaseUrl || !anonKey || !serviceRoleKey) {
-      return new Response(JSON.stringify({ error: 'Missing Supabase environment variables' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return json({ error: 'Missing Supabase environment variables' }, 500)
     }
 
     const authHeader = req.headers.get('Authorization')
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(JSON.stringify({ error: 'Missing or invalid Authorization header' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return json({ error: 'Missing or invalid Authorization header' }, 401)
     }
 
-    const jwt = authHeader.replace('Bearer ', '').trim()
-
-    const payload = (await req.json().catch(() => ({}))) as ValidateBody
-    const tokenInput = payload.token?.trim()
-
-    if (!tokenInput) {
-      return new Response(JSON.stringify({ error: 'Missing token' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
+    const jwt = authHeader.slice('Bearer '.length).trim()
     const authClient = createClient(supabaseUrl, anonKey)
     const { data: userData, error: userError } = await authClient.auth.getUser(jwt)
 
     if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      return json({ error: 'Unauthorized' }, 401)
+    }
+
+    const payload = (await req.json().catch(() => null)) as ValidateBody | null
+    const tokenInput = payload?.token?.trim()
+
+    if (!tokenInput || tokenInput.length > 100) {
+      return json({ error: 'INVALID_TOKEN' }, 400)
     }
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey)
-
-    const clientId = userData.user.id
-
-    const qrToken = await findQrToken(adminClient, tokenInput)
-
-    if (!qrToken) {
-      return new Response(JSON.stringify({ error: 'Token not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const now = new Date()
-    const tokenExpiresAt = new Date(qrToken.expires_at)
-
-    if (qrToken.status !== 'active' || tokenExpiresAt <= now) {
-      if (qrToken.status === 'active' && tokenExpiresAt <= now) {
-        await adminClient.from('qr_tokens').update({ status: 'expired' }).eq('id', qrToken.id)
-      }
-
-      return new Response(JSON.stringify({ error: 'Token expired or already used' }), {
-        status: 409,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const pendingExpiresAt = new Date(now.getTime() + 5 * 60 * 1000).toISOString()
-
-    const { data: transaction, error: createTransactionError } = await adminClient
-      .from('pending_transactions')
-      .insert({
-        qr_token_id: qrToken.id,
-        client_id: clientId,
-        fournisseur_id: qrToken.fournisseur_id,
-        status: 'pending',
-        expires_at: pendingExpiresAt,
-      })
-      .select('id')
-      .single()
-
-    if (createTransactionError) {
-      return new Response(JSON.stringify({ error: createTransactionError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    const { error: markTokenUsedError } = await adminClient
-      .from('qr_tokens')
-      .update({ status: 'used' })
-      .eq('id', qrToken.id)
-
-    if (markTokenUsedError) {
-      return new Response(JSON.stringify({ error: markTokenUsedError.message }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
-    }
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        fournisseur_id: qrToken.fournisseur_id,
-        transaction_id: transaction.id,
-      }),
-      {
-        status: 200,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      },
-    )
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unexpected error'
-
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    const { data, error } = await adminClient.rpc('consume_qr_token', {
+      p_client_id: userData.user.id,
+      p_token_input: tokenInput,
     })
+
+    if (error) {
+      return mapConsumeError(error.message)
+    }
+
+    const result = (Array.isArray(data) ? data[0] : data) as ConsumeQrResult | null
+    if (!result?.fournisseur_id || !result.transaction_id) {
+      return json({ error: 'Invalid consume QR result' }, 500)
+    }
+
+    return json({
+      success: true,
+      fournisseur_id: result.fournisseur_id,
+      transaction_id: result.transaction_id,
+    })
+  } catch (error) {
+    console.error('Unexpected error in validate-qr:', error)
+    return json({ error: error instanceof Error ? error.message : 'Unexpected error' }, 500)
   }
 })
 
-async function findQrToken(adminClient: ReturnType<typeof createClient>, tokenInput: string): Promise<QrTokenRow | null> {
-  const normalized = tokenInput.trim()
-  const uuidLike = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)
-
-  if (uuidLike) {
-    const { data, error } = await adminClient
-      .from('qr_tokens')
-      .select('id, token, fournisseur_id, status, expires_at')
-      .eq('token', normalized)
-      .maybeSingle<QrTokenRow>()
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    return data ?? null
+function mapConsumeError(message: string): Response {
+  if (message.includes('TOKEN_NOT_FOUND')) {
+    return json({ error: 'TOKEN_NOT_FOUND' }, 404)
   }
 
-  const digitsOnly = normalized.replace(/\D/g, '')
-  if (!/^\d{6}$/.test(digitsOnly)) {
-    return null
+  if (message.includes('TOKEN_EXPIRED')) {
+    return json({ error: 'TOKEN_EXPIRED' }, 409)
   }
 
-  const supportsManualCode = await hasManualCodeColumn(adminClient)
-  if (!supportsManualCode) {
-    return null
+  if (message.includes('TOKEN_USED')) {
+    return json({ error: 'TOKEN_USED' }, 409)
   }
 
-  const { data, error } = await adminClient
-    .from('qr_tokens')
-    .select('id, token, fournisseur_id, status, expires_at')
-    .eq('manual_code', digitsOnly)
-    .eq('status', 'active')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle<QrTokenRow>()
-
-  if (error) {
-    throw new Error(error.message)
+  if (message.includes('INVALID_TOKEN')) {
+    return json({ error: 'INVALID_TOKEN' }, 400)
   }
 
-  return data ?? null
-}
-
-async function hasManualCodeColumn(adminClient: ReturnType<typeof createClient>): Promise<boolean> {
-  const probe = await adminClient.from('qr_tokens').select('manual_code').limit(1)
-
-  if (!probe.error) {
-    return true
+  if (message.includes('uq_pending_transactions_qr_token')) {
+    return json({ error: 'TOKEN_USED' }, 409)
   }
 
-  const message = String(probe.error.message ?? '').toLowerCase()
-  if (message.includes('manual_code')) {
-    return false
-  }
-
-  throw new Error(probe.error.message)
+  console.error('consume_qr_token failed:', message)
+  return json({ error: 'QR_VALIDATION_FAILED' }, 500)
 }

@@ -25,7 +25,7 @@ describe('PromoCard', () => {
     render(<PromoCard promotion={promotion} fournisseurNom="Coffee Loyal" />)
 
     const expiry = screen.getByText(/Expire ce soir|Expirée/i)
-    expect(expiry.className).toContain('text-red-400')
+    expect(expiry.className).toContain('text-rose-600')
   })
 
   it('shows normal expiry text otherwise', () => {
@@ -33,6 +33,6 @@ describe('PromoCard', () => {
     render(<PromoCard promotion={promotion} fournisseurNom="Coffee Loyal" />)
 
     const expiry = screen.getByText(/Expire dans/i)
-    expect(expiry.className).toContain('text-zinc-400')
+    expect(expiry.className).toContain('text-slate-500')
   })
 })

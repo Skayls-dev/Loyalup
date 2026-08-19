@@ -814,12 +814,25 @@ export async function getTransferOptions(
   })
 }
 
+export type PointTransferResult = {
+  points_deducted: number
+  platform_fee: number
+  points_credited: number
+  conversion_rate: number
+  from_new_balance: number
+  to_new_balance: number
+  transfer_id: string
+  replayed: boolean
+}
+
 export async function transferPoints(params: {
   client_id: string
   from_fournisseur_id: string
   to_fournisseur_id: string
   points_to_transfer: number
-}): Promise<any> {
+  idempotency_key?: string
+}): Promise<PointTransferResult> {
+  const idempotencyKey = params.idempotency_key ?? crypto.randomUUID()
   const response = await fetch(
     `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transfer-points`,
     {
@@ -827,8 +840,9 @@ export async function transferPoints(params: {
       headers: {
         Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
         'Content-Type': 'application/json',
+        'Idempotency-Key': idempotencyKey,
       },
-      body: JSON.stringify(params),
+      body: JSON.stringify({ ...params, idempotency_key: idempotencyKey }),
     },
   )
 

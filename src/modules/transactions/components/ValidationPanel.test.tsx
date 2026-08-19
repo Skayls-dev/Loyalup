@@ -33,21 +33,23 @@ let validationState: {
 const validateMock = vi.fn()
 const cancelMock = vi.fn()
 const selectServiceMock = vi.fn()
+const clearSelectedServiceMock = vi.fn()
 const setMontantMock = vi.fn()
 const resetMock = vi.fn()
 
-vi.mock('../hooks/useServices', () => ({
-  useServices: () => ({
-    services: [{ id: 'service-1', nom: 'Café', emoji: '☕', prix_defaut: 5, points_defaut: null, points_per_euro: 10, actif: true, fournisseur_id: 'f', created_at: new Date().toISOString() }],
-    loading: false,
-    error: null,
-  }),
-}))
+vi.mock('../hooks/useServices', () => {
+  const services = [{ id: 'service-1', nom: 'Café', emoji: '☕', prix_defaut: 5, points_defaut: null, points_per_euro: 10, actif: true, fournisseur_id: 'f', created_at: new Date().toISOString() }]
+
+  return {
+    useServices: () => ({ services, loading: false, error: null }),
+  }
+})
 
 vi.mock('../hooks/useValidation', () => ({
   useValidation: () => ({
     ...validationState,
     selectService: selectServiceMock,
+    clearSelectedService: clearSelectedServiceMock,
     setMontant: setMontantMock,
     validate: validateMock,
     cancel: cancelMock,
@@ -57,6 +59,7 @@ vi.mock('../hooks/useValidation', () => ({
 
 describe('ValidationPanel', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     validationState = {
       selectedService: { id: 'service-1', nom: 'Café', emoji: '☕', prix_defaut: 5, points_defaut: null, points_per_euro: 10, actif: true, fournisseur_id: 'f', created_at: new Date().toISOString() },
       montant: '10',
@@ -109,7 +112,7 @@ describe('ValidationPanel', () => {
     expect(setMontantMock).toHaveBeenCalled()
   })
 
-  it('validate button disabled when no price entered', async () => {
+  it('validate button disabled when no price entered', () => {
     validationState = {
       ...validationState,
       selectedService: null,
@@ -126,7 +129,13 @@ describe('ValidationPanel', () => {
     render(<ValidationPanel {...props} />)
     fireEvent.click(screen.getByRole('button', { name: /valider/i }))
     await waitFor(() => {
-      expect(validateMock).toHaveBeenCalledWith('pending-1')
+      expect(validateMock).toHaveBeenCalledWith('pending-1', {
+        freeAmountLabel: undefined,
+        product_label: undefined,
+        service_ids: undefined,
+        sumupTransactionCodes: [],
+        sumupTransactionIds: [],
+      })
     })
   })
 

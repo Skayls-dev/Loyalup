@@ -108,4 +108,12 @@ export const handlers = [
       new_balance: 120,
     })
   }),
+
+  http.post(`${base}/get-client-partner-balance`, async () => {
+    return HttpResponse.json({
+      success: true,
+      partner_balance: 275,
+      updated_at: '2026-03-13T10:00:00.000Z',
+    })
+  }),
 ]

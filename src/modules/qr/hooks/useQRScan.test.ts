@@ -3,13 +3,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useQRScan } from './useQRScan'
 
 const validateTokenMock = vi.fn()
+const subscribeToTransactionStatusMock = vi.fn()
+const unsubscribeTransactionStatusMock = vi.fn()
 
 vi.mock('../services/qrService', () => ({
   validateToken: (...args: unknown[]) => validateTokenMock(...args),
+  subscribeToTransactionStatus: (...args: unknown[]) => subscribeToTransactionStatusMock(...args),
+  unsubscribeTransactionStatus: (...args: unknown[]) => unsubscribeTransactionStatusMock(...args),
 }))
 
 describe('useQRScan', () => {
   beforeEach(() => {
+    vi.clearAllMocks()
     validateTokenMock.mockResolvedValue({
       success: true,
       fournisseur_id: 'fournisseur-1',

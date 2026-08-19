@@ -162,3 +162,56 @@ Detailed manual steps: `Documentation/runtime-smoke-checklist.md`
 - All critical flows have integration tests
 - No TypeScript errors
 - No console errors in production build
+
+### Responsive
+Parfait. Voici une checklist QA responsive courte et efficace pour valider Looyaal “en vrai”:
+
+Breakpoints à tester
+
+360x800 (Android)
+
+390x844 (iPhone 12/13/14)
+
+768x1024 (iPad portrait)
+
+1024x768 (iPad paysage)
+
+1366x768 (laptop)
+
+Écrans prioritaires
+
+Scanner/validation (avec popup ouverte)
+
+Dashboard (client, merchant, admin)
+
+Navigation mobile (menu/bottom nav)
+
+Formulaires longs (settings, onboarding)
+
+Pages avec cartes/listes paginées
+
+Scénarios critiques
+
+Ouvrir popup de validation: boutons Annuler/Valider toujours visibles.
+
+En mode Manuel: pagination services fonctionne, sélection conservée entre pages.
+
+En mode SumUp: pagination transactions + pagination catalogue produits OK.
+
+Rotation portrait/paysage: pas de contenu coupé.
+
+Zoom navigateur 110% et 125%: pas de débordement horizontal.
+
+Clavier mobile ouvert sur un input: la zone active reste atteignable.
+
+Critères d’acceptation
+
+Aucun scroll horizontal global non voulu.
+
+Aucun bouton d’action bloqué hors écran.
+
+Aucun texte tronqué de façon illisible.
+
+Aucun bloc qui “saute” ou disparaît au changement de taille.
+
+Temps d’interaction fluide (pas de freeze sur listes/pagination).

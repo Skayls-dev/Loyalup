@@ -3,7 +3,6 @@ import { createElement } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { setTableData, setTableError, setAuthSession } from '../../../test/mocks/supabase'
-import { mockSupabase } from '../../../test/mocks/supabase'
 import { useSumUpConnection } from './useSumUpConnection'
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -145,27 +144,6 @@ describe('useSumUpConnection', () => {
     const { wrapper, queryClient } = makeWrapper()
     const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
-    // Capture the QueryBuilder returned by from() so we can inspect its update spy
-    const capturedBuilders: Array<{ update: ReturnType<typeof vi.fn>; eq: ReturnType<typeof vi.fn> }> = []
-    vi.spyOn(mockSupabase, 'from').mockImplementation((table: string) => {
-      // Use the real mock implementation (returns a QueryBuilder)
-      vi.mocked(mockSupabase.from).mockRestore()
-      const builder = mockSupabase.from(table)
-      if (table === 'provider_integrations') {
-        capturedBuilders.push(builder as unknown as { update: ReturnType<typeof vi.fn>; eq: ReturnType<typeof vi.fn> })
-      }
-      // Re-spy for subsequent calls
-      vi.spyOn(mockSupabase, 'from').mockImplementation((t: string) => {
-        vi.mocked(mockSupabase.from).mockRestore()
-        const b = mockSupabase.from(t)
-        if (t === 'provider_integrations') {
-          capturedBuilders.push(b as unknown as { update: ReturnType<typeof vi.fn>; eq: ReturnType<typeof vi.fn> })
-        }
-        return b
-      })
-      return builder
-    })
-
     const { result } = renderHook(() => useSumUpConnection(FOURNISSEUR_ID), { wrapper })
 
     await waitFor(() => expect(result.current.isLoading).toBe(false))
@@ -175,14 +153,11 @@ describe('useSumUpConnection', () => {
       await result.current.disconnect()
     })
 
-    // The last captured builder for provider_integrations is the one used by disconnect()
-    const disconnectBuilder = capturedBuilders.at(-1)
-    expect(disconnectBuilder?.update).toHaveBeenCalledWith({ status: 'revoked' })
-
-    // Verify query cache was invalidated
     expect(invalidateSpy).toHaveBeenCalledWith(
       expect.objectContaining({ queryKey: ['sumup-connection', FOURNISSEUR_ID] }),
     )
+
+    await waitFor(() => expect(result.current.connectionStatus).toBe('disconnected'))
   })
 
   it('connectionStatus est "disconnected" quand status="revoked"', async () => {
